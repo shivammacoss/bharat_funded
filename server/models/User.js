@@ -77,13 +77,6 @@ const userSchema = new mongoose.Schema({
   loginAttempts: { type: Number, default: 0 },
   lockUntil: { type: Date, default: null },
   
-  // Demo account tracking
-  isDemo: { type: Boolean, default: false },
-  demoCreatedIp: { type: String, default: null },
-  demoExpiresAt: { type: Date, default: null },
-  demoConvertedToReal: { type: Boolean, default: false },
-  demoConvertedAt: { type: Date, default: null },
-  
   // KYC Status
   kycVerified: { type: Boolean, default: false },
   kycStatus: { type: String, enum: ['not_submitted', 'pending', 'approved', 'rejected', 'resubmit'], default: 'not_submitted' },

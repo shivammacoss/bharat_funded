@@ -114,36 +114,6 @@ function Register() {
     } finally { setLoading(false); }
   };
 
-  const handleDemoRegister = async () => {
-    setLoading(true); setError(''); setSuccess('');
-
-    if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.confirmPassword) {
-      setError('Please fill in all fields for demo account'); setLoading(false); return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match'); setLoading(false); return;
-    }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters'); setLoading(false); return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/auth/demo-register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData })
-      });
-      const data = await response.json();
-      if (!response.ok) { setError(data.error || 'Demo registration failed'); setLoading(false); return; }
-      localStorage.setItem('bharatfunded-token', data.token);
-      localStorage.setItem('bharatfunded-user', JSON.stringify(data.user));
-      setSuccess(`Demo account created! ID: ${data.user.oderId}. Redirecting...`);
-      setTimeout(() => { window.location.href = '/app/market'; }, 1500);
-    } catch (err) {
-      setError('Server error. Please try again.');
-    } finally { setLoading(false); }
-  };
-
   return (
     <TubesBackground enableClickInteraction={true}>
       <div className="auth-container tubes-auth" style={{ padding: '24px 16px' }}>
@@ -248,25 +218,6 @@ function Register() {
             <button type="submit" className="auth-submit-btn" disabled={loading || !termsAccepted} style={{ marginTop: '6px' }}>
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
-
-            {/* Divider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '4px 0' }}>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(99,102,241,0.15)' }} />
-              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px' }}>or try first</span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(99,102,241,0.15)' }} />
-            </div>
-
-            {/* Demo Button */}
-            <button
-              type="button" className="auth-submit-btn"
-              onClick={handleDemoRegister} disabled={loading}
-              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', marginTop: '0', boxShadow: '0 4px 15px rgba(245,158,11,0.25)' }}
-            >
-              {loading ? 'Creating Demo...' : 'Try Demo Account'}
-            </button>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', textAlign: 'center', margin: '0' }}>
-              Practice with virtual money — no deposit needed
-            </p>
           </form>
 
           <div className="auth-footer" style={{ marginTop: '20px', paddingTop: '20px' }}>

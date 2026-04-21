@@ -43,7 +43,6 @@ import {
   MyChallengesPage,
   ChallengeDashboard,
   DashboardPage,
-  CertificatesPage,
   BillingPage,
   ContactPage,
 } from './pages/User/pages';
@@ -4625,7 +4624,6 @@ function AppRouter() {
           <Route path="my-challenges" element={<MyChallengesPage />} />
           <Route path="challenge/:id" element={<ChallengeDashboard />} />
           <Route path="settings" element={<UserSettingsPage />} />
-          <Route path="certificates" element={<MyChallengesPage />} />
           <Route path="billing" element={<BillingPage />} />
           <Route path="contact" element={<ContactPage />} />
         </Route>

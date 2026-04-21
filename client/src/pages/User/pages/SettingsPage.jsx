@@ -28,9 +28,7 @@ function SettingsPage() {
     { id: 'stats', icon: LuChartColumn, label: 'Stats' },
   ];
   
-  const sections = user?.isDemo 
-    ? allSections.filter(s => s.id !== 'bank' && s.id !== 'kyc')
-    : allSections;
+  const sections = allSections;
   
   // Bank accounts state (now includes UPI ID)
   const [bankAccounts, setBankAccounts] = useState([]);

@@ -137,7 +137,6 @@ function UserManagement() {
     password: '',
     initialBalance: '',
     assignTo: '', // subadmin/broker ID
-    isDemo: false
   });
   const [createUserLoading, setCreateUserLoading] = useState(false);
   const [subadminsList, setSubadminsList] = useState([]);
@@ -203,7 +202,6 @@ function UserManagement() {
     const path = location.pathname;
     if (path.includes('/active')) return 'active-users';
     if (path.includes('/blocked')) return 'blocked-users';
-    if (path.includes('/demo')) return 'demo-users';
     if (path.includes('/kyc')) return 'kyc-management';
     if (path.includes('/logs')) return 'user-logs';
     return 'all-users';
@@ -310,7 +308,6 @@ function UserManagement() {
       // Apply filter based on active tab
       if (activeTab === 'active-users') params.set('status', 'active');
       if (activeTab === 'blocked-users') params.set('status', 'blocked');
-      if (activeTab === 'demo-users') params.set('status', 'demo');
 
       const res = await fetch(`${API_URL}/api/admin/users?${params}`);
       const data = await res.json();
@@ -396,15 +393,14 @@ function UserManagement() {
           phone: createUserForm.phone,
           password: createUserForm.password,
           initialBalance: parseFloat(createUserForm.initialBalance) || 0,
-          parentAdminId: createUserForm.assignTo || null,
-          isDemo: createUserForm.isDemo
+          parentAdminId: createUserForm.assignTo || null
         })
       });
       const data = await res.json();
       if (data.success) {
         alert('User created successfully!');
         setCreateUserModal(false);
-        setCreateUserForm({ name: '', email: '', phone: '', password: '', initialBalance: '', assignTo: '', isDemo: false });
+        setCreateUserForm({ name: '', email: '', phone: '', password: '', initialBalance: '', assignTo: '' });
         fetchUsers(1);
       } else {
         alert(data.error || 'Failed to create user');
@@ -832,7 +828,6 @@ function UserManagement() {
       if (usersFilter.status) params.set('status', usersFilter.status);
       if (activeTab === 'active-users') params.set('status', 'active');
       if (activeTab === 'blocked-users') params.set('status', 'blocked');
-      if (activeTab === 'demo-users') params.set('isDemo', 'true');
       
       const res = await fetch(`${API_URL}/api/admin/users?${params}`);
       const data = await res.json();
@@ -854,7 +849,6 @@ function UserManagement() {
         'Address',
         'Balance',
         'Status',
-        'Demo Account',
         'Parent Admin',
         'Referral Code',
         'Referred By',
@@ -874,7 +868,6 @@ function UserManagement() {
         user.address || '',
         user.wallet?.balance?.toFixed(2) || '0.00',
         user.isActive === false ? 'Blocked' : 'Active',
-        user.isDemo ? 'Yes' : 'No',
         user.parentAdmin?.name || user.parentAdmin?.email || '-',
         user.referralCode || '',
         user.referredBy || '',
@@ -1407,9 +1400,6 @@ function UserManagement() {
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ fontWeight: 500 }}>{log.user?.name || '-'}</span>
-                          {log.user?.isDemo && (
-                            <span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 600, background: '#f59e0b20', color: '#f59e0b' }}>DEMO</span>
-                          )}
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>#{log.oderId}</div>
                       </td>
@@ -1596,7 +1586,6 @@ function UserManagement() {
                       <td>#{user.oderId || user._id?.slice(-6)}</td>
                       <td>
                         {user.name}
-                        {user.isDemo && <span style={{ fontSize: '10px', color: '#f59e0b', marginLeft: '5px' }}>(Demo)</span>}
                       </td>
                       <td>{user.email}</td>
                       <td>{user.phone || '-'}</td>
@@ -2453,21 +2442,9 @@ function UserManagement() {
               </p>
             </div>
             
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={createUserForm.isDemo} 
-                  onChange={(e) => setCreateUserForm(prev => ({ ...prev, isDemo: e.target.checked }))} 
-                  style={{ accentColor: '#f59e0b' }}
-                />
-                <span style={{ color: '#f59e0b' }}>Create as Demo Account</span>
-              </label>
-            </div>
-            
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                onClick={() => { setCreateUserModal(false); setCreateUserForm({ name: '', email: '', phone: '', password: '', initialBalance: '', assignTo: '', isDemo: false }); }}
+              <button
+                onClick={() => { setCreateUserModal(false); setCreateUserForm({ name: '', email: '', phone: '', password: '', initialBalance: '', assignTo: '' }); }}
                 style={{ flex: 1, padding: '12px', borderRadius: '8px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', cursor: 'pointer' }}
               >
                 Cancel

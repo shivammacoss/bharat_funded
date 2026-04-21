@@ -37,7 +37,7 @@ function ProgressBar({ value, max, color = '#3b82f6', dangerColor = '#ef4444', d
 }
 
 function ChallengeDashboard() {
-  const { user } = useOutletContext();
+  const { user, setActiveChallengeAccountId } = useOutletContext();
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -155,10 +155,13 @@ function ChallengeDashboard() {
             </div>
           </div>
         </div>
-        {/* Trade Button */}
+        {/* Trade Button — sets active challenge context before navigating */}
         {(account.status === 'ACTIVE' || account.status === 'FUNDED') && (
           <button
-            onClick={() => navigate('/app/market')}
+            onClick={() => {
+              setActiveChallengeAccountId?.(account._id || id);
+              navigate('/app/market');
+            }}
             style={{
               marginTop: '12px', padding: '12px 32px', borderRadius: '12px', border: 'none',
               cursor: 'pointer', fontWeight: '700', fontSize: '14px',
@@ -253,7 +256,7 @@ function ChallengeDashboard() {
             <div style={{ flex: 1, textAlign: 'center', padding: '8px', background: 'var(--bg-tertiary, var(--bg-primary))', borderRadius: '8px' }}>
               <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Amount Needed</div>
               <div style={{ color: '#f59e0b', fontWeight: '700', fontSize: '16px' }}>
-                ${profit.amountToTarget.toFixed(2)}
+                ₹{profit.amountToTarget.toFixed(2)}
               </div>
             </div>
           </div>
@@ -288,7 +291,7 @@ function ChallengeDashboard() {
                 fontWeight: '700', fontSize: '15px', opacity: withdrawing ? 0.6 : 1
               }}
             >
-              {withdrawing ? 'Processing...' : `Withdraw $${funded.withdrawable.toFixed(2)}`}
+              {withdrawing ? 'Processing...' : `Withdraw ₹${funded.withdrawable.toFixed(2)}`}
             </button>
           ) : (
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>

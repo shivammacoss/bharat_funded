@@ -295,9 +295,9 @@ function SubAdminLayout() {
       <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           {sidebarCollapsed ? (
-            <span className="sidebar-logo">BF</span>
+            <img src="/landing/img/bharatfunded-logo.svg" alt="BharatFunded" className="sidebar-logo-img" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
           ) : (
-            <img src="/landing/img/logo1.png" alt="BharatFundedTrade" className="sidebar-logo-img" style={{ height: '28px', width: 'auto' }} />
+            <img src="/landing/img/bharatfunded-logo.svg" alt="BharatFunded" className="sidebar-logo-img" style={{ height: '32px', width: 'auto', maxWidth: '160px', objectFit: 'contain' }} />
           )}
           <button
             className="sidebar-toggle"

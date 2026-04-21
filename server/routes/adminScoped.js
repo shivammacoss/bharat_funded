@@ -1310,7 +1310,6 @@ router.get(
       if (status && status !== 'all') {
         if (status === 'active') filter.isActive = { $ne: false };
         else if (status === 'blocked') filter.isActive = false;
-        else if (status === 'demo') filter.isDemo = true;
       }
       if (search) {
         const rx = new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -1322,7 +1321,7 @@ router.get(
 
       const [users, total] = await Promise.all([
         User.find(filter)
-          .select('_id oderId name email phone isActive isDemo createdAt parentAdminId wallet kycStatus')
+          .select('_id oderId name email phone isActive createdAt parentAdminId wallet kycStatus')
           .sort({ createdAt: -1 }).skip(skip).limit(pageSize).lean(),
         User.countDocuments(filter),
       ]);
@@ -1526,11 +1525,8 @@ const Trade = require('../models/Trade');
 
 async function scopedOderIdsFor(admin, req) {
   const users = await User.find({ _id: { $in: req.adminScope.scopedUserIds } })
-    .select('oderId isDemo').lean();
-  return users
-    .filter(u => !u.isDemo || req.query.includeDemo === 'true')
-    .map(u => u.oderId)
-    .filter(Boolean);
+    .select('oderId').lean();
+  return users.map(u => u.oderId).filter(Boolean);
 }
 
 /**

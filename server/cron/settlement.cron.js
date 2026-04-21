@@ -15,6 +15,9 @@ let endOfDayInterval = null;
 let autoSquareOffInterval = null;
 let optionExpirySettlementInterval = null;
 let swapSchedulerInterval = null; // Fix 23: per-minute swap scheduler
+let challengeExpirySweepInterval = null;
+let challengeDailyResetTimeout = null;
+let challengeDailyResetInterval = null;
 
 // Netting engine instance for auto square-off
 let nettingEngine = null;
@@ -87,6 +90,30 @@ function initializeCronJobs() {
   // MCX is EXCLUDED from auto square-off
   autoSquareOffInterval = setInterval(checkAutoSquareOff, 60 * 1000); // Every 1 minute
   console.log('[Cron] Auto square-off scheduler initialized (excludes MCX)');
+
+  // Prop-trading challenge expiry sweep — every 30 minutes.
+  // Flips ACTIVE accounts past expiresAt to EXPIRED without waiting for the
+  // user to trigger a trade (the on-trade check was the only enforcement).
+  challengeExpirySweepInterval = setInterval(runChallengeExpirySweep, 30 * 60 * 1000);
+  runChallengeExpirySweep().catch(err => console.error('[ChallengeExpiry] initial run error:', err.message));
+  console.log('[Cron] Prop challenge expiry sweep scheduled (every 30 min)');
+
+  // Prop-trading daily reset — at 00:05 IST every day, snapshots each active
+  // challenge account's dayStartEquity and resets lowestEquityToday. Without
+  // this, accounts that sit idle overnight never get their daily metrics
+  // rolled and the next-day DD comparison is wrong.
+  const nowForDailyReset = new Date();
+  const next0005IST = new Date(nowForDailyReset);
+  next0005IST.setUTCHours(18, 35, 0, 0); // 00:05 IST = 18:35 UTC (prev day)
+  if (next0005IST <= nowForDailyReset) {
+    next0005IST.setUTCDate(next0005IST.getUTCDate() + 1);
+  }
+  const msUntilNext = next0005IST.getTime() - nowForDailyReset.getTime();
+  challengeDailyResetTimeout = setTimeout(() => {
+    runChallengeDailyReset().catch(err => console.error('[ChallengeDailyReset] error:', err.message));
+    challengeDailyResetInterval = setInterval(runChallengeDailyReset, 24 * 60 * 60 * 1000);
+  }, msUntilNext);
+  console.log(`[Cron] Prop challenge daily reset scheduled at ${next0005IST.toISOString()} (00:05 IST)`);
 
   // F&O option expiry: intrinsic settlement after exchange close on expiry day (IST)
   optionExpirySettlementInterval = setInterval(checkOptionExpirySettlement, 2 * 60 * 1000);
@@ -316,6 +343,59 @@ async function triggerOptionExpirySettlement() {
 }
 
 /**
+ * Prop challenge expiry sweep — finds ACTIVE accounts past their expiresAt
+ * and flips them to EXPIRED. Runs every 30 minutes. Idempotent.
+ */
+async function runChallengeExpirySweep() {
+  try {
+    const ChallengeAccount = require('../models/ChallengeAccount');
+    const now = new Date();
+    const result = await ChallengeAccount.updateMany(
+      { status: 'ACTIVE', expiresAt: { $lt: now } },
+      { $set: { status: 'EXPIRED', expiredAt: now } }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`[ChallengeExpiry] Marked ${result.modifiedCount} challenge account(s) as EXPIRED`);
+    }
+  } catch (err) {
+    console.error('[ChallengeExpiry] sweep error:', err.message);
+  }
+}
+
+/**
+ * Prop challenge daily reset — at 00:05 IST, snapshots dayStartEquity and
+ * resets lowestEquityToday + tradesToday on every ACTIVE/FUNDED account.
+ * ChallengeAccount.resetDailyStats() already encapsulates the mutation.
+ */
+async function runChallengeDailyReset() {
+  try {
+    const ChallengeAccount = require('../models/ChallengeAccount');
+    const accounts = await ChallengeAccount.find({ status: { $in: ['ACTIVE', 'FUNDED'] } });
+    let touched = 0;
+    for (const acc of accounts) {
+      try {
+        if (typeof acc.resetDailyStats === 'function') {
+          await acc.resetDailyStats();
+          touched += 1;
+        } else {
+          acc.dayStartEquity = acc.currentEquity;
+          acc.lowestEquityToday = acc.currentEquity;
+          acc.tradesToday = 0;
+          acc.currentDailyDrawdownPercent = 0;
+          await acc.save();
+          touched += 1;
+        }
+      } catch (innerErr) {
+        console.error(`[ChallengeDailyReset] account ${acc._id} error:`, innerErr.message);
+      }
+    }
+    console.log(`[ChallengeDailyReset] Reset daily stats on ${touched} challenge account(s)`);
+  } catch (err) {
+    console.error('[ChallengeDailyReset] run error:', err.message);
+  }
+}
+
+/**
  * Cleanup cron jobs on shutdown
  */
 function cleanupCronJobs() {
@@ -333,6 +413,15 @@ function cleanupCronJobs() {
   }
   if (swapSchedulerInterval) {
     clearInterval(swapSchedulerInterval);
+  }
+  if (challengeExpirySweepInterval) {
+    clearInterval(challengeExpirySweepInterval);
+  }
+  if (challengeDailyResetTimeout) {
+    clearTimeout(challengeDailyResetTimeout);
+  }
+  if (challengeDailyResetInterval) {
+    clearInterval(challengeDailyResetInterval);
   }
   console.log('[Cron] Cron jobs cleaned up');
 }

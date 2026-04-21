@@ -20,7 +20,12 @@ const ERROR_CODES = {
   MIN_HOLD_TIME: 'MIN_HOLD_TIME',
   DAILY_DRAWDOWN_BREACH: 'DAILY_DRAWDOWN_BREACH',
   OVERALL_DRAWDOWN_BREACH: 'OVERALL_DRAWDOWN_BREACH',
-  EXPIRED: 'EXPIRED'
+  EXPIRED: 'EXPIRED',
+  MAX_LEVERAGE_EXCEEDED: 'MAX_LEVERAGE_EXCEEDED',
+  TAKE_PROFIT_REQUIRED: 'TAKE_PROFIT_REQUIRED',
+  MAX_TOTAL_TRADES: 'MAX_TOTAL_TRADES',
+  MIN_TRADES_NOT_MET: 'MIN_TRADES_NOT_MET',
+  TRADING_DAYS_NOT_MET: 'TRADING_DAYS_NOT_MET'
 };
 
 class PropTradingEngine {
@@ -133,9 +138,24 @@ class PropTradingEngine {
       return { valid: false, error: 'Stop Loss is mandatory for this challenge', code: ERROR_CODES.STOP_LOSS_REQUIRED };
     }
 
+    // Take profit mandatory
+    if (rules.takeProfitMandatory && !tradeParams.tp && !tradeParams.takeProfit) {
+      return { valid: false, error: 'Take Profit is mandatory for this challenge', code: ERROR_CODES.TAKE_PROFIT_REQUIRED };
+    }
+
+    // Max leverage
+    if (rules.maxLeverage && tradeParams.leverage && Number(tradeParams.leverage) > Number(rules.maxLeverage)) {
+      return { valid: false, error: `Leverage ${tradeParams.leverage}x exceeds max ${rules.maxLeverage}x`, code: ERROR_CODES.MAX_LEVERAGE_EXCEEDED };
+    }
+
     // Max trades per day
     if (rules.maxTradesPerDay && account.tradesToday >= rules.maxTradesPerDay) {
       return { valid: false, error: `Max ${rules.maxTradesPerDay} trades per day reached`, code: ERROR_CODES.MAX_TRADES_PER_DAY };
+    }
+
+    // Max total trades over the lifetime of the account
+    if (rules.maxTotalTrades && account.totalTrades >= rules.maxTotalTrades) {
+      return { valid: false, error: `Max total ${rules.maxTotalTrades} trades reached`, code: ERROR_CODES.MAX_TOTAL_TRADES };
     }
 
     // Max concurrent trades
@@ -202,6 +222,7 @@ class PropTradingEngine {
 
     // Check if new trading day
     const today = new Date().toDateString();
+    const todayIso = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
     const lastDay = account.lastTradingDay ? account.lastTradingDay.toDateString() : null;
     if (today !== lastDay) {
       account.tradingDaysCount += 1;
@@ -209,6 +230,14 @@ class PropTradingEngine {
       account.tradesToday = 1;
       account.dayStartEquity = account.currentEquity;
       account.lowestEquityToday = account.currentEquity;
+    }
+
+    // Track unique trading days for tradingDaysRequired rule. We use an
+    // array of ISO date strings because Mongoose doesn't support Set types
+    // natively; duplicates are suppressed with a simple includes-check.
+    if (!Array.isArray(account.uniqueTradingDays)) account.uniqueTradingDays = [];
+    if (!account.uniqueTradingDays.includes(todayIso)) {
+      account.uniqueTradingDays.push(todayIso);
     }
 
     await account.save();
@@ -324,6 +353,27 @@ class PropTradingEngine {
       // Check for FAIL violations
       if (account.violations.some(v => v.severity === 'FAIL')) {
         return { targetReached: false };
+      }
+
+      // Gate: minimum trades required for this phase
+      if (rules.minTradesRequired && (account.totalTrades || 0) < rules.minTradesRequired) {
+        return {
+          targetReached: false,
+          reason: `Need ${rules.minTradesRequired - (account.totalTrades || 0)} more trade(s) to qualify`,
+          code: ERROR_CODES.MIN_TRADES_NOT_MET
+        };
+      }
+
+      // Gate: minimum unique trading days required
+      if (rules.tradingDaysRequired) {
+        const days = Array.isArray(account.uniqueTradingDays) ? account.uniqueTradingDays.length : 0;
+        if (days < rules.tradingDaysRequired) {
+          return {
+            targetReached: false,
+            reason: `Need ${rules.tradingDaysRequired - days} more trading day(s) to qualify`,
+            code: ERROR_CODES.TRADING_DAYS_NOT_MET
+          };
+        }
       }
 
       if (account.currentPhase < account.totalPhases) {

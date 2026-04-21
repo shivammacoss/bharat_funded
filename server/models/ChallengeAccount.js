@@ -138,6 +138,17 @@ const challengeAccountSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // ISO date strings (YYYY-MM-DD) of every day the user placed at least one
+  // trade — enforced against Challenge.rules.tradingDaysRequired in
+  // checkProfitTarget so a user can't farm a single-day 8% spike and pass.
+  uniqueTradingDays: {
+    type: [String],
+    default: []
+  },
+  expiredAt: {
+    type: Date,
+    default: null
+  },
 
   // Rule violations
   violations: [{

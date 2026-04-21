@@ -389,30 +389,28 @@ function WalletPage() {
               </div>
             </div>
           </div>
-          {!user?.isDemo && (
-            <div className="mobi-wallet-actions">
-              <button
-                type="button"
-                className="mobi-wa-deposit"
-                onClick={() => {
-                  setActiveTab('deposit');
-                  scrollToWalletForm();
-                }}
-              >
-                Deposit
-              </button>
-              <button
-                type="button"
-                className="mobi-wa-withdraw"
-                onClick={() => {
-                  setActiveTab('withdrawal');
-                  scrollToWalletForm();
-                }}
-              >
-                Withdraw
-              </button>
-            </div>
-          )}
+          <div className="mobi-wallet-actions">
+            <button
+              type="button"
+              className="mobi-wa-deposit"
+              onClick={() => {
+                setActiveTab('deposit');
+                scrollToWalletForm();
+              }}
+            >
+              Deposit
+            </button>
+            <button
+              type="button"
+              className="mobi-wa-withdraw"
+              onClick={() => {
+                setActiveTab('withdrawal');
+                scrollToWalletForm();
+              }}
+            >
+              Withdraw
+            </button>
+          </div>
         </div>
       </div>
 
@@ -442,68 +440,7 @@ function WalletPage() {
 
       <div className="wallet-content">
         <div className="wallet-form-card">
-          {/* Demo Account Restriction */}
-          {user?.isDemo && (
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1))',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '20px',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎮</div>
-              <h3 style={{ color: '#f59e0b', margin: '0 0 8px', fontSize: '18px' }}>Demo Account</h3>
-              <p style={{ color: '#888', margin: '0 0 16px', fontSize: '14px' }}>
-                Deposit and withdrawal are not available for demo accounts.<br/>
-                Convert to a real account to access these features.
-              </p>
-              <button 
-                onClick={async () => {
-                  if (!confirm('Convert to real account? Your wallet will be reset to zero.')) return;
-                  try {
-                    const token = localStorage.getItem('bharatfunded-token');
-                    const res = await fetch(`${API_URL}/api/auth/convert-to-real`, {
-                      method: 'POST',
-                      headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                      }
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      alert('Account converted successfully! Please login again.');
-                      localStorage.removeItem('bharatfunded-token');
-                      localStorage.removeItem('bharatfunded-user');
-                      window.location.href = '/login';
-                    } else {
-                      alert(data.error || 'Failed to convert account');
-                    }
-                  } catch (err) {
-                    alert('Error converting account');
-                  }
-                }}
-                style={{
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                🚀 Convert to Real Account
-              </button>
-              <p style={{ color: '#666', margin: '12px 0 0', fontSize: '11px' }}>
-                Demo expires: {user?.demoExpiresAt ? new Date(user.demoExpiresAt).toLocaleDateString() : 'N/A'}
-              </p>
-            </div>
-          )}
-
-          {!user?.isDemo && (
-            <>
+          <>
           <div className="wallet-tabs">
             <button className={`wallet-tab ${activeTab === 'deposit' ? 'active' : ''}`} onClick={() => setActiveTab('deposit')}>Deposit</button>
             <button className={`wallet-tab ${activeTab === 'withdrawal' ? 'active' : ''}`} onClick={() => setActiveTab('withdrawal')}>Withdrawal</button>
@@ -820,8 +757,7 @@ function WalletPage() {
               {activeTab === 'deposit' ? 'Submit Deposit Request' : 'Submit Withdrawal Request'}
             </button>
           </div>
-            </>
-          )}
+          </>
         </div>
 
         <div className="transactions-card">

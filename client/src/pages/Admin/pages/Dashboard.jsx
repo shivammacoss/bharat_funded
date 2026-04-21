@@ -252,7 +252,7 @@ function Dashboard() {
                 recentUsers.map((user, idx) => (
                   <tr key={idx}>
                     <td>#{user.oderId || user._id?.slice(-6)}</td>
-                    <td>{user.name} {user.isDemo && <span style={{ fontSize: '10px', color: '#f59e0b' }}>(Demo)</span>}</td>
+                    <td>{user.name}</td>
                     <td>{user.email}</td>
                     <td>{formatCurrency(user.wallet?.balance || 0, false)}</td>
                     <td>

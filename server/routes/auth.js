@@ -187,7 +187,7 @@ router.post('/forgot-password', async (req, res) => {
       const code = e.statusCode || 429;
       return res.status(code).json({ error: e.message });
     }
-    const user = await User.findOne({ email: normalized, isDemo: { $ne: true } });
+    const user = await User.findOne({ email: normalized });
     try {
       if (user && user.isActive !== false) {
         await emailOtpService.sendPasswordResetOtp(normalized);
@@ -225,7 +225,7 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Passwords do not match' });
     }
     const normalized = email.toLowerCase().trim();
-    const user = await User.findOne({ email: normalized, isDemo: { $ne: true } });
+    const user = await User.findOne({ email: normalized });
     if (!user) {
       return res.status(400).json({ error: 'Invalid or expired reset code' });
     }
@@ -390,145 +390,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// ============== DEMO REGISTRATION ==============
-router.post('/demo-register', async (req, res) => {
-  try {
-    const { name, email, phone, countryCode = '+91', password, confirmPassword } = req.body;
-    const DemoSettings = require('../models/DemoSettings');
-    
-    // Get demo settings
-    const demoSettings = await DemoSettings.getSettings();
-    
-    if (!demoSettings.demoRegistrationEnabled) {
-      return res.status(400).json({ error: 'Demo registration is currently disabled' });
-    }
-    
-    // Validation
-    if (!name || !email || !phone || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
-    }
-    
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-    
-    if (password !== confirmPassword) {
-      return res.status(400).json({ error: 'Passwords do not match' });
-    }
-    
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-    
-    // Phone validation
-    const phoneDigits = phone.replace(/[^0-9]/g, '');
-    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
-      return res.status(400).json({ error: 'Invalid phone number' });
-    }
-    
-    const fullPhone = `${countryCode}${phoneDigits}`;
-    const clientIp = req.ip || req.connection?.remoteAddress || 'unknown';
-    
-    // Check max demo accounts per IP
-    const existingDemoCount = await User.countDocuments({ 
-      isDemo: true, 
-      demoCreatedIp: clientIp 
-    });
-    
-    if (existingDemoCount >= demoSettings.maxDemoAccountsPerIp) {
-      return res.status(400).json({ 
-        error: `Maximum ${demoSettings.maxDemoAccountsPerIp} demo accounts allowed per device` 
-      });
-    }
-    
-    // Check if email already exists
-    const existingEmail = await User.findOne({ email: email.toLowerCase() });
-    if (existingEmail) {
-      return res.status(400).json({ error: 'Email already registered' });
-    }
-    
-    // Check if phone already exists
-    const existingPhone = await User.findOne({ phone: fullPhone });
-    if (existingPhone) {
-      return res.status(400).json({ error: 'Phone number already registered' });
-    }
-
-    const needDemoEmailOtp = await emailOtpService.requireSignupOtp();
-    if (needDemoEmailOtp) {
-      const otp = req.body.emailOtp || req.body.otp;
-      if (!otp) {
-        return res.status(400).json({ error: 'Email verification code is required for demo signup' });
-      }
-      const verified = await emailOtpService.verifyAndConsumeSignupOtp(email, otp);
-      if (!verified.ok) {
-        return res.status(400).json({ error: verified.error });
-      }
-    }
-    
-    // Generate unique 6-digit user ID
-    const userId = await User.generateUserId();
-    
-    // Calculate demo expiry date
-    const demoExpiresAt = new Date();
-    demoExpiresAt.setDate(demoExpiresAt.getDate() + demoSettings.demoValidityDays);
-    
-    // Create demo user
-    const user = new User({
-      oderId: userId,
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      phone: fullPhone,
-      password,
-      isEmailVerified: needDemoEmailOtp,
-      isDemo: true,
-      demoCreatedIp: clientIp,
-      demoExpiresAt: demoExpiresAt,
-      wallet: {
-        balance: demoSettings.demoWalletAmount,
-        credit: 0,
-        equity: demoSettings.demoWalletAmount,
-        margin: 0,
-        freeMargin: demoSettings.demoWalletAmount,
-        marginLevel: 0
-      }
-    });
-    
-    await user.save();
-    
-    // Generate token
-    const token = signToken(user._id);
-    
-    // Log registration activity (demo accounts don't save activity logs)
-    const userAgent = req.get('User-Agent') || '';
-    
-    res.status(201).json({
-      success: true,
-      message: 'Demo account created successfully',
-      token,
-      user: {
-        id: user.oderId,
-        oderId: user.oderId,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        avatar: user.profile?.avatar || '',
-        profile: user.profile,
-        wallet: user.wallet,
-        role: user.role,
-        isDemo: true,
-        demoExpiresAt: user.demoExpiresAt,
-        allowedTradeModes: user.allowedTradeModes || { hedging: true, netting: true, binary: true }
-      }
-    });
-    
-  } catch (error) {
-    console.error('Demo registration error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // ============== LOGIN ==============
 router.post('/login', async (req, res) => {
   try {
@@ -563,15 +424,7 @@ router.post('/login', async (req, res) => {
     if (!user.isActive) {
       return res.status(403).json({ error: 'Account is deactivated. Contact support.' });
     }
-    
-    // Check if demo account has expired
-    if (user.isDemo && user.demoExpiresAt && new Date() > new Date(user.demoExpiresAt)) {
-      return res.status(403).json({ 
-        error: 'Demo account has expired. Please register for a real account.',
-        demoExpired: true
-      });
-    }
-    
+
     // Verify password
     const isMatch = await user.comparePassword(password);
     
@@ -628,8 +481,6 @@ router.post('/login', async (req, res) => {
         stats: user.stats,
         role: user.role,
         isVerified: user.isVerified,
-        isDemo: user.isDemo || false,
-        demoExpiresAt: user.demoExpiresAt || null,
         allowedTradeModes: user.allowedTradeModes || { hedging: true, netting: true, binary: true },
         sessionId: sessionId
       }
@@ -654,81 +505,6 @@ router.post('/login', async (req, res) => {
     
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============== CONVERT DEMO TO REAL ACCOUNT ==============
-router.post('/convert-to-real', protect, async (req, res) => {
-  try {
-    const user = req.user;
-    
-    if (!user.isDemo) {
-      return res.status(400).json({ error: 'This is already a real account' });
-    }
-    
-    // Convert demo to real account
-    user.isDemo = false;
-    user.demoConvertedToReal = true;
-    user.demoConvertedAt = new Date();
-    user.demoExpiresAt = null;
-    
-    // Reset wallet to zero
-    user.wallet = {
-      balance: 0,
-      credit: 0,
-      equity: 0,
-      margin: 0,
-      freeMargin: 0,
-      marginLevel: 0
-    };
-    
-    // Reset stats
-    user.stats = {
-      totalTrades: 0,
-      winningTrades: 0,
-      losingTrades: 0,
-      totalProfit: 0,
-      totalLoss: 0,
-      netPnL: 0
-    };
-    
-    await user.save();
-    
-    // Log conversion activity
-    const userAgent = req.get('User-Agent') || '';
-    const UserActivityLog = require('../models/UserActivityLog');
-    await UserActivityLog.logActivity({
-      userId: user._id.toString(),
-      oderId: user.oderId,
-      activityType: 'profile_update',
-      description: 'Demo account converted to real account',
-      ipAddress: req.ip || req.connection?.remoteAddress,
-      userAgent: userAgent,
-      device: userAgent.includes('Mobile') ? 'mobile' : 'desktop',
-      os: parseOS(userAgent),
-      browser: parseBrowser(userAgent),
-      status: 'success'
-    });
-    
-    res.json({
-      success: true,
-      message: 'Account converted to real account successfully. Your wallet has been reset to zero.',
-      user: {
-        id: user.oderId,
-        oderId: user.oderId,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        wallet: user.wallet,
-        stats: user.stats,
-        isDemo: false,
-        demoConvertedToReal: true
-      }
-    });
-    
-  } catch (error) {
-    console.error('Convert to real error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1025,8 +801,6 @@ router.get('/verify', protect, async (req, res) => {
       profile: req.user.profile,
       wallet: req.user.wallet,
       role: req.user.role,
-      isDemo: req.user.isDemo || false,
-      demoExpiresAt: req.user.demoExpiresAt || null,
       allowedTradeModes: req.user.allowedTradeModes || { hedging: true, netting: true, binary: true }
     }
   });

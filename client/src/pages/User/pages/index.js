@@ -7,6 +7,5 @@ export { default as PropChallengePage } from './PropChallengePage';
 export { default as MyChallengesPage } from './MyChallengesPage';
 export { default as ChallengeDashboard } from './ChallengeDashboard';
 export { default as DashboardPage } from './DashboardPage';
-export { default as CertificatesPage } from './CertificatesPage';
 export { default as BillingPage } from './BillingPage';
 export { default as ContactPage } from './ContactPage';

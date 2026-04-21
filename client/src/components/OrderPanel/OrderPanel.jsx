@@ -87,6 +87,7 @@ const OrderPanel = () => {
 
     try {
       const leverageMultiplierVal = parseInt(leverage.split(':')[1]);
+      const challengeAccountId = localStorage.getItem('bharatfunded-active-challenge') || null;
       const response = await fetch(`${API_URL}/api/trade/open`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,7 +99,8 @@ const OrderPanel = () => {
           leverage: leverageMultiplierVal,
           orderType,
           stopLoss: null,
-          takeProfit: null
+          takeProfit: null,
+          challengeAccountId
         })
       });
 

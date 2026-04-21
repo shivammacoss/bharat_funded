@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 import useStore from '../../store/useStore';
 import './InstrumentsPanel.css';
 
-const categories = ['All', 'Starred', 'Forex', 'Metals', 'Crypto Perpetual'];
+const categories = ['All', 'Starred', 'NSE', 'BSE', 'Indices'];
 
 const InstrumentsPanel = () => {
   const instruments = useStore((state) => state.instruments);

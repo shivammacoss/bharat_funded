@@ -102,6 +102,21 @@ function UserLayout({ user, onLogout }) {
     return 'home';
   });
 
+  // Active challenge account — when set, trades place against this prop
+  // account. Null ⇒ trades hit the user's main wallet. Persisted so a reload
+  // on /app/market keeps the chosen account context.
+  const [activeChallengeAccountId, setActiveChallengeAccountIdState] = useState(() => {
+    return localStorage.getItem('bharatfunded-active-challenge') || null;
+  });
+  const setActiveChallengeAccountId = (id) => {
+    if (id) {
+      localStorage.setItem('bharatfunded-active-challenge', id);
+    } else {
+      localStorage.removeItem('bharatfunded-active-challenge');
+    }
+    setActiveChallengeAccountIdState(id || null);
+  };
+
   // System Notification State (from admin)
   const [systemNotifications, setSystemNotifications] = useState([]);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -581,21 +596,7 @@ function UserLayout({ user, onLogout }) {
         const res = await fetch(`${API_URL}/api/admin/users/${userId}`);
         const data = await res.json();
         if (data.success && data.user) {
-          let modes;
-          
-          // Check if user is demo account
-          const isDemo = data.user.isDemo || user?.isDemo;
-          
-          if (isDemo) {
-            // Demo accounts: show all trade modes (Hedging + Netting + Binary)
-            modes = { hedging: true, netting: true, binary: true };
-          } else {
-            // Regular users: only show Netting mode by default
-            // Admin can override this via allowedTradeModes setting
-            modes = data.user.allowedTradeModes || { hedging: false, netting: true, binary: false };
-          }
-          
-          // Netting is always enabled (compulsory for Indian instruments)
+          const modes = data.user.allowedTradeModes || { hedging: false, netting: true, binary: false };
           modes.netting = true;
           setAllowedTradeModes(modes);
           // Set trading mode to netting by default
@@ -2015,6 +2016,8 @@ function UserLayout({ user, onLogout }) {
     activePage,
     setActivePage,
     navigateToPage,
+    activeChallengeAccountId,
+    setActiveChallengeAccountId,
     livePrices,
     isMetaApiConnected,
     executeOrder,
@@ -2185,7 +2188,7 @@ function UserLayout({ user, onLogout }) {
     { key: 'settings', label: 'Profile', icon: <LuUser size={18} /> },
     { key: 'orders', label: 'Orders', icon: <LuClipboardList size={18} /> },
     { key: 'wallet', label: 'Wallet', icon: <LuWallet size={18} /> },
-    { key: 'certificates', label: 'Certificates', icon: <LuTrophy size={18} /> },
+    { key: 'my-challenges', label: 'My Challenges', icon: <LuTrophy size={18} /> },
     { key: 'billing', label: 'Billing', icon: <LuBriefcase size={18} /> },
     { key: 'contact', label: 'Contact', icon: <LuBell size={18} /> },
   ];

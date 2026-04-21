@@ -31,6 +31,7 @@ function PropChallengePage() {
   const [activeProgram, setActiveProgram] = useState(2);
   const [selectedId, setSelectedId] = useState(null);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -314,9 +315,9 @@ function PropChallengePage() {
                   <span><strong style={{ color: 'var(--text-primary)' }}>I agree to the payment & service terms.</strong> This is a digital evaluation service. Fees are non-refundable except for verified payment errors. Refund benefits may apply on success as per Refund Policy.</span>
                 </label>
 
-                {/* Pay Button */}
+                {/* Pay Button — opens confirm modal first */}
                 <button
-                  onClick={() => buyChallenge(selectedPlan._id)}
+                  onClick={() => setConfirmOpen(true)}
                   disabled={!agreeTerms || buying}
                   style={{
                     width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
@@ -337,6 +338,106 @@ function PropChallengePage() {
           )}
         </div>
       </div>
+
+      {/* Pre-purchase confirmation modal */}
+      {confirmOpen && selectedPlan && (
+        <div
+          onClick={() => !buying && setConfirmOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)', borderRadius: 16,
+              width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto',
+              padding: '24px 24px 20px'
+            }}
+          >
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Confirm Purchase</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Please review the rules before paying the non-refundable evaluation fee.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>FUND SIZE</div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>₹ {(Number(selectedPlan.fundSize) * 85).toLocaleString('en-IN')}</div>
+              </div>
+              <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>EVALUATION FEE</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#f59e0b' }}>₹ {(Number(selectedPlan.challengeFee) * 85).toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: 0.5, marginBottom: 8 }}>RULES YOU MUST FOLLOW</div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.8 }}>
+              {selectedPlan.rules?.maxDailyDrawdownPercent != null && (
+                <li>Daily drawdown limit: <strong>{selectedPlan.rules.maxDailyDrawdownPercent}%</strong></li>
+              )}
+              {selectedPlan.rules?.maxOverallDrawdownPercent != null && (
+                <li>Overall drawdown limit: <strong>{selectedPlan.rules.maxOverallDrawdownPercent}%</strong></li>
+              )}
+              {selectedPlan.rules?.profitTargetPhase1Percent != null && selectedPlan.stepsCount >= 1 && (
+                <li>Phase 1 profit target: <strong>{selectedPlan.rules.profitTargetPhase1Percent}%</strong></li>
+              )}
+              {selectedPlan.rules?.profitTargetPhase2Percent != null && selectedPlan.stepsCount === 2 && (
+                <li>Phase 2 profit target: <strong>{selectedPlan.rules.profitTargetPhase2Percent}%</strong></li>
+              )}
+              {selectedPlan.rules?.maxLeverage != null && (
+                <li>Max leverage: <strong>1:{selectedPlan.rules.maxLeverage}</strong></li>
+              )}
+              {selectedPlan.rules?.stopLossMandatory && <li>Stop-loss is <strong>mandatory</strong> on every trade.</li>}
+              {selectedPlan.rules?.takeProfitMandatory && <li>Take-profit is <strong>mandatory</strong> on every trade.</li>}
+              {selectedPlan.rules?.tradingDaysRequired ? (
+                <li>Minimum trading days: <strong>{selectedPlan.rules.tradingDaysRequired}</strong></li>
+              ) : null}
+              {selectedPlan.rules?.challengeExpiryDays ? (
+                <li>Challenge must be completed within <strong>{selectedPlan.rules.challengeExpiryDays} days</strong></li>
+              ) : null}
+              <li>Profit split on funded account: <strong>{selectedPlan.fundedSettings?.profitSplitPercent || 80}%</strong> to you.</li>
+              <li>Spreads, commission and swap apply during the evaluation as per platform settings.</li>
+            </ul>
+
+            <div style={{
+              marginTop: 16, padding: 12, background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10,
+              fontSize: 12, color: '#ef4444'
+            }}>
+              ⚠ The evaluation fee is <strong>non-refundable</strong>. Breaching any rule above will fail the account — the fee will not be returned.
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button
+                onClick={() => setConfirmOpen(false)}
+                disabled={buying}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 10,
+                  background: 'var(--bg-tertiary)', color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)', cursor: buying ? 'not-allowed' : 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => { await buyChallenge(selectedPlan._id); setConfirmOpen(false); }}
+                disabled={buying}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 10,
+                  background: '#10b981', color: '#fff', border: 'none',
+                  cursor: buying ? 'not-allowed' : 'pointer', fontWeight: 700
+                }}
+              >
+                {buying ? 'Processing…' : `Confirm & Pay ₹ ${(Number(selectedPlan.challengeFee) * 85).toLocaleString('en-IN')}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 900px) {

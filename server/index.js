@@ -58,7 +58,6 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const DEMO_MODE_ENABLED = process.env.DEMO_MODE_ENABLED !== 'false'; // Disable in production
 
 const app = express();
 const server = http.createServer(app);
@@ -728,64 +727,6 @@ app.put('/api/settings/trade-modes/:mode', async (req, res) => {
       { new: true, upsert: true }
     );
     res.json({ success: true, settings: settings.toObject() });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============== DEMO ACCOUNT SETTINGS ==============
-const DemoSettings = require('./models/DemoSettings');
-
-// Get demo settings
-app.get('/api/settings/demo', async (req, res) => {
-  try {
-    const settings = await DemoSettings.getSettings();
-    res.json({ success: true, settings });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update demo settings
-app.put('/api/settings/demo', async (req, res) => {
-  try {
-    let settings = await DemoSettings.findOne();
-    if (!settings) {
-      settings = new DemoSettings(req.body);
-    } else {
-      Object.assign(settings, req.body);
-    }
-    await settings.save();
-    res.json({ success: true, settings });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Delete expired demo accounts (can be called by cron job or admin)
-app.delete('/api/admin/demo-accounts/cleanup', async (req, res) => {
-  try {
-    const now = new Date();
-    const expiredDemoUsers = await User.find({
-      isDemo: true,
-      demoExpiresAt: { $lt: now }
-    });
-    
-    const deletedCount = expiredDemoUsers.length;
-    
-    // Delete expired demo accounts and their related data
-    for (const user of expiredDemoUsers) {
-      // Delete trades
-      await Trade.deleteMany({ oderId: user.oderId });
-      // Delete user
-      await User.deleteOne({ _id: user._id });
-    }
-    
-    res.json({ 
-      success: true, 
-      message: `Deleted ${deletedCount} expired demo accounts`,
-      deletedCount 
-    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1677,50 +1618,16 @@ app.get('/api/user/wallet/:userId', async (req, res) => {
 });
 
 // Get user wallet (legacy endpoint)
-// Rate limiter for demo account creation (uses default IP-based key generator)
-
 app.get('/api/wallet/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log('Wallet request for userId:', userId);
-    
-    // Search by oderId first, then by _id
-    let user = await User.findOne({ 
+
+    const user = await User.findOne({
       $or: [{ oderId: userId }, { _id: userId.match(/^[0-9a-fA-F]{24}$/) ? userId : null }]
     });
-    
-    console.log('User found:', user ? { oderId: user.oderId, wallet: user.wallet } : 'NOT FOUND');
 
     if (!user) {
-      // Check if demo mode is enabled
-      if (!DEMO_MODE_ENABLED) {
-        return res.status(403).json({ error: 'Demo mode is disabled. Please register for an account.' });
-      }
-
-      // Apply rate limiting for new demo account creation
-      // This is checked inline since we only want to limit new creations
-      const clientIp = req.ip || req.connection.remoteAddress;
-
-      // Create new user with demo balance
-      user = new User({
-        oderId: userId,
-        email: `${userId}@guest.bharatfundedtrade.com`,
-        phone: `9999${userId}`,
-        password: process.env.GUEST_DEFAULT_PASSWORD || 'guestpass123',
-        name: 'Guest User',
-        isDemo: true, // Mark as demo account
-        demoCreatedIp: clientIp, // Track IP for abuse prevention
-        wallet: {
-          balance: parseInt(process.env.GUEST_DEFAULT_BALANCE) || 10000,
-          credit: 0,
-          equity: parseInt(process.env.GUEST_DEFAULT_BALANCE) || 10000,
-          margin: 0,
-          freeMargin: parseInt(process.env.GUEST_DEFAULT_BALANCE) || 10000,
-          marginLevel: 0
-        }
-      });
-      await user.save();
-      console.log(`Demo account created: ${userId} from IP: ${clientIp}`);
+      return res.status(404).json({ error: 'User not found. Please register for an account.' });
     }
 
     res.json({ wallet: user.wallet, stats: user.stats });
@@ -3176,7 +3083,7 @@ app.get('/api/admin/dashboard/stats', async (req, res) => {
     const totalUsers = await User.countDocuments({ role: { $ne: 'admin' } });
     const activeUsers = await User.countDocuments({ role: { $ne: 'admin' }, isActive: { $ne: false } });
     const blockedUsers = await User.countDocuments({ role: { $ne: 'admin' }, isActive: false });
-    const demoUsers = await User.countDocuments({ role: { $ne: 'admin' }, isDemo: true });
+    const demoUsers = 0;
 
     // Count SubAdmins and Brokers from Admin model
     const totalSubAdmins = await Admin.countDocuments({ role: 'sub_admin' });
@@ -3201,7 +3108,7 @@ app.get('/api/admin/dashboard/stats', async (req, res) => {
     const recentUsers = await User.find({ role: { $ne: 'admin' } })
       .sort({ createdAt: -1 })
       .limit(10)
-      .select('oderId name email isActive createdAt isDemo wallet');
+      .select('oderId name email isActive createdAt wallet');
 
     // Get recent trades (last 10)
     const recentTrades = await Trade.find({})
@@ -3250,19 +3157,10 @@ app.get('/api/admin/users', async (req, res) => {
 
     const query = { role: { $nin: ['admin', 'subadmin', 'broker'] } }; // Only show regular users
 
-    // Use isActive (boolean) instead of status (string) - matches User model
-    // By default, exclude demo accounts unless specifically filtering for them
     if (status === 'active') {
       query.isActive = true;
-      query.isDemo = { $ne: true }; // Exclude demo from active
     } else if (status === 'blocked') {
       query.isActive = false;
-      query.isDemo = { $ne: true }; // Exclude demo from blocked
-    } else if (status === 'demo') {
-      query.isDemo = true;
-    } else {
-      // Default: show all non-demo users
-      query.isDemo = { $ne: true };
     }
 
     // City and State filters
@@ -3372,7 +3270,7 @@ app.get('/api/admin/users/:userId', async (req, res) => {
 app.put('/api/admin/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { name, email, phone, isActive, wallet, isDemo, allowedTradeModes } = req.body;
+    const { name, email, phone, isActive, wallet, allowedTradeModes } = req.body;
 
     const user = await User.findOne({
       $or: [{ _id: userId }, { oderId: userId }]
@@ -3386,7 +3284,6 @@ app.put('/api/admin/users/:userId', async (req, res) => {
     if (email) user.email = email;
     if (phone) user.phone = phone;
     if (typeof isActive === 'boolean') user.isActive = isActive;
-    if (typeof isDemo === 'boolean') user.isDemo = isDemo;
     if (wallet) {
       user.wallet = { ...user.wallet.toObject(), ...wallet };
     }
@@ -3580,7 +3477,6 @@ app.post('/api/admin/users/:userId/login-as', async (req, res) => {
         email: user.email,
         phone: user.phone,
         wallet: user.wallet,
-        isDemo: user.isDemo,
         role: user.role,
         allowedTradeModes: user.allowedTradeModes || { hedging: true, netting: true, binary: true }
       }
@@ -4585,8 +4481,7 @@ app.get('/api/admin/trades/active', async (req, res) => {
     const { HedgingPosition, NettingPosition, BinaryTrade } = require('./models/Position');
 
     // Get list of demo user IDs to exclude
-    const demoUsers = await User.find({ isDemo: true }).select('oderId');
-    const demoUserIds = demoUsers.map(u => u.oderId);
+    const demoUserIds = [];
 
     let allPositions = [];
 
@@ -4646,8 +4541,7 @@ app.get('/api/admin/trades/composed', async (req, res) => {
     // Get list of demo user IDs to exclude (unless includeDemo is true)
     let demoUserIds = [];
     if (includeDemo !== 'true') {
-      const demoUsers = await User.find({ isDemo: true }).select('oderId');
-      demoUserIds = demoUsers.map(u => u.oderId).filter(Boolean);
+      demoUserIds = [];
     }
 
     // Aggregation results by symbol
@@ -4805,8 +4699,7 @@ app.get('/api/admin/trades/pending', async (req, res) => {
     const { HedgingPosition } = require('./models/Position');
 
     // Get list of demo user IDs to exclude
-    const demoUsers = await User.find({ isDemo: true }).select('oderId');
-    const demoUserIds = demoUsers.map(u => u.oderId);
+    const demoUserIds = [];
 
     const query = { status: 'pending', userId: { $nin: demoUserIds } };
     if (symbol) query.symbol = { $regex: symbol, $options: 'i' };
@@ -4831,8 +4724,7 @@ app.get('/api/admin/trades/history', async (req, res) => {
     const { page = 1, limit = 50, search, symbol, mode, dateFrom, dateTo } = req.query;
 
     // Get list of demo user IDs to exclude
-    const demoUsers = await User.find({ isDemo: true }).select('oderId');
-    const demoUserIds = demoUsers.map(u => u.oderId);
+    const demoUserIds = [];
 
     const query = { type: { $in: ['close', 'partial_close', 'binary'] }, userId: { $nin: demoUserIds } };
     if (symbol) query.symbol = { $regex: symbol, $options: 'i' };
@@ -5903,10 +5795,9 @@ app.get('/api/admin/activity-logs', async (req, res) => {
       .skip((parseInt(page) - 1) * parseInt(limit))
       .limit(parseInt(limit));
     
-    // Get user details for each log (including isDemo flag)
     const logsWithUsers = await Promise.all(logs.map(async (log) => {
       const user = await User.findOne({ $or: [{ _id: log.userId }, { oderId: log.oderId }] })
-        .select('name email phone oderId isDemo');
+        .select('name email phone oderId');
       return { ...log.toObject(), user };
     }));
     
@@ -10872,7 +10763,7 @@ app.get('/api/admin/hierarchy/subadmins', async (req, res) => {
 // Admin: Create new user
 app.post('/api/admin/users/create', async (req, res) => {
   try {
-    const { name, email, phone, password, initialBalance, parentAdminId, isDemo } = req.body;
+    const { name, email, phone, password, initialBalance, parentAdminId } = req.body;
     
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, error: 'Name, email, and password are required' });
@@ -10906,7 +10797,6 @@ app.post('/api/admin/users/create', async (req, res) => {
       password: hashedPassword,
       oderId,
       isActive: true,
-      isDemo: isDemo || false,
       parentAdminId: parentAdminId || null,
       wallet: {
         balance: parseFloat(initialBalance) || 0,
@@ -12120,57 +12010,17 @@ app.post('/api/user/notifications/:userId/read-all', async (req, res) => {
   }
 });
 
-// Auto-cleanup expired demo accounts
-const cleanupExpiredDemoAccounts = async () => {
-  try {
-    const now = new Date();
-    const expiredDemoUsers = await User.find({
-      isDemo: true,
-      demoExpiresAt: { $lt: now }
-    });
-    
-    if (expiredDemoUsers.length > 0) {
-      console.log(`[Demo Cleanup] Found ${expiredDemoUsers.length} expired demo accounts`);
-      
-      for (const user of expiredDemoUsers) {
-        // Delete trades
-        await Trade.deleteMany({ oderId: user.oderId });
-        // Delete positions
-        await HedgingPosition.deleteMany({ oderId: user.oderId });
-        await NettingPosition.deleteMany({ oderId: user.oderId });
-        await BinaryTrade.deleteMany({ oderId: user.oderId });
-        // Delete user
-        await User.deleteOne({ _id: user._id });
-        console.log(`[Demo Cleanup] Deleted expired demo account: ${user.oderId} (${user.email})`);
-      }
-      
-      console.log(`[Demo Cleanup] Cleaned up ${expiredDemoUsers.length} expired demo accounts`);
-    }
-  } catch (error) {
-    console.error('[Demo Cleanup] Error:', error.message);
-  }
-};
-
-// Start server
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, async () => {
   console.log(`🚀 BharatFundedTrade Server running on port ${PORT}`);
   console.log(`📊 Trading Engines: Hedging, Netting, Binary`);
-  
-  // Initialize Zerodha service - auto-fetch instruments
+
   try {
     await zerodhaService.initialize();
     console.log(`📈 Zerodha: Instruments auto-synced`);
   } catch (error) {
     console.log(`📈 Zerodha: Will sync instruments when connected`);
   }
-  
-  // Run demo cleanup on startup
-  await cleanupExpiredDemoAccounts();
-  
-  // Schedule demo cleanup every hour
-  setInterval(cleanupExpiredDemoAccounts, 60 * 60 * 1000); // Every 1 hour
-  console.log(`🧹 Demo Cleanup: Scheduled every hour`);
 });
 
 module.exports = { app, io };

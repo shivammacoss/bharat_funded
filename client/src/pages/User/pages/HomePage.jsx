@@ -645,45 +645,6 @@ function HomePage() {
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  // Calculate days remaining for demo account
-  const getDemoCountdown = () => {
-    if (!user?.isDemo || !user?.demoExpiresAt) return null;
-    const now = new Date();
-    const expiry = new Date(user.demoExpiresAt);
-    const diffMs = expiry - now;
-    if (diffMs <= 0) return { days: 0, hours: 0, expired: true };
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    return { days, hours, expired: false };
-  };
-
-  const handleConvertToReal = async () => {
-    if (!confirm('Convert to real account? Your wallet will be reset to zero.')) return;
-    try {
-      const token = localStorage.getItem('bharatfunded-token');
-      const res = await fetch(`${API_URL}/api/auth/convert-to-real`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert('Account converted successfully! Please login again.');
-        localStorage.removeItem('bharatfunded-token');
-        localStorage.removeItem('bharatfunded-user');
-        window.location.href = '/login';
-      } else {
-        alert(data.error || 'Failed to convert account');
-      }
-    } catch (err) {
-      alert('Error converting account');
-    }
-  };
-
-  const demoCountdown = getDemoCountdown();
-
   const n = (v) => Number(v || 0);
   const fmtMoney = (val) => {
     const x = n(val);
@@ -714,88 +675,6 @@ function HomePage() {
 
   return (
     <div className="home-page">
-      {/* Demo Account Banner */}
-      {user?.isDemo && demoCountdown && (
-        <div style={{
-          background: demoCountdown.expired
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1))'
-            : 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1))',
-          border: `1px solid ${demoCountdown.expired ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-          borderRadius: '12px',
-          padding: '16px 20px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ fontSize: '32px' }}>🎮</div>
-            <div>
-              <h3 style={{
-                margin: '0 0 4px',
-                fontSize: '16px',
-                fontWeight: 600,
-                color: demoCountdown.expired ? '#ef4444' : '#f59e0b'
-              }}>
-                {demoCountdown.expired ? 'Demo Account Expired' : 'Demo Account'}
-              </h3>
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                {demoCountdown.expired
-                  ? 'Your demo account has expired. Convert to continue trading.'
-                  : `${demoCountdown.days} days ${demoCountdown.hours} hours remaining`
-                }
-              </p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {!demoCountdown.expired && (
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                alignItems: 'center'
-              }}>
-                <div style={{
-                  background: 'rgba(245, 158, 11, 0.2)',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#f59e0b' }}>{demoCountdown.days}</div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>DAYS</div>
-                </div>
-                <div style={{
-                  background: 'rgba(245, 158, 11, 0.2)',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#f59e0b' }}>{demoCountdown.hours}</div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>HOURS</div>
-                </div>
-              </div>
-            )}
-            <button
-              onClick={handleConvertToReal}
-              style={{
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              🚀 Convert to Real Account
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Unified home layout — same content for mobile and desktop,
            grid collapses to single column on mobile via CSS */}
       <div className="home-desktop-block" style={{ display: 'block' }}>

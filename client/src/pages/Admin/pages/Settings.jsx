@@ -124,12 +124,6 @@ function Settings() {
                   <span>User Registration Enabled</span>
                 </label>
               </div>
-              <div className="admin-toggle-group">
-                <label className="admin-toggle">
-                  <input type="checkbox" checked={settings.demoAccountEnabled} onChange={(e) => setSettings(prev => ({ ...prev, demoAccountEnabled: e.target.checked }))} />
-                  <span>Demo Account Enabled</span>
-                </label>
-              </div>
             </div>
 
             <div className="admin-form-card">

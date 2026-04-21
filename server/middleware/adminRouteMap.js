@@ -180,9 +180,6 @@ const ROUTE_MAP = [
   { method: 'POST',   pattern: '/subadmins/:adminId/login-as', permission: 'admin.impersonateAdmin' },
   { method: 'POST',   pattern: '/brokers/:brokerId/login-as',  permission: 'admin.createBroker' },
 
-  // ───────── Demo accounts ─────────
-  { method: 'DELETE', pattern: '/demo-accounts/cleanup',       permission: 'users.block' },
-
   // ───────── Phase 3: scoped endpoints (router does its own requirePermission,
   // so mark public here to skip the chokepoint's outer check — otherwise we'd
   // double-check and some paths would 401 before the router's own middleware

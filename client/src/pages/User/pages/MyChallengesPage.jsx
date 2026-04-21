@@ -20,7 +20,7 @@ const statusConfig = {
 };
 
 function MyChallengesPage() {
-  const { user } = useOutletContext();
+  const { user, setActiveChallengeAccountId } = useOutletContext();
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -192,10 +192,14 @@ function MyChallengesPage() {
                   </div>
                 )}
 
-                {/* Start Trading button */}
+                {/* Start Trading button — set active challenge context before navigating */}
                 {(acc.status === 'ACTIVE' || acc.status === 'FUNDED') && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); navigate('/app/market'); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveChallengeAccountId?.(acc._id);
+                      navigate('/app/market');
+                    }}
                     style={{
                       marginTop: '12px', padding: '8px 20px', borderRadius: '8px', border: 'none',
                       cursor: 'pointer', fontWeight: '600', fontSize: '12px', color: '#fff',

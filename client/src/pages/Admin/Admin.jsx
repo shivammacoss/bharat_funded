@@ -1502,7 +1502,7 @@ function Admin() {
                             recentUsers.map((user, idx) => (
                               <tr key={idx}>
                                 <td>#{user.oderId || user._id?.slice(-6)}</td>
-                                <td>{user.name} {user.isDemo && <span style={{ fontSize: '10px', color: '#f59e0b' }}>(Demo)</span>}</td>
+                                <td>{user.name}</td>
                                 <td>{user.email}</td>
                                 <td>₹{user.wallet?.balance?.toLocaleString() || 0}</td>
                                 <td>
@@ -1590,13 +1590,6 @@ function Admin() {
                                 <span className={`status-badge ${user.isActive === false ? 'blocked' : 'active'}`}>
                                   {user.isActive === false ? 'Blocked' : 'Active'}
                                 </span>
-                              </td>
-                              <td>
-                                {user.isDemo ? (
-                                  <span style={{ color: '#f59e0b', fontSize: '12px' }}>Demo</span>
-                                ) : (
-                                  <span style={{ color: '#10b981', fontSize: '12px' }}>Real</span>
-                                )}
                               </td>
                               <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                               <td>

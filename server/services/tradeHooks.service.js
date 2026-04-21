@@ -16,13 +16,15 @@ function getPropEngine() {
 
 class TradeHooksService {
   /**
-   * Called when a trade is opened
+   * Called when a trade is opened.
+   * If `tradeData.challengeAccountId` is set, the trade is scoped to that
+   * challenge account only. Otherwise, prop processing is skipped entirely —
+   * trades on the main wallet do NOT implicitly affect any challenge account.
    */
   async onTradeOpen(tradeData) {
     const results = {};
     try {
-      // Prop Trading hook — if user has active challenge, validate + track
-      if (tradeData.userId) {
+      if (tradeData.userId && tradeData.challengeAccountId) {
         const propResult = await this._propOnTradeOpen(tradeData);
         if (propResult) results.prop = propResult;
       }
@@ -34,38 +36,36 @@ class TradeHooksService {
   }
 
   /**
-   * Prop Trading: check active challenge accounts on trade open
+   * Prop Trading: validate + track the trade against a SPECIFIC challenge
+   * account (not every active one).
    */
   async _propOnTradeOpen(tradeData) {
     try {
       const propEngine = getPropEngine();
-      // Find user's ACTIVE or FUNDED challenge accounts
-      const accounts = await ChallengeAccount.find({
+      const acc = await ChallengeAccount.findOne({
+        _id: tradeData.challengeAccountId,
         userId: tradeData.userId,
         status: { $in: ['ACTIVE', 'FUNDED'] }
       });
-      if (!accounts.length) return null;
+      if (!acc) return null;
 
-      const results = [];
-      for (const acc of accounts) {
-        // Validate trade against challenge rules
-        const validation = await propEngine.validateTradeOpen(acc._id, {
-          symbol: tradeData.symbol,
-          segment: tradeData.segment || tradeData.exchange,
-          quantity: tradeData.volume,
-          sl: tradeData.stopLoss,
-          stopLoss: tradeData.stopLoss
-        });
+      const validation = await propEngine.validateTradeOpen(acc._id, {
+        symbol: tradeData.symbol,
+        segment: tradeData.segment || tradeData.exchange,
+        quantity: tradeData.volume,
+        leverage: tradeData.leverage,
+        sl: tradeData.stopLoss,
+        stopLoss: tradeData.stopLoss,
+        tp: tradeData.takeProfit,
+        takeProfit: tradeData.takeProfit
+      });
 
-        if (validation.valid) {
-          // Track the trade open
-          await propEngine.onTradeOpened(acc._id);
-          results.push({ accountId: acc.accountId, status: 'tracked' });
-        } else {
-          results.push({ accountId: acc.accountId, status: 'violation', reason: validation.error });
-        }
+      if (!validation.valid) {
+        return { accountId: acc.accountId, status: 'violation', reason: validation.error };
       }
-      return results.length ? results : null;
+
+      await propEngine.onTradeOpened(acc._id);
+      return { accountId: acc.accountId, status: 'tracked' };
     } catch (err) {
       console.error('[TradeHooks] Prop onTradeOpen error:', err.message);
       return null;
@@ -115,12 +115,13 @@ class TradeHooksService {
 
       if (ibCommission) {
         results.ibCommission = ibCommission;
-        console.log(`[TradeHooks] IB commission processed: $${ibCommission.amount}`);
+        console.log(`[TradeHooks] IB commission processed: ₹${ibCommission.amount}`);
       }
 
-      // Prop Trading hook — update challenge account balance on trade close
-      if (userId) {
-        const propResult = await this._propOnTradeClose(userId, profit);
+      // Prop Trading hook — update ONLY the specific challenge account this
+      // trade is scoped to. Main-wallet trades do not affect any challenge.
+      if (userId && tradeData.challengeAccountId) {
+        const propResult = await this._propOnTradeClose(userId, tradeData.challengeAccountId, profit);
         if (propResult) results.prop = propResult;
       }
 
@@ -132,37 +133,35 @@ class TradeHooksService {
   }
 
   /**
-   * Prop Trading: update challenge accounts when a trade closes
+   * Prop Trading: update ONE challenge account on trade close.
    */
-  async _propOnTradeClose(userId, pnl) {
+  async _propOnTradeClose(userId, challengeAccountId, pnl) {
     try {
       const propEngine = getPropEngine();
-      const accounts = await ChallengeAccount.find({
+      const acc = await ChallengeAccount.findOne({
+        _id: challengeAccountId,
         userId,
         status: { $in: ['ACTIVE', 'FUNDED'] }
       });
-      if (!accounts.length) return null;
+      if (!acc) return null;
 
-      const results = [];
-      for (const acc of accounts) {
-        const result = await propEngine.onTradeClosed(acc._id, Number(pnl) || 0);
-        if (result) {
-          results.push({
-            accountId: acc.accountId,
-            failed: result.failed || false,
-            phaseCompleted: result.phaseCompleted || false,
-            funded: result.funded || false,
-            balance: result.account?.currentBalance
-          });
-          if (result.failed) {
-            console.log(`[TradeHooks] Prop account ${acc.accountId} FAILED: ${result.reason}`);
-          }
-          if (result.funded) {
-            console.log(`[TradeHooks] Prop account ${acc.accountId} FUNDED!`);
-          }
-        }
+      const result = await propEngine.onTradeClosed(acc._id, Number(pnl) || 0);
+      if (!result) return null;
+
+      if (result.failed) {
+        console.log(`[TradeHooks] Prop account ${acc.accountId} FAILED: ${result.reason}`);
       }
-      return results.length ? results : null;
+      if (result.funded) {
+        console.log(`[TradeHooks] Prop account ${acc.accountId} FUNDED!`);
+      }
+
+      return {
+        accountId: acc.accountId,
+        failed: result.failed || false,
+        phaseCompleted: result.phaseCompleted || false,
+        funded: result.funded || false,
+        balance: result.account?.currentBalance
+      };
     } catch (err) {
       console.error('[TradeHooks] Prop onTradeClose error:', err.message);
       return null;

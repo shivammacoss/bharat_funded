@@ -45,7 +45,7 @@ const PropTrading = () => {
       stepsCount: 2,
       fundSize: 10000,
       challengeFee: 100,
-      currency: 'USD',
+      currency: 'INR',
       isActive: true,
       rules: {
         maxDailyDrawdownPercent: 5,
@@ -244,7 +244,7 @@ const PropTrading = () => {
       stepsCount: ch.stepsCount,
       fundSize: ch.fundSize,
       challengeFee: ch.challengeFee,
-      currency: ch.currency || 'USD',
+      currency: ch.currency || 'INR',
       isActive: ch.isActive,
       rules: { ...getDefaultChallengeForm().rules, ...ch.rules },
       fundedSettings: { ...getDefaultChallengeForm().fundedSettings, ...ch.fundedSettings }
@@ -324,7 +324,7 @@ const PropTrading = () => {
   return (
     <div style={{ padding: '0' }}>
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0', marginBottom: '24px', borderBottom: '1px solid var(--border-color, #333)' }}>
+      <div style={{ display: 'flex', gap: '0', marginBottom: '24px', borderBottom: '1px solid var(--border-color)' }}>
         {['dashboard', 'challenges', 'accounts', 'settings'].map(tab => (
           <button
             key={tab}
@@ -334,7 +334,7 @@ const PropTrading = () => {
               background: 'none',
               border: 'none',
               borderBottom: activeTab === tab ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === tab ? '#3b82f6' : 'var(--text-secondary, #888)',
+              color: activeTab === tab ? '#3b82f6' : 'var(--text-secondary)',
               cursor: 'pointer',
               fontWeight: activeTab === tab ? '600' : '400',
               fontSize: '14px',
@@ -350,10 +350,10 @@ const PropTrading = () => {
       {activeTab === 'dashboard' && (
         <div>
           {/* System Status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', padding: '16px 20px', background: 'var(--card-bg, #1a1a2e)', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', padding: '16px 20px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
             <div style={{ flex: 1 }}>
-              <h3 style={{ margin: 0, color: 'var(--text-primary, #fff)', fontSize: '16px' }}>Challenge Mode</h3>
-              <p style={{ margin: '4px 0 0', color: 'var(--text-secondary, #888)', fontSize: '13px' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '16px' }}>Challenge Mode</h3>
+              <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                 {settings.challengeModeEnabled ? 'Users can buy and participate in challenges' : 'Challenge mode is disabled'}
               </p>
             </div>
@@ -386,24 +386,24 @@ const PropTrading = () => {
             ].map((s, i) => (
               <div key={i} style={{
                 padding: '20px',
-                background: 'var(--card-bg, #1a1a2e)',
+                background: 'var(--bg-secondary)',
                 borderRadius: '12px',
-                border: '1px solid var(--border-color, #333)',
+                border: '1px solid var(--border-color)',
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>{s.icon}</div>
                 <div style={{ fontSize: '28px', fontWeight: '700', color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #888)', marginTop: '4px' }}>{s.label}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Pass Rate */}
           {stats.totalAccounts > 0 && (
-            <div style={{ padding: '20px', background: 'var(--card-bg, #1a1a2e)', borderRadius: '12px', border: '1px solid var(--border-color, #333)' }}>
-              <h4 style={{ color: 'var(--text-primary, #fff)', margin: '0 0 12px' }}>Pass Rate</h4>
+            <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <h4 style={{ color: 'var(--text-primary)', margin: '0 0 12px' }}>Pass Rate</h4>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ flex: 1, height: '8px', background: '#333', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
                     width: `${((stats.passedAccounts + stats.fundedAccounts) / stats.totalAccounts * 100).toFixed(1)}%`,
                     height: '100%',
@@ -424,7 +424,7 @@ const PropTrading = () => {
       {activeTab === 'challenges' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={{ color: 'var(--text-primary, #fff)', margin: 0 }}>Challenge Products</h3>
+            <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Challenge Products</h3>
             <button
               onClick={() => {
                 setChallengeForm(getDefaultChallengeForm());
@@ -437,7 +437,7 @@ const PropTrading = () => {
           </div>
 
           {challenges.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary, #888)' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
               <p>No challenges created yet. Click "Add Challenge" to create your first one.</p>
             </div>
@@ -446,14 +446,14 @@ const PropTrading = () => {
               {challenges.map(ch => (
                 <div key={ch._id} style={{
                   padding: '20px',
-                  background: 'var(--card-bg, #1a1a2e)',
+                  background: 'var(--bg-secondary)',
                   borderRadius: '12px',
-                  border: `1px solid ${ch.isActive ? 'var(--border-color, #333)' : '#ef444440'}`,
+                  border: `1px solid ${ch.isActive ? 'var(--border-color)' : '#ef444440'}`,
                   opacity: ch.isActive ? 1 : 0.7
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                     <div>
-                      <h4 style={{ margin: 0, color: 'var(--text-primary, #fff)', fontSize: '16px' }}>{ch.name}</h4>
+                      <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '16px' }}>{ch.name}</h4>
                       <span style={{
                         display: 'inline-block',
                         marginTop: '6px',
@@ -475,46 +475,46 @@ const PropTrading = () => {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
                     <div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #888)' }}>Fund Size</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Fund Size</div>
                       <div style={{ fontSize: '18px', fontWeight: '700', color: '#10b981' }}>₹{ch.fundSize?.toLocaleString('en-IN')}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #888)' }}>Fee</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Fee</div>
                       <div style={{ fontSize: '18px', fontWeight: '700', color: '#f59e0b' }}>₹{ch.challengeFee?.toLocaleString('en-IN')}</div>
                     </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', fontSize: '12px' }}>
-                    <div style={{ padding: '6px 8px', background: 'var(--bg-primary, #111)', borderRadius: '6px' }}>
-                      <div style={{ color: 'var(--text-secondary, #888)', fontSize: '10px' }}>Daily DD</div>
+                    <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Daily DD</div>
                       <div style={{ color: '#ef4444', fontWeight: '600' }}>{ch.rules?.maxDailyDrawdownPercent || 5}%</div>
                     </div>
-                    <div style={{ padding: '6px 8px', background: 'var(--bg-primary, #111)', borderRadius: '6px' }}>
-                      <div style={{ color: 'var(--text-secondary, #888)', fontSize: '10px' }}>Max DD</div>
+                    <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Max DD</div>
                       <div style={{ color: '#ef4444', fontWeight: '600' }}>{ch.rules?.maxOverallDrawdownPercent || 10}%</div>
                     </div>
-                    <div style={{ padding: '6px 8px', background: 'var(--bg-primary, #111)', borderRadius: '6px' }}>
-                      <div style={{ color: 'var(--text-secondary, #888)', fontSize: '10px' }}>Profit Split</div>
+                    <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Profit Split</div>
                       <div style={{ color: '#10b981', fontWeight: '600' }}>{ch.fundedSettings?.profitSplitPercent || 80}%</div>
                     </div>
                   </div>
 
                   {ch.stepsCount > 0 && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px', marginTop: '8px' }}>
-                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary, #111)', borderRadius: '6px' }}>
-                        <div style={{ color: 'var(--text-secondary, #888)', fontSize: '10px' }}>Phase 1 Target</div>
+                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Phase 1 Target</div>
                         <div style={{ color: '#3b82f6', fontWeight: '600' }}>{ch.rules?.profitTargetPhase1Percent || 8}%</div>
                       </div>
                       {ch.stepsCount === 2 && (
-                        <div style={{ padding: '6px 8px', background: 'var(--bg-primary, #111)', borderRadius: '6px' }}>
-                          <div style={{ color: 'var(--text-secondary, #888)', fontSize: '10px' }}>Phase 2 Target</div>
+                        <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Phase 2 Target</div>
                           <div style={{ color: '#8b5cf6', fontWeight: '600' }}>{ch.rules?.profitTargetPhase2Percent || 5}%</div>
                         </div>
                       )}
                     </div>
                   )}
 
-                  <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary, #666)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     {ch.rules?.stopLossMandatory && <span>SL Required</span>}
                     <span>Leverage 1:{ch.rules?.maxLeverage || 100}</span>
                     <span>Expiry {ch.rules?.challengeExpiryDays || 30}d</span>
@@ -530,19 +530,19 @@ const PropTrading = () => {
       {activeTab === 'accounts' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-            <h3 style={{ color: 'var(--text-primary, #fff)', margin: 0 }}>Challenge Accounts ({accountsTotal})</h3>
+            <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Challenge Accounts ({accountsTotal})</h3>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <input
                 type="text"
                 placeholder="Search by name, email, account ID..."
                 value={accountFilter.search}
                 onChange={e => setAccountFilter(p => ({ ...p, search: e.target.value }))}
-                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)', fontSize: '13px', width: '250px' }}
+                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', width: '250px' }}
               />
               <select
                 value={accountFilter.status}
                 onChange={e => setAccountFilter(p => ({ ...p, status: e.target.value }))}
-                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)', fontSize: '13px' }}
+                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
               >
                 <option value="">All Status</option>
                 <option value="ACTIVE">Active</option>
@@ -555,7 +555,7 @@ const PropTrading = () => {
           </div>
 
           {filteredAccounts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary, #888)' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
               <p>No challenge accounts found.</p>
             </div>
@@ -563,29 +563,29 @@ const PropTrading = () => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color, #333)' }}>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                     {['Account ID', 'User', 'Challenge', 'Phase', 'Balance', 'Equity', 'Daily DD', 'Overall DD', 'Profit', 'Status', 'Expires', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '10px 8px', textAlign: 'left', color: 'var(--text-secondary, #888)', fontWeight: '500', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 8px', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: '500', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAccounts.map(acc => (
-                    <tr key={acc._id} style={{ borderBottom: '1px solid var(--border-color, #222)' }}>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-primary, #fff)', fontFamily: 'monospace', fontSize: '12px' }}>{acc.accountId}</td>
+                    <tr key={acc._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontFamily: 'monospace', fontSize: '12px' }}>{acc.accountId}</td>
                       <td style={{ padding: '10px 8px' }}>
-                        <div style={{ color: 'var(--text-primary, #fff)', fontSize: '13px' }}>{acc.userId?.name || 'N/A'}</div>
-                        <div style={{ color: 'var(--text-secondary, #666)', fontSize: '11px' }}>{acc.userId?.email || ''}</div>
+                        <div style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{acc.userId?.name || 'N/A'}</div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>{acc.userId?.email || ''}</div>
                       </td>
                       <td style={{ padding: '10px 8px' }}>
-                        <div style={{ color: 'var(--text-primary, #fff)' }}>{acc.challengeId?.name || 'N/A'}</div>
-                        <div style={{ color: 'var(--text-secondary, #666)', fontSize: '11px' }}>₹{acc.challengeId?.fundSize?.toLocaleString('en-IN')}</div>
+                        <div style={{ color: 'var(--text-primary)' }}>{acc.challengeId?.name || 'N/A'}</div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>₹{acc.challengeId?.fundSize?.toLocaleString('en-IN')}</div>
                       </td>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-primary, #fff)', textAlign: 'center' }}>
+                      <td style={{ padding: '10px 8px', color: 'var(--text-primary)', textAlign: 'center' }}>
                         {acc.accountType === 'FUNDED' ? 'Funded' : `${acc.currentPhase}/${acc.totalPhases}`}
                       </td>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-primary, #fff)', fontWeight: '500' }}>₹{acc.currentBalance?.toFixed(2)}</td>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-primary, #fff)', fontWeight: '500' }}>₹{acc.currentEquity?.toFixed(2)}</td>
+                      <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontWeight: '500' }}>₹{acc.currentBalance?.toFixed(2)}</td>
+                      <td style={{ padding: '10px 8px', color: 'var(--text-primary)', fontWeight: '500' }}>₹{acc.currentEquity?.toFixed(2)}</td>
                       <td style={{ padding: '10px 8px', color: (acc.currentDailyDrawdownPercent || 0) > 3 ? '#ef4444' : '#10b981', fontWeight: '500' }}>
                         {(acc.currentDailyDrawdownPercent || 0).toFixed(2)}%
                       </td>
@@ -607,7 +607,7 @@ const PropTrading = () => {
                           {acc.status}
                         </span>
                       </td>
-                      <td style={{ padding: '10px 8px', color: 'var(--text-secondary, #888)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '10px 8px', color: 'var(--text-secondary)', fontSize: '12px', whiteSpace: 'nowrap' }}>
                         {acc.expiresAt ? new Date(acc.expiresAt).toLocaleDateString() : '-'}
                       </td>
                       <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
@@ -636,35 +636,35 @@ const PropTrading = () => {
       {/* ===== SETTINGS TAB ===== */}
       {activeTab === 'settings' && (
         <div style={{ maxWidth: '700px' }}>
-          <h3 style={{ color: 'var(--text-primary, #fff)', margin: '0 0 20px' }}>Prop Trading Settings</h3>
+          <h3 style={{ color: 'var(--text-primary)', margin: '0 0 20px' }}>Prop Trading Settings</h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', color: 'var(--text-secondary, #888)', fontSize: '12px', marginBottom: '6px' }}>Display Name</label>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '6px' }}>Display Name</label>
               <input
                 value={settings.displayName || ''}
                 onChange={e => setSettings(p => ({ ...p, displayName: e.target.value }))}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)', fontSize: '14px' }}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '14px' }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', color: 'var(--text-secondary, #888)', fontSize: '12px', marginBottom: '6px' }}>Description</label>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '6px' }}>Description</label>
               <textarea
                 value={settings.description || ''}
                 onChange={e => setSettings(p => ({ ...p, description: e.target.value }))}
                 rows={3}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)', fontSize: '14px', resize: 'vertical' }}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '14px', resize: 'vertical' }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', color: 'var(--text-secondary, #888)', fontSize: '12px', marginBottom: '6px' }}>Terms & Conditions</label>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '12px', marginBottom: '6px' }}>Terms & Conditions</label>
               <textarea
                 value={settings.termsAndConditions || ''}
                 onChange={e => setSettings(p => ({ ...p, termsAndConditions: e.target.value }))}
                 rows={6}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)', fontSize: '14px', resize: 'vertical' }}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '14px', resize: 'vertical' }}
               />
             </div>
 
@@ -681,37 +681,37 @@ const PropTrading = () => {
       {/* ===== CHALLENGE MODAL ===== */}
       {challengeModal.open && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: 'var(--card-bg, #1a1a2e)', borderRadius: '16px', padding: '30px', width: '600px', maxHeight: '85vh', overflowY: 'auto', border: '1px solid var(--border-color, #333)' }}>
-            <h3 style={{ color: 'var(--text-primary, #fff)', marginBottom: '20px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: '16px', padding: '30px', width: '600px', maxHeight: '85vh', overflowY: 'auto', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '20px' }}>
               {challengeModal.mode === 'edit' ? 'Edit Challenge' : 'Create New Challenge'}
             </h3>
 
             {/* Basic Info */}
             <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Basic Info</h4>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Basic Info</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Name *</label>
-                  <input value={challengeForm.name} onChange={e => setChallengeForm(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} placeholder="e.g. $10K Challenge" />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Name *</label>
+                  <input value={challengeForm.name} onChange={e => setChallengeForm(p => ({ ...p, name: e.target.value }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} placeholder="e.g. ₹5L Challenge" />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Steps</label>
-                  <select value={challengeForm.stepsCount} onChange={e => setChallengeForm(p => ({ ...p, stepsCount: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }}>
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Steps</label>
+                  <select value={challengeForm.stepsCount} onChange={e => setChallengeForm(p => ({ ...p, stepsCount: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
                     <option value={0}>Instant Fund (0-Step)</option>
                     <option value={1}>1-Step</option>
                     <option value={2}>2-Step</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Fund Size ($)</label>
-                  <input type="number" value={challengeForm.fundSize} onChange={e => setChallengeForm(p => ({ ...p, fundSize: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Fund Size (₹)</label>
+                  <input type="number" value={challengeForm.fundSize} onChange={e => setChallengeForm(p => ({ ...p, fundSize: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Fee ($)</label>
-                  <input type="number" value={challengeForm.challengeFee} onChange={e => setChallengeForm(p => ({ ...p, challengeFee: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Fee (₹)</label>
+                  <input type="number" value={challengeForm.challengeFee} onChange={e => setChallengeForm(p => ({ ...p, challengeFee: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary, #fff)', cursor: 'pointer', marginTop: '20px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', marginTop: '20px' }}>
                     <input type="checkbox" checked={challengeForm.isActive} onChange={e => setChallengeForm(p => ({ ...p, isActive: e.target.checked }))} /> Active
                   </label>
                 </div>
@@ -720,19 +720,19 @@ const PropTrading = () => {
 
             {/* Risk Rules */}
             <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Risk Rules</h4>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Risk Rules</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Daily DD %</label>
-                  <input type="number" step="0.1" value={challengeForm.rules.maxDailyDrawdownPercent} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxDailyDrawdownPercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Daily DD %</label>
+                  <input type="number" step="0.1" value={challengeForm.rules.maxDailyDrawdownPercent} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxDailyDrawdownPercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Overall DD %</label>
-                  <input type="number" step="0.1" value={challengeForm.rules.maxOverallDrawdownPercent} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxOverallDrawdownPercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Overall DD %</label>
+                  <input type="number" step="0.1" value={challengeForm.rules.maxOverallDrawdownPercent} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxOverallDrawdownPercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Loss/Trade %</label>
-                  <input type="number" step="0.1" value={challengeForm.rules.maxLossPerTradePercent} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLossPerTradePercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Loss/Trade %</label>
+                  <input type="number" step="0.1" value={challengeForm.rules.maxLossPerTradePercent} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLossPerTradePercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
               </div>
             </div>
@@ -740,16 +740,16 @@ const PropTrading = () => {
             {/* Profit Targets */}
             {challengeForm.stepsCount > 0 && (
               <div style={{ marginBottom: '20px' }}>
-                <h4 style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Profit Targets</h4>
+                <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Profit Targets</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phase 1 Target %</label>
-                    <input type="number" step="0.1" value={challengeForm.rules.profitTargetPhase1Percent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetPhase1Percent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                    <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phase 1 Target %</label>
+                    <input type="number" step="0.1" value={challengeForm.rules.profitTargetPhase1Percent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetPhase1Percent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                   </div>
                   {challengeForm.stepsCount === 2 && (
                     <div>
-                      <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phase 2 Target %</label>
-                      <input type="number" step="0.1" value={challengeForm.rules.profitTargetPhase2Percent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetPhase2Percent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                      <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phase 2 Target %</label>
+                      <input type="number" step="0.1" value={challengeForm.rules.profitTargetPhase2Percent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetPhase2Percent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                     </div>
                   )}
                 </div>
@@ -758,41 +758,41 @@ const PropTrading = () => {
 
             {/* Trade Rules */}
             <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Trade Rules</h4>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Trade Rules</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Min Lot Size</label>
-                  <input type="number" step="0.01" value={challengeForm.rules.minLotSize} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, minLotSize: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Min Lot Size</label>
+                  <input type="number" step="0.01" value={challengeForm.rules.minLotSize} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, minLotSize: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Lot Size</label>
-                  <input type="number" step="0.01" value={challengeForm.rules.maxLotSize} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLotSize: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Lot Size</label>
+                  <input type="number" step="0.01" value={challengeForm.rules.maxLotSize} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLotSize: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Leverage</label>
-                  <input type="number" value={challengeForm.rules.maxLeverage} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLeverage: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Leverage</label>
+                  <input type="number" value={challengeForm.rules.maxLeverage} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLeverage: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Trades/Day</label>
-                  <input type="number" value={challengeForm.rules.maxTradesPerDay || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxTradesPerDay: e.target.value ? Number(e.target.value) : null } }))} placeholder="Unlimited" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Trades/Day</label>
+                  <input type="number" value={challengeForm.rules.maxTradesPerDay || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxTradesPerDay: e.target.value ? Number(e.target.value) : null } }))} placeholder="Unlimited" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Concurrent</label>
-                  <input type="number" value={challengeForm.rules.maxConcurrentTrades || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxConcurrentTrades: e.target.value ? Number(e.target.value) : null } }))} placeholder="Unlimited" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Concurrent</label>
+                  <input type="number" value={challengeForm.rules.maxConcurrentTrades || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxConcurrentTrades: e.target.value ? Number(e.target.value) : null } }))} placeholder="Unlimited" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Min Hold Time (sec)</label>
-                  <input type="number" value={challengeForm.rules.minTradeHoldTimeSeconds} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, minTradeHoldTimeSeconds: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Min Hold Time (sec)</label>
+                  <input type="number" value={challengeForm.rules.minTradeHoldTimeSeconds} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, minTradeHoldTimeSeconds: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '20px', marginTop: '12px', flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary, #fff)', cursor: 'pointer', fontSize: '13px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
                   <input type="checkbox" checked={challengeForm.rules.stopLossMandatory} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, stopLossMandatory: e.target.checked } }))} /> SL Mandatory
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary, #fff)', cursor: 'pointer', fontSize: '13px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
                   <input type="checkbox" checked={challengeForm.rules.allowWeekendHolding} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowWeekendHolding: e.target.checked } }))} /> Weekend Holding
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary, #fff)', cursor: 'pointer', fontSize: '13px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
                   <input type="checkbox" checked={challengeForm.rules.allowNewsTrading} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowNewsTrading: e.target.checked } }))} /> News Trading
                 </label>
               </div>
@@ -800,37 +800,37 @@ const PropTrading = () => {
 
             {/* Time & Expiry */}
             <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Time & Expiry</h4>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Time & Expiry</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Expiry (days)</label>
-                  <input type="number" value={challengeForm.rules.challengeExpiryDays} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, challengeExpiryDays: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Expiry (days)</label>
+                  <input type="number" value={challengeForm.rules.challengeExpiryDays} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, challengeExpiryDays: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Trading Days Required</label>
-                  <input type="number" value={challengeForm.rules.tradingDaysRequired || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, tradingDaysRequired: e.target.value ? Number(e.target.value) : null } }))} placeholder="None" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Trading Days Required</label>
+                  <input type="number" value={challengeForm.rules.tradingDaysRequired || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, tradingDaysRequired: e.target.value ? Number(e.target.value) : null } }))} placeholder="None" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
               </div>
             </div>
 
             {/* Funded Account Settings */}
             <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Funded Account Settings</h4>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Funded Account Settings</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Profit Split %</label>
-                  <input type="number" value={challengeForm.fundedSettings.profitSplitPercent} onChange={e => setChallengeForm(p => ({ ...p, fundedSettings: { ...p.fundedSettings, profitSplitPercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Profit Split %</label>
+                  <input type="number" value={challengeForm.fundedSettings.profitSplitPercent} onChange={e => setChallengeForm(p => ({ ...p, fundedSettings: { ...p.fundedSettings, profitSplitPercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Withdrawal Frequency (days)</label>
-                  <input type="number" value={challengeForm.fundedSettings.withdrawalFrequencyDays} onChange={e => setChallengeForm(p => ({ ...p, fundedSettings: { ...p.fundedSettings, withdrawalFrequencyDays: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }} />
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Withdrawal Frequency (days)</label>
+                  <input type="number" value={challengeForm.fundedSettings.withdrawalFrequencyDays} onChange={e => setChallengeForm(p => ({ ...p, fundedSettings: { ...p.fundedSettings, withdrawalFrequencyDays: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
               </div>
             </div>
 
             {/* Modal Actions */}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setChallengeModal({ open: false, mode: 'add', editItem: null })} style={{ padding: '10px 20px', borderRadius: '8px', background: 'var(--bg-primary, #333)', color: 'var(--text-primary, #fff)', border: 'none', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setChallengeModal({ open: false, mode: 'add', editItem: null })} style={{ padding: '10px 20px', borderRadius: '8px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', cursor: 'pointer' }}>Cancel</button>
               <button onClick={saveChallenge} style={{ padding: '10px 24px', borderRadius: '8px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600' }}>
                 {challengeModal.mode === 'edit' ? 'Update' : 'Create'}
               </button>
@@ -842,42 +842,42 @@ const PropTrading = () => {
       {/* ===== ACTION MODAL (Force Fail / Extend Time) ===== */}
       {actionModal.open && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: 'var(--card-bg, #1a1a2e)', borderRadius: '16px', padding: '30px', width: '400px', border: '1px solid var(--border-color, #333)' }}>
-            <h3 style={{ color: 'var(--text-primary, #fff)', marginBottom: '16px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: '16px', padding: '30px', width: '400px', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '16px' }}>
               {actionModal.type === 'force-fail' ? 'Force Fail Account' : 'Extend Challenge Time'}
             </h3>
-            <p style={{ color: 'var(--text-secondary, #888)', fontSize: '13px', marginBottom: '16px' }}>
-              Account: <strong style={{ color: 'var(--text-primary, #fff)' }}>{actionModal.account?.accountId}</strong>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '16px' }}>
+              Account: <strong style={{ color: 'var(--text-primary)' }}>{actionModal.account?.accountId}</strong>
             </p>
 
             {actionModal.type === 'force-fail' && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Reason</label>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Reason</label>
                 <textarea
                   value={actionForm.reason}
                   onChange={e => setActionForm(p => ({ ...p, reason: e.target.value }))}
                   rows={3}
                   placeholder="Enter reason for failing this account..."
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
                 />
               </div>
             )}
 
             {actionModal.type === 'extend-time' && (
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ color: 'var(--text-secondary, #888)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Days to Extend</label>
+                <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Days to Extend</label>
                 <input
                   type="number"
                   value={actionForm.days}
                   onChange={e => setActionForm(p => ({ ...p, days: Number(e.target.value) }))}
                   min="1"
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color, #333)', background: 'var(--bg-primary, #111)', color: 'var(--text-primary, #fff)' }}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 />
               </div>
             )}
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setActionModal({ open: false, type: '', account: null })} style={{ padding: '10px 20px', borderRadius: '8px', background: 'var(--bg-primary, #333)', color: 'var(--text-primary, #fff)', border: 'none', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => setActionModal({ open: false, type: '', account: null })} style={{ padding: '10px 20px', borderRadius: '8px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', cursor: 'pointer' }}>Cancel</button>
               <button
                 onClick={() => doAccountAction(actionModal.type, actionModal.account?._id)}
                 style={{

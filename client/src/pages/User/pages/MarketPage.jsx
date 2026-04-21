@@ -782,14 +782,7 @@ function MarketPage() {
   const [zerodhaSearching, setZerodhaSearching] = useState(false);
   const [activeSearchSegment, setActiveSearchSegment] = useState(null);
   const [showZerodhaSearch, setShowZerodhaSearch] = useState(false);
-  // -- Segment tabs config for the new inline panel --
   const SEGMENT_TAB_CONFIG = useMemo(() => [
-    // International
-    { key: 'forex', label: 'Forex', type: 'international' },
-    { key: 'stocks', label: 'Stocks', type: 'international' },
-    { key: 'indices', label: 'Indices', type: 'international' },
-    { key: 'com', label: 'Commodities', type: 'international' },
-    // Indian
     { key: 'indian_nse_eq', label: 'NSE EQ', type: 'indian' },
     { key: 'indian_nse_fut', label: 'NSE FUT', type: 'indian' },
     { key: 'indian_nse_opt', label: 'NSE OPT', type: 'indian' },
@@ -798,10 +791,6 @@ function MarketPage() {
     { key: 'indian_bse_opt', label: 'BSE OPT', type: 'indian' },
     { key: 'indian_mcx_fut', label: 'MCX FUT', type: 'indian' },
     { key: 'indian_mcx_opt', label: 'MCX OPT', type: 'indian' },
-    // Crypto (Delta)
-    { key: 'delta_perpetual', label: 'Crypto Perp', type: 'delta' },
-    { key: 'delta_call_options', label: 'Crypto Call', type: 'delta' },
-    { key: 'delta_put_options', label: 'Crypto Put', type: 'delta' },
   ], []);
 
   const visibleSegmentTabs = useMemo(

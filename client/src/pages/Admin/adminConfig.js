@@ -30,7 +30,6 @@ export const sectionTabs = {
     { id: 'all-users', label: 'All Users', path: '' },
     { id: 'active-users', label: 'Active Users', path: 'active' },
     { id: 'blocked-users', label: 'Blocked Users', path: 'blocked' },
-    { id: 'demo-users', label: 'Demo Users', path: 'demo' },
     { id: 'kyc-management', label: 'KYC Verification', path: 'kyc' },
     { id: 'user-logs', label: 'Activity Logs', path: 'logs' }
   ],
