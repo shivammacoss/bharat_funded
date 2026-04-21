@@ -67,6 +67,19 @@ const challengeAccountSchema = new mongoose.Schema({
     required: true
   },
 
+  // Isolated virtual sub-wallet (FTMO-style). These fields mirror
+  // User.wallet but are fully independent per challenge account. Trades
+  // placed on this account debit/credit ONLY these fields — the user's
+  // main wallet is NEVER touched. At admin-approved payout time, the
+  // platform transfers real INR from its treasury into the user's
+  // walletINR, then resets these fields to initialBalance.
+  walletBalance: { type: Number, default: 0 },
+  walletCredit: { type: Number, default: 0 },
+  walletEquity: { type: Number, default: 0 },
+  walletMargin: { type: Number, default: 0 },
+  walletFreeMargin: { type: Number, default: 0 },
+  walletMarginLevel: { type: Number, default: 0 },
+
   // Phase start values (for drawdown calculation)
   phaseStartBalance: {
     type: Number,

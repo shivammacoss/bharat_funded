@@ -64,7 +64,7 @@ function ChallengeDashboard() {
   };
 
   const handleWithdraw = async () => {
-    if (!confirm('Withdraw your profit? The withdrawable amount will be transferred to your trading wallet.')) return;
+    if (!confirm('Request a profit payout? Admin will review and approve — funds credit to your wallet only after approval.')) return;
     setWithdrawing(true);
     try {
       const res = await fetch(`${API_URL}/api/prop/withdraw`, {
@@ -74,7 +74,7 @@ function ChallengeDashboard() {
       });
       const result = await res.json();
       if (result.success) {
-        alert(result.message);
+        alert(result.message || 'Payout request submitted. Admin will review shortly.');
         fetchDashboard();
       } else {
         alert(result.message || 'Withdrawal failed');
@@ -291,13 +291,16 @@ function ChallengeDashboard() {
                 fontWeight: '700', fontSize: '15px', opacity: withdrawing ? 0.6 : 1
               }}
             >
-              {withdrawing ? 'Processing...' : `Withdraw ₹${funded.withdrawable.toFixed(2)}`}
+              {withdrawing ? 'Submitting request…' : `Request Payout ₹${funded.withdrawable.toFixed(2)}`}
             </button>
           ) : (
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>
               No profit to withdraw. Keep trading to earn profits!
             </p>
           )}
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '11px', marginTop: 10, marginBottom: 0 }}>
+            Payouts are reviewed by admin before being credited to your main wallet.
+          </p>
           {funded.lastWithdrawalDate && (
             <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '11px', marginTop: '8px' }}>
               Last withdrawal: {new Date(funded.lastWithdrawalDate).toLocaleDateString()}

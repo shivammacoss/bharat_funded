@@ -38,6 +38,13 @@ const PropTrading = () => {
   const [actionModal, setActionModal] = useState({ open: false, type: '', account: null });
   const [actionForm, setActionForm] = useState({ days: 7, reason: '' });
 
+  // Payouts (admin approval queue)
+  const [payouts, setPayouts] = useState([]);
+  const [payoutsFilter, setPayoutsFilter] = useState('pending');
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [payoutModal, setPayoutModal] = useState({ open: false, payout: null, mode: '' });
+  const [payoutForm, setPayoutForm] = useState({ customAmount: '', overrideCooldown: false, adminNote: '', reason: '' });
+
   function getDefaultChallengeForm() {
     return {
       name: '',
@@ -139,6 +146,84 @@ const PropTrading = () => {
   useEffect(() => {
     if (activeTab === 'accounts') fetchAccounts();
   }, [activeTab, accountFilter.status]);
+
+  const fetchPayouts = async () => {
+    setPayoutsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/prop/admin/payouts?status=${payoutsFilter}`, { headers: getAuthHeaders() });
+      const data = await res.json();
+      if (data.success) setPayouts(data.payouts || []);
+    } catch (err) {
+      console.error('Error fetching payouts:', err);
+    }
+    setPayoutsLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'payouts') fetchPayouts();
+  }, [activeTab, payoutsFilter]);
+
+  const openApproveModal = (p) => {
+    setPayoutForm({ customAmount: String(p.requestedAmount || 0), overrideCooldown: false, adminNote: '', reason: '' });
+    setPayoutModal({ open: true, payout: p, mode: 'approve' });
+  };
+  const openRejectModal = (p) => {
+    setPayoutForm({ customAmount: '', overrideCooldown: false, adminNote: '', reason: '' });
+    setPayoutModal({ open: true, payout: p, mode: 'reject' });
+  };
+  const closePayoutModal = () => setPayoutModal({ open: false, payout: null, mode: '' });
+
+  const submitApprovePayout = async () => {
+    const p = payoutModal.payout;
+    if (!p) return;
+    try {
+      const res = await fetch(`${API_URL}/api/prop/admin/payouts/${p._id}/approve`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          customAmount: Number(payoutForm.customAmount) || undefined,
+          overrideCooldown: !!payoutForm.overrideCooldown,
+          adminNote: payoutForm.adminNote || ''
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        closePayoutModal();
+        fetchPayouts();
+      } else {
+        alert(data.message || 'Approval failed');
+      }
+    } catch (err) {
+      alert('Approval error: ' + err.message);
+    }
+  };
+
+  const submitRejectPayout = async () => {
+    const p = payoutModal.payout;
+    if (!p) return;
+    if (!payoutForm.reason.trim()) {
+      alert('Rejection reason is required');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/prop/admin/payouts/${p._id}/reject`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ reason: payoutForm.reason.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        closePayoutModal();
+        fetchPayouts();
+      } else {
+        alert(data.message || 'Rejection failed');
+      }
+    } catch (err) {
+      alert('Rejection error: ' + err.message);
+    }
+  };
 
   // Toggle challenge mode
   const toggleChallengeMode = async () => {
@@ -325,7 +410,7 @@ const PropTrading = () => {
     <div style={{ padding: '0' }}>
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0', marginBottom: '24px', borderBottom: '1px solid var(--border-color)' }}>
-        {['dashboard', 'challenges', 'accounts', 'settings'].map(tab => (
+        {['dashboard', 'challenges', 'accounts', 'payouts', 'settings'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -633,6 +718,90 @@ const PropTrading = () => {
         </div>
       )}
 
+      {/* ===== PAYOUTS TAB ===== */}
+      {activeTab === 'payouts' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+            <h3 style={{ color: 'var(--text-primary)', margin: 0 }}>Prop Payout Requests</h3>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {['pending', 'approved', 'rejected', 'all'].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setPayoutsFilter(s)}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    border: payoutsFilter === s ? '2px solid #3b82f6' : '1px solid var(--border-color)',
+                    background: payoutsFilter === s ? 'color-mix(in srgb, #3b82f6 15%, var(--bg-secondary))' : 'var(--bg-secondary)',
+                    color: payoutsFilter === s ? '#3b82f6' : 'var(--text-secondary)',
+                    cursor: 'pointer', textTransform: 'capitalize'
+                  }}
+                >{s}</button>
+              ))}
+            </div>
+          </div>
+
+          {payoutsLoading ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>Loading…</div>
+          ) : payouts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>No {payoutsFilter === 'all' ? '' : payoutsFilter} payout requests.</div>
+          ) : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {payouts.map(p => {
+                const kyc = p.user?.kycStatus || 'not_submitted';
+                const kycColor = kyc === 'approved' ? '#10b981' : kyc === 'rejected' ? '#ef4444' : '#f59e0b';
+                return (
+                  <div key={p._id} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12, padding: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 16, alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>USER</div>
+                        <div style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{p.user?.name || 'Unknown'} <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>#{p.user?.oderId}</span></div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{p.user?.email}</div>
+                        <div style={{ marginTop: 6, display: 'inline-block', padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: `color-mix(in srgb, ${kycColor} 18%, transparent)`, color: kycColor, textTransform: 'uppercase' }}>
+                          KYC: {kyc}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>CHALLENGE ACCOUNT</div>
+                        <div style={{ color: 'var(--text-primary)', fontFamily: 'monospace', fontWeight: 600 }}>{p.challengeAccount?.accountId || '-'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Status: {p.challengeAccount?.status || '-'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Split: {p.splitPercent}% to user</div>
+                        {p.challengeAccount?.lastWithdrawalDate && (
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Last payout: {new Date(p.challengeAccount.lastWithdrawalDate).toLocaleDateString('en-IN')}</div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>REQUESTED</div>
+                        <div style={{ color: '#10b981', fontWeight: 700, fontSize: 20 }}>₹{Number(p.requestedAmount || 0).toLocaleString('en-IN')}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Profit: ₹{Number(p.profit || 0).toLocaleString('en-IN')}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Requested: {new Date(p.createdAt).toLocaleDateString('en-IN')}</div>
+                      </div>
+                      {p.status === 'pending' ? (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => openApproveModal(p)} style={{ padding: '8px 14px', borderRadius: 8, background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Approve</button>
+                          <button onClick={() => openRejectModal(p)} style={{ padding: '8px 14px', borderRadius: 8, background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Reject</button>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '6px 12px', borderRadius: 8, background: p.status === 'approved' ? 'color-mix(in srgb, #10b981 15%, transparent)' : 'color-mix(in srgb, #ef4444 15%, transparent)', color: p.status === 'approved' ? '#10b981' : '#ef4444', textTransform: 'uppercase', fontSize: 11, fontWeight: 700 }}>{p.status}</div>
+                      )}
+                    </div>
+                    {p.status === 'rejected' && p.rejectionReason && (
+                      <div style={{ marginTop: 10, padding: 10, background: 'color-mix(in srgb, #ef4444 8%, var(--bg-primary))', border: '1px solid color-mix(in srgb, #ef4444 25%, var(--border-color))', borderRadius: 8, color: '#ef4444', fontSize: 12 }}>
+                        Rejected: {p.rejectionReason}
+                      </div>
+                    )}
+                    {p.status === 'approved' && p.adminNote && (
+                      <div style={{ marginTop: 10, padding: 10, background: 'color-mix(in srgb, #10b981 8%, var(--bg-primary))', border: '1px solid color-mix(in srgb, #10b981 25%, var(--border-color))', borderRadius: 8, color: 'var(--text-primary)', fontSize: 12 }}>
+                        Admin note: {p.adminNote}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ===== SETTINGS TAB ===== */}
       {activeTab === 'settings' && (
         <div style={{ maxWidth: '700px' }}>
@@ -892,6 +1061,92 @@ const PropTrading = () => {
               >
                 {actionModal.type === 'force-fail' ? 'Force Fail' : 'Extend Time'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== PAYOUT APPROVAL / REJECTION MODAL ===== */}
+      {payoutModal.open && payoutModal.payout && (
+        <div
+          onClick={() => closePayoutModal()}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 520, color: 'var(--text-primary)' }}>
+            <h3 style={{ margin: '0 0 6px' }}>{payoutModal.mode === 'approve' ? 'Approve Payout' : 'Reject Payout'}</h3>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              {payoutModal.payout.user?.name} — Challenge {payoutModal.payout.challengeAccount?.accountId}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <div style={{ padding: 10, background: 'var(--bg-primary)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>PROFIT</div>
+                <div style={{ fontWeight: 700 }}>₹{Number(payoutModal.payout.profit || 0).toLocaleString('en-IN')}</div>
+              </div>
+              <div style={{ padding: 10, background: 'var(--bg-primary)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>REQUESTED ({payoutModal.payout.splitPercent}%)</div>
+                <div style={{ fontWeight: 700, color: '#10b981' }}>₹{Number(payoutModal.payout.requestedAmount || 0).toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+
+            {payoutModal.mode === 'approve' ? (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Custom Amount (₹)</label>
+                  <input
+                    type="number"
+                    value={payoutForm.customAmount}
+                    onChange={(e) => setPayoutForm(f => ({ ...f, customAmount: e.target.value }))}
+                    style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 4 }}>Override the default split if needed. Leave as requested for the standard payout.</div>
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={payoutForm.overrideCooldown}
+                    onChange={(e) => setPayoutForm(f => ({ ...f, overrideCooldown: e.target.checked }))}
+                  />
+                  Bypass withdrawal cooldown (frequency check)
+                </label>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Admin Note (optional)</label>
+                  <textarea
+                    value={payoutForm.adminNote}
+                    onChange={(e) => setPayoutForm(f => ({ ...f, adminNote: e.target.value }))}
+                    rows={2}
+                    style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
+                  />
+                </div>
+
+                {payoutModal.payout.user?.kycStatus !== 'approved' && (
+                  <div style={{ padding: 10, background: 'color-mix(in srgb, #f59e0b 10%, var(--bg-primary))', border: '1px solid color-mix(in srgb, #f59e0b 30%, var(--border-color))', borderRadius: 8, color: '#f59e0b', fontSize: 12, marginBottom: 12 }}>
+                    ⚠ User KYC status is <strong>{payoutModal.payout.user?.kycStatus || 'not_submitted'}</strong>. Consider verifying KYC before releasing real funds.
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Rejection Reason *</label>
+                <textarea
+                  value={payoutForm.reason}
+                  onChange={(e) => setPayoutForm(f => ({ ...f, reason: e.target.value }))}
+                  rows={3}
+                  placeholder="Explain to the user why the payout is rejected…"
+                  style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical' }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button onClick={closePayoutModal} style={{ flex: 1, padding: 12, borderRadius: 8, background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', cursor: 'pointer' }}>Cancel</button>
+              {payoutModal.mode === 'approve' ? (
+                <button onClick={submitApprovePayout} style={{ flex: 1, padding: 12, borderRadius: 8, background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Confirm Approve</button>
+              ) : (
+                <button onClick={submitRejectPayout} style={{ flex: 1, padding: 12, borderRadius: 8, background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}>Confirm Reject</button>
+              )}
             </div>
           </div>
         </div>

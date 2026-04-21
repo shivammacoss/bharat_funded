@@ -103,6 +103,13 @@ class PropTradingEngine {
       lowestEquityToday: challenge.fundSize,
       lowestEquityOverall: challenge.fundSize,
       highestEquity: challenge.fundSize,
+      // Isolated sub-wallet — virtual money that the user trades on.
+      walletBalance: challenge.fundSize,
+      walletEquity: challenge.fundSize,
+      walletCredit: 0,
+      walletMargin: 0,
+      walletFreeMargin: challenge.fundSize,
+      walletMarginLevel: 0,
       profitSplitPercent: challenge.fundedSettings?.profitSplitPercent || 80,
       paymentStatus: 'COMPLETED',
       expiresAt
@@ -424,6 +431,12 @@ class PropTradingEngine {
       lowestEquityToday: challenge.fundSize,
       lowestEquityOverall: challenge.fundSize,
       highestEquity: challenge.fundSize,
+      walletBalance: challenge.fundSize,
+      walletEquity: challenge.fundSize,
+      walletCredit: 0,
+      walletMargin: 0,
+      walletFreeMargin: challenge.fundSize,
+      walletMarginLevel: 0,
       profitSplitPercent: challenge.fundedSettings?.profitSplitPercent || 80,
       paymentStatus: 'COMPLETED',
       expiresAt
@@ -456,29 +469,58 @@ class PropTradingEngine {
       }
     }
 
-    // Calculate withdrawable profit
-    const profit = Math.max(0, account.currentBalance - account.initialBalance);
+    // Any pending payout request blocks a new one so the admin queue stays
+    // single-decision-per-account.
+    const Transaction = require('../models/Transaction');
+    const existingPending = await Transaction.findOne({
+      oderId: String(account.userId),
+      type: 'withdrawal',
+      status: 'pending',
+      'paymentDetails.challengeAccountId': String(account._id)
+    });
+    if (existingPending) {
+      throw new Error('A payout request is already pending for this account');
+    }
+
+    // Compute default withdrawable. Use walletBalance if the new sub-wallet
+    // has been populated; fall back to legacy currentBalance for pre-Phase-B
+    // accounts.
+    const balanceNow = Number(account.walletBalance) || Number(account.currentBalance) || 0;
+    const profit = Math.max(0, balanceNow - Number(account.initialBalance));
     if (profit <= 0) throw new Error('No profit to withdraw');
 
     const splitPercent = account.profitSplitPercent || 80;
     const withdrawable = (profit * splitPercent) / 100;
     if (withdrawable <= 0) throw new Error('No withdrawable amount');
 
-    // Transfer to user's trading wallet
-    const wallet = await Wallet.findOne({ userId, type: 'trading' });
-    if (!wallet) throw new Error('User wallet not found');
+    // Create a pending Transaction. Admin reviews + approves in the payout
+    // queue; admin approval is what actually moves real INR into
+    // User.walletINR and resets the challenge account's wallet to initial.
+    const tx = await Transaction.create({
+      oderId: String(account.userId),
+      type: 'withdrawal',
+      amount: withdrawable,
+      currency: 'INR',
+      paymentMethod: 'admin_transfer',
+      status: 'pending',
+      userNote: `Prop profit payout · ${splitPercent}% of ₹${profit.toFixed(2)} profit · challenge ${account.accountId}`,
+      paymentDetails: {
+        challengeAccountId: String(account._id),
+        challengeAccountCode: account.accountId,
+        profit,
+        splitPercent,
+        kind: 'prop_payout'
+      }
+    });
 
-    await wallet.credit(withdrawable, `Prop Trading profit withdrawal (${splitPercent}% of $${profit.toFixed(2)})`);
-
-    // Reset balance to initial (platform keeps remaining)
-    account.currentBalance = account.initialBalance;
-    account.currentEquity = account.initialBalance;
-    account.totalWithdrawn += withdrawable;
-    account.lastWithdrawalDate = new Date();
-    account.phaseStartBalance = account.initialBalance;
-    await account.save();
-
-    return { withdrawnAmount: withdrawable, profit, splitPercent, account };
+    return {
+      pending: true,
+      transactionId: tx._id,
+      requestedAmount: withdrawable,
+      profit,
+      splitPercent,
+      account
+    };
   }
 
   /**

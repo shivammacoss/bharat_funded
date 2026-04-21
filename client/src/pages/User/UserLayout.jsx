@@ -2185,12 +2185,12 @@ function UserLayout({ user, onLogout }) {
 
   const sidebarNav = [
     { key: 'home', label: 'Dashboard', icon: <LuHouse size={18} /> },
-    { key: 'settings', label: 'Profile', icon: <LuUser size={18} /> },
     { key: 'orders', label: 'Orders', icon: <LuClipboardList size={18} /> },
     { key: 'wallet', label: 'Wallet', icon: <LuWallet size={18} /> },
     { key: 'my-challenges', label: 'My Challenges', icon: <LuTrophy size={18} /> },
     { key: 'billing', label: 'Billing', icon: <LuBriefcase size={18} /> },
     { key: 'contact', label: 'Contact', icon: <LuBell size={18} /> },
+    { key: 'settings', label: 'Profile', icon: <LuUser size={18} /> },
   ];
 
   return (
@@ -2249,6 +2249,28 @@ function UserLayout({ user, onLogout }) {
           <img src={logoLight} alt="BharatFunded" style={{ height: '26px', width: 'auto' }} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Active account chip — shows whether trades will hit the main
+              wallet or a specific prop-challenge account. Click to switch
+              back to main wallet. */}
+          <div
+            title={activeChallengeAccountId ? 'Trading on challenge account — click to trade on main wallet' : 'Trading on main wallet'}
+            onClick={() => { if (activeChallengeAccountId) setActiveChallengeAccountId(null); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600,
+              border: '1px solid var(--border-color)',
+              background: activeChallengeAccountId ? 'color-mix(in srgb, #f59e0b 18%, var(--bg-primary))' : 'var(--bg-primary)',
+              color: activeChallengeAccountId ? '#f59e0b' : 'var(--text-secondary)',
+              cursor: activeChallengeAccountId ? 'pointer' : 'default',
+              maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+            }}
+          >
+            <span>{activeChallengeAccountId ? '🏆' : '💼'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {activeChallengeAccountId ? `Challenge · ${String(activeChallengeAccountId).slice(-6)}` : 'Main Wallet'}
+            </span>
+            {activeChallengeAccountId && <span style={{ marginLeft: 2, opacity: 0.7 }}>✕</span>}
+          </div>
           <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}>
             {isDark ? <LuSun size={18} /> : <LuMoon size={18} />}
           </button>

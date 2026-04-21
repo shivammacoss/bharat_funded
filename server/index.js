@@ -737,7 +737,7 @@ app.put('/api/settings/trade-modes/:mode', async (req, res) => {
 // Place order (unified endpoint)
 app.post('/api/orders', async (req, res) => {
   try {
-    const { mode, userId, ...orderData } = req.body;
+    const { mode, userId, challengeAccountId, ...orderData } = req.body;
 
     if (!mode || !userId) {
       return res.status(400).json({ error: 'Mode and userId are required' });
@@ -745,6 +745,36 @@ app.post('/api/orders', async (req, res) => {
 
     if (!hedgingEngine || !nettingEngine || !binaryEngine) {
       return res.status(503).json({ error: 'Server initializing, please try again' });
+    }
+
+    // Challenge-account trades are routed to the isolated prop engine so they
+    // only affect the virtual sub-wallet on the ChallengeAccount document;
+    // the user's main User.wallet is never touched in this branch.
+    if (challengeAccountId) {
+      const challengePropEngine = require('./services/challengePropEngine.service');
+      const propResult = await challengePropEngine.openPosition(challengeAccountId, {
+        symbol: orderData.symbol,
+        side: orderData.side,
+        volume: orderData.volume,
+        quantity: orderData.quantity,
+        entryPrice: orderData.price || orderData.entryPrice,
+        leverage: orderData.leverage,
+        stopLoss: orderData.stopLoss,
+        takeProfit: orderData.takeProfit,
+        exchange: orderData.exchange,
+        segment: orderData.segment,
+        session: orderData.session,
+        orderType: orderData.orderType
+      });
+      if (!propResult.success) {
+        return res.status(400).json({ error: propResult.error, code: propResult.code });
+      }
+      io.to(userId).emit('challengeAccountUpdate', {
+        challengeAccountId,
+        account: propResult.account,
+        position: propResult.position
+      });
+      return res.json({ success: true, position: propResult.position, account: propResult.account });
     }
 
     let result;

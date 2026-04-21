@@ -479,7 +479,9 @@ router.post('/trade-closed', verifyUserToken, async (req, res) => {
   }
 });
 
-// POST /api/prop/withdraw - User: withdraw profit from funded account
+// POST /api/prop/withdraw - User: request a profit payout. Creates a pending
+// Transaction that the admin must approve; nothing moves into the main wallet
+// until approval.
 router.post('/withdraw', verifyUserToken, async (req, res) => {
   try {
     const { challengeAccountId } = req.body;
@@ -488,13 +490,180 @@ router.post('/withdraw', verifyUserToken, async (req, res) => {
     const result = await propTradingEngine.withdrawProfit(challengeAccountId, req.user._id);
     res.json({
       success: true,
-      message: `$${result.withdrawnAmount.toFixed(2)} withdrawn successfully`,
-      withdrawnAmount: result.withdrawnAmount,
+      pending: true,
+      message: `Payout request of ₹${result.requestedAmount.toFixed(2)} submitted for admin approval`,
+      transactionId: result.transactionId,
+      requestedAmount: result.requestedAmount,
       profit: result.profit,
       splitPercent: result.splitPercent
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// ============ ADMIN PAYOUT QUEUE ============
+// (Transaction, User, ChallengeAccount already required at the top of the
+//  file — reusing those. Don't re-require or Node throws a "const already
+//  declared" error at module load and the server refuses to boot.)
+const Transaction = require('../models/Transaction');
+
+// GET /api/prop/admin/payouts — list pending prop-payout requests with
+// enriched user + challenge-account info so the admin dashboard can show
+// KYC badge, cooldown status, profit split, etc.
+router.get('/admin/payouts', async (req, res) => {
+  try {
+    const { status = 'pending' } = req.query;
+    const query = { type: 'withdrawal', 'paymentDetails.kind': 'prop_payout' };
+    if (status && status !== 'all') query.status = status;
+
+    const txs = await Transaction.find(query).sort({ createdAt: -1 }).limit(200).lean();
+
+    const enriched = await Promise.all(txs.map(async (tx) => {
+      const user = await User.findById(tx.oderId).select('oderId name email kycStatus kycVerified walletINR').lean().catch(() => null);
+      const chAccId = tx.paymentDetails?.challengeAccountId;
+      let challengeAccount = null;
+      if (chAccId) {
+        challengeAccount = await ChallengeAccount.findById(chAccId).select('accountId status profitSplitPercent walletBalance currentBalance initialBalance lastWithdrawalDate').lean().catch(() => null);
+      }
+      return {
+        _id: tx._id,
+        createdAt: tx.createdAt,
+        status: tx.status,
+        requestedAmount: tx.amount,
+        userNote: tx.userNote,
+        user: user ? {
+          _id: user._id,
+          oderId: user.oderId,
+          name: user.name,
+          email: user.email,
+          kycStatus: user.kycStatus || 'not_submitted',
+          kycVerified: !!user.kycVerified,
+          walletINRBalance: user.walletINR?.balance || 0
+        } : null,
+        challengeAccount,
+        profit: tx.paymentDetails?.profit,
+        splitPercent: tx.paymentDetails?.splitPercent,
+        adminNote: tx.adminNote || '',
+        rejectionReason: tx.rejectionReason || '',
+        processedAt: tx.processedAt
+      };
+    }));
+
+    res.json({ success: true, payouts: enriched });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/prop/admin/payouts/:id/approve
+// body: { customAmount?, overrideCooldown?, adminNote? }
+// Credits User.walletINR (and wallet.balance for immediate trading) with the
+// approved amount and resets the challenge account's walletBalance to
+// initialBalance so the next payout cycle starts fresh.
+router.post('/admin/payouts/:id/approve', async (req, res) => {
+  try {
+    const { customAmount, overrideCooldown, adminNote } = req.body || {};
+    const tx = await Transaction.findById(req.params.id);
+    if (!tx) return res.status(404).json({ success: false, message: 'Payout request not found' });
+    if (tx.status !== 'pending') {
+      return res.status(400).json({ success: false, message: `Request is ${tx.status}` });
+    }
+
+    const chAccId = tx.paymentDetails?.challengeAccountId;
+    if (!chAccId) return res.status(400).json({ success: false, message: 'Missing challenge account reference' });
+
+    const account = await ChallengeAccount.findById(chAccId);
+    if (!account) return res.status(404).json({ success: false, message: 'Challenge account not found' });
+
+    // Cooldown check (bypassable with overrideCooldown flag)
+    if (!overrideCooldown && account.lastWithdrawalDate) {
+      const Challenge = require('../models/Challenge');
+      const challenge = await Challenge.findById(account.challengeId);
+      const cooldownDays = challenge?.fundedSettings?.withdrawalFrequencyDays || 0;
+      if (cooldownDays > 0) {
+        const daysSince = (Date.now() - new Date(account.lastWithdrawalDate).getTime()) / (1000 * 60 * 60 * 24);
+        if (daysSince < cooldownDays) {
+          return res.status(400).json({
+            success: false,
+            message: `Cooldown not met (${Math.ceil(cooldownDays - daysSince)} more day(s)). Pass overrideCooldown:true to bypass.`
+          });
+        }
+      }
+    }
+
+    const amountToPay = Number(customAmount) > 0 ? Number(customAmount) : Number(tx.amount);
+    if (!amountToPay || amountToPay <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid payout amount' });
+    }
+
+    const user = await User.findById(tx.oderId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (!user.walletINR) user.walletINR = { balance: 0, totalDeposits: 0, totalWithdrawals: 0 };
+    user.walletINR.balance += amountToPay;
+    user.wallet.balance = (user.wallet.balance || 0) + amountToPay;
+    user.wallet.equity = (user.wallet.equity || 0) + amountToPay;
+    user.wallet.freeMargin = (user.wallet.freeMargin || 0) + amountToPay;
+    await user.save();
+
+    // Reset the challenge account's wallet to initial so the next cycle
+    // starts fresh. We leave totalWithdrawn + lastWithdrawalDate as a
+    // historical record.
+    const initial = Number(account.initialBalance) || 0;
+    account.walletBalance = initial;
+    account.walletEquity = initial;
+    account.walletMargin = 0;
+    account.walletFreeMargin = initial;
+    account.walletMarginLevel = 0;
+    account.currentBalance = initial;
+    account.currentEquity = initial;
+    account.phaseStartBalance = initial;
+    account.totalWithdrawn = (Number(account.totalWithdrawn) || 0) + amountToPay;
+    account.lastWithdrawalDate = new Date();
+    await account.save();
+
+    tx.status = 'approved';
+    tx.amount = amountToPay;
+    tx.adminNote = adminNote || '';
+    tx.processedBy = 'admin';
+    tx.processedAt = new Date();
+    await tx.save();
+
+    res.json({
+      success: true,
+      message: `Payout ₹${amountToPay.toFixed(2)} approved and credited`,
+      transaction: tx,
+      userWalletINRBalance: user.walletINR.balance
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/prop/admin/payouts/:id/reject
+// body: { reason }
+router.post('/admin/payouts/:id/reject', async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    if (!reason || !String(reason).trim()) {
+      return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+    }
+    const tx = await Transaction.findById(req.params.id);
+    if (!tx) return res.status(404).json({ success: false, message: 'Payout request not found' });
+    if (tx.status !== 'pending') {
+      return res.status(400).json({ success: false, message: `Request is ${tx.status}` });
+    }
+
+    tx.status = 'rejected';
+    tx.rejectionReason = String(reason).trim();
+    tx.processedBy = 'admin';
+    tx.processedAt = new Date();
+    await tx.save();
+
+    res.json({ success: true, message: 'Payout request rejected', transaction: tx });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
