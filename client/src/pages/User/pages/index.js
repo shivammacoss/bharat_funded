@@ -1,0 +1,12 @@
+export { default as HomePage } from './HomePage';
+export { default as MarketPage } from './MarketPage';
+export { default as OrdersPage } from './OrdersPage';
+export { default as WalletPage } from './WalletPage';
+export { default as SettingsPage } from './SettingsPage';
+export { default as PropChallengePage } from './PropChallengePage';
+export { default as MyChallengesPage } from './MyChallengesPage';
+export { default as ChallengeDashboard } from './ChallengeDashboard';
+export { default as DashboardPage } from './DashboardPage';
+export { default as CertificatesPage } from './CertificatesPage';
+export { default as BillingPage } from './BillingPage';
+export { default as ContactPage } from './ContactPage';

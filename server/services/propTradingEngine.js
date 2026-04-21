@@ -1,0 +1,537 @@
+const mongoose = require('mongoose');
+const Challenge = require('../models/Challenge');
+const ChallengeAccount = require('../models/ChallengeAccount');
+const PropSettings = require('../models/PropSettings');
+const Wallet = require('../models/Wallet');
+const User = require('../models/User');
+
+const ERROR_CODES = {
+  CHALLENGE_MODE_DISABLED: 'CHALLENGE_MODE_DISABLED',
+  CHALLENGE_NOT_FOUND: 'CHALLENGE_NOT_FOUND',
+  ACCOUNT_NOT_FOUND: 'ACCOUNT_NOT_FOUND',
+  ACCOUNT_NOT_ACTIVE: 'ACCOUNT_NOT_ACTIVE',
+  INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE',
+  STOP_LOSS_REQUIRED: 'STOP_LOSS_REQUIRED',
+  MAX_TRADES_PER_DAY: 'MAX_TRADES_PER_DAY',
+  MAX_CONCURRENT_TRADES: 'MAX_CONCURRENT_TRADES',
+  LOT_SIZE_VIOLATION: 'LOT_SIZE_VIOLATION',
+  SYMBOL_NOT_ALLOWED: 'SYMBOL_NOT_ALLOWED',
+  SEGMENT_NOT_ALLOWED: 'SEGMENT_NOT_ALLOWED',
+  MIN_HOLD_TIME: 'MIN_HOLD_TIME',
+  DAILY_DRAWDOWN_BREACH: 'DAILY_DRAWDOWN_BREACH',
+  OVERALL_DRAWDOWN_BREACH: 'OVERALL_DRAWDOWN_BREACH',
+  EXPIRED: 'EXPIRED'
+};
+
+class PropTradingEngine {
+  constructor() {
+    this.ERROR_CODES = ERROR_CODES;
+  }
+
+  /**
+   * Check if challenge mode is enabled for an admin
+   */
+  async isChallengeEnabled(adminId) {
+    const settings = await PropSettings.getSettings(adminId || null);
+    return settings?.challengeModeEnabled === true;
+  }
+
+  /**
+   * Compute challenge expiry date
+   */
+  computeExpiresAt(challenge) {
+    const expiresAt = new Date();
+    const expiryDays = challenge.rules?.challengeExpiryDays;
+    if (challenge.stepsCount === 0 && !expiryDays) {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 50); // instant fund = no expiry
+    } else {
+      const n = Number(expiryDays);
+      expiresAt.setDate(expiresAt.getDate() + (Number.isFinite(n) && n > 0 ? n : 30));
+    }
+    return expiresAt;
+  }
+
+  /**
+   * Buy challenge — deduct from wallet and create ChallengeAccount
+   */
+  async buyChallenge(userId, challengeId) {
+    const challenge = await Challenge.findById(challengeId);
+    if (!challenge || !challenge.isActive) {
+      throw new Error('Challenge not found or inactive');
+    }
+
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    // Check if challenge mode is enabled
+    const enabled = await this.isChallengeEnabled(challenge.adminId);
+    if (!enabled) throw new Error('Challenge mode is currently disabled');
+
+    // Check user's wallet balance (stored on User.wallet embedded field)
+    const userBalance = Number(user.wallet?.balance) || 0;
+    if (userBalance < challenge.challengeFee) {
+      throw new Error(`Insufficient balance. Need $${challenge.challengeFee}, available: $${userBalance.toFixed(2)}`);
+    }
+
+    // Deduct fee from user's wallet
+    user.wallet.balance = userBalance - challenge.challengeFee;
+    await user.save();
+
+    // Create challenge account
+    const accountId = await ChallengeAccount.generateAccountId('CH');
+    const totalPhases = challenge.stepsCount === 0 ? 0 : challenge.stepsCount;
+    const expiresAt = this.computeExpiresAt(challenge);
+
+    const account = await ChallengeAccount.create({
+      userId,
+      challengeId: challenge._id,
+      accountId,
+      accountType: 'CHALLENGE',
+      currentPhase: challenge.stepsCount === 0 ? 0 : 1,
+      totalPhases,
+      status: challenge.stepsCount === 0 ? 'FUNDED' : 'ACTIVE',
+      initialBalance: challenge.fundSize,
+      currentBalance: challenge.fundSize,
+      currentEquity: challenge.fundSize,
+      phaseStartBalance: challenge.fundSize,
+      dayStartEquity: challenge.fundSize,
+      lowestEquityToday: challenge.fundSize,
+      lowestEquityOverall: challenge.fundSize,
+      highestEquity: challenge.fundSize,
+      profitSplitPercent: challenge.fundedSettings?.profitSplitPercent || 80,
+      paymentStatus: 'COMPLETED',
+      expiresAt
+    });
+
+    return { account, challenge };
+  }
+
+  /**
+   * Validate trade open request against challenge rules
+   */
+  async validateTradeOpen(challengeAccountId, tradeParams) {
+    const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
+    if (!account) {
+      return { valid: false, error: 'Challenge account not found', code: ERROR_CODES.ACCOUNT_NOT_FOUND };
+    }
+    if (account.status !== 'ACTIVE' && account.status !== 'FUNDED') {
+      return { valid: false, error: `Account is ${account.status}`, code: ERROR_CODES.ACCOUNT_NOT_ACTIVE };
+    }
+
+    // Check expiry
+    if (account.expiresAt && new Date() > new Date(account.expiresAt)) {
+      account.status = 'EXPIRED';
+      await account.save();
+      return { valid: false, error: 'Challenge has expired', code: ERROR_CODES.EXPIRED };
+    }
+
+    const challenge = account.challengeId;
+    const rules = challenge.rules || {};
+
+    // Stop loss mandatory
+    if (rules.stopLossMandatory && !tradeParams.sl && !tradeParams.stopLoss) {
+      return { valid: false, error: 'Stop Loss is mandatory for this challenge', code: ERROR_CODES.STOP_LOSS_REQUIRED };
+    }
+
+    // Max trades per day
+    if (rules.maxTradesPerDay && account.tradesToday >= rules.maxTradesPerDay) {
+      return { valid: false, error: `Max ${rules.maxTradesPerDay} trades per day reached`, code: ERROR_CODES.MAX_TRADES_PER_DAY };
+    }
+
+    // Max concurrent trades
+    if (rules.maxConcurrentTrades && account.openTradesCount >= rules.maxConcurrentTrades) {
+      return { valid: false, error: `Max ${rules.maxConcurrentTrades} concurrent trades reached`, code: ERROR_CODES.MAX_CONCURRENT_TRADES };
+    }
+
+    // Lot size validation
+    const qty = tradeParams.quantity || tradeParams.lots;
+    if (rules.minLotSize && qty < rules.minLotSize) {
+      return { valid: false, error: `Minimum lot size is ${rules.minLotSize}`, code: ERROR_CODES.LOT_SIZE_VIOLATION };
+    }
+    if (rules.maxLotSize && qty > rules.maxLotSize) {
+      return { valid: false, error: `Maximum lot size is ${rules.maxLotSize}`, code: ERROR_CODES.LOT_SIZE_VIOLATION };
+    }
+
+    // Allowed symbols
+    if (rules.allowedSymbols && rules.allowedSymbols.length > 0) {
+      if (!rules.allowedSymbols.includes(tradeParams.symbol)) {
+        return { valid: false, error: `Symbol ${tradeParams.symbol} is not allowed`, code: ERROR_CODES.SYMBOL_NOT_ALLOWED };
+      }
+    }
+
+    // Allowed segments
+    if (rules.allowedSegments && rules.allowedSegments.length > 0) {
+      const seg = (tradeParams.segment || '').toUpperCase();
+      if (!rules.allowedSegments.includes(seg)) {
+        return { valid: false, error: `Segment ${tradeParams.segment} is not allowed`, code: ERROR_CODES.SEGMENT_NOT_ALLOWED };
+      }
+    }
+
+    return { valid: true, account, challenge };
+  }
+
+  /**
+   * Validate trade close request (min hold time)
+   */
+  async validateTradeClose(challengeAccountId, trade) {
+    const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
+    if (!account) return { valid: false, error: 'Account not found' };
+
+    const rules = account.challengeId?.rules || {};
+
+    if (rules.minTradeHoldTimeSeconds > 0 && trade.openedAt) {
+      const holdTime = (Date.now() - new Date(trade.openedAt).getTime()) / 1000;
+      if (holdTime < rules.minTradeHoldTimeSeconds) {
+        const remaining = Math.ceil(rules.minTradeHoldTimeSeconds - holdTime);
+        return { valid: false, error: `Wait ${remaining} more seconds (min hold time)`, code: ERROR_CODES.MIN_HOLD_TIME, remainingSeconds: remaining };
+      }
+    }
+    return { valid: true, account };
+  }
+
+  /**
+   * Called when a trade is opened on a challenge account
+   */
+  async onTradeOpened(challengeAccountId) {
+    const account = await ChallengeAccount.findById(challengeAccountId);
+    if (!account) return null;
+
+    account.openTradesCount += 1;
+    account.tradesToday += 1;
+    account.totalTrades += 1;
+
+    // Check if new trading day
+    const today = new Date().toDateString();
+    const lastDay = account.lastTradingDay ? account.lastTradingDay.toDateString() : null;
+    if (today !== lastDay) {
+      account.tradingDaysCount += 1;
+      account.lastTradingDay = new Date();
+      account.tradesToday = 1;
+      account.dayStartEquity = account.currentEquity;
+      account.lowestEquityToday = account.currentEquity;
+    }
+
+    await account.save();
+    return account;
+  }
+
+  /**
+   * Called when a trade is closed — updates balance, checks rules
+   */
+  async onTradeClosed(challengeAccountId, closePnL) {
+    const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
+    if (!account) return null;
+
+    const challenge = account.challengeId;
+    const rules = challenge.rules || {};
+
+    // Update balance
+    account.currentBalance += closePnL;
+    account.currentEquity = account.currentBalance;
+    account.openTradesCount = Math.max(0, account.openTradesCount - 1);
+    account.totalProfitLoss += closePnL;
+
+    // Update equity tracking
+    await account.updateEquity(account.currentEquity);
+
+    // Check drawdown breach
+    const ddResult = await this.checkDrawdownBreach(account, rules);
+    if (ddResult.breached) {
+      return { account, failed: true, reason: ddResult.reason };
+    }
+
+    // Check profit target (phase progression)
+    const profitResult = await this.checkProfitTarget(account, challenge);
+    if (profitResult.targetReached) {
+      return { account, phaseCompleted: true, nextPhase: profitResult.nextPhase, funded: profitResult.funded };
+    }
+
+    await account.save();
+    return { account, failed: false };
+  }
+
+  /**
+   * Real-time equity update (called on price changes for open positions)
+   */
+  async updateRealTimeEquity(challengeAccountId, newEquity) {
+    const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
+    if (!account || (account.status !== 'ACTIVE' && account.status !== 'FUNDED')) return null;
+
+    const rules = account.challengeId?.rules || {};
+    await account.updateEquity(newEquity);
+
+    const ddResult = await this.checkDrawdownBreach(account, rules);
+    if (ddResult.breached) {
+      return { account, breached: true, reason: ddResult.reason };
+    }
+
+    return {
+      account,
+      breached: false,
+      dailyDrawdown: account.currentDailyDrawdownPercent,
+      overallDrawdown: account.currentOverallDrawdownPercent,
+      profitPercent: account.currentProfitPercent
+    };
+  }
+
+  /**
+   * Check daily and overall drawdown limits
+   */
+  async checkDrawdownBreach(account, rules) {
+    let breachReason = null;
+
+    // Daily drawdown
+    if (rules.maxDailyDrawdownPercent && account.currentDailyDrawdownPercent >= rules.maxDailyDrawdownPercent) {
+      breachReason = `Daily drawdown limit (${rules.maxDailyDrawdownPercent}%) exceeded`;
+      await account.addViolation('DAILY_DRAWDOWN_BREACH', breachReason, 'FAIL');
+    }
+
+    // Overall drawdown
+    if (!breachReason && rules.maxOverallDrawdownPercent && account.currentOverallDrawdownPercent >= rules.maxOverallDrawdownPercent) {
+      breachReason = `Overall drawdown limit (${rules.maxOverallDrawdownPercent}%) exceeded`;
+      await account.addViolation('OVERALL_DRAWDOWN_BREACH', breachReason, 'FAIL');
+    }
+
+    if (breachReason) {
+      account.status = 'FAILED';
+      account.failedAt = new Date();
+      account.failReason = breachReason;
+      await account.save();
+      return { breached: true, reason: breachReason };
+    }
+
+    return { breached: false };
+  }
+
+  /**
+   * Check profit target for phase progression
+   */
+  async checkProfitTarget(account, challenge) {
+    const rules = challenge.rules || {};
+
+    // 0-step (instant fund) has no profit target
+    if (challenge.stepsCount === 0) return { targetReached: false };
+
+    let targetPercent = 0;
+    if (account.currentPhase === 1) {
+      targetPercent = rules.profitTargetPhase1Percent || 8;
+    } else if (account.currentPhase === 2) {
+      targetPercent = rules.profitTargetPhase2Percent || 5;
+    }
+    if (!targetPercent) return { targetReached: false };
+
+    if (account.currentProfitPercent >= targetPercent) {
+      // Check for FAIL violations
+      if (account.violations.some(v => v.severity === 'FAIL')) {
+        return { targetReached: false };
+      }
+
+      if (account.currentPhase < account.totalPhases) {
+        // Advance to next phase
+        account.currentPhase += 1;
+        account.phaseStartBalance = account.currentEquity;
+        account.currentProfitPercent = 0;
+        account.currentDailyDrawdownPercent = 0;
+        account.maxDailyDrawdownHit = 0;
+        await account.save();
+        return { targetReached: true, nextPhase: account.currentPhase, funded: false };
+      } else {
+        // Challenge PASSED — create funded account
+        account.status = 'PASSED';
+        account.passedAt = new Date();
+        await account.save();
+
+        const fundedAccount = await this.createFundedAccount(account);
+        return { targetReached: true, funded: true, fundedAccount };
+      }
+    }
+
+    return { targetReached: false };
+  }
+
+  /**
+   * Create funded account after challenge passed
+   */
+  async createFundedAccount(challengeAccount) {
+    const challenge = await Challenge.findById(challengeAccount.challengeId);
+    const accountId = await ChallengeAccount.generateAccountId('FND');
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+    const fundedAccount = await ChallengeAccount.create({
+      userId: challengeAccount.userId,
+      challengeId: challengeAccount.challengeId,
+      accountId,
+      accountType: 'FUNDED',
+      currentPhase: 0,
+      totalPhases: 0,
+      status: 'FUNDED',
+      initialBalance: challenge.fundSize,
+      currentBalance: challenge.fundSize,
+      currentEquity: challenge.fundSize,
+      phaseStartBalance: challenge.fundSize,
+      dayStartEquity: challenge.fundSize,
+      lowestEquityToday: challenge.fundSize,
+      lowestEquityOverall: challenge.fundSize,
+      highestEquity: challenge.fundSize,
+      profitSplitPercent: challenge.fundedSettings?.profitSplitPercent || 80,
+      paymentStatus: 'COMPLETED',
+      expiresAt
+    });
+
+    challengeAccount.fundedAccountId = fundedAccount._id;
+    await challengeAccount.save();
+
+    return fundedAccount;
+  }
+
+  /**
+   * Withdraw profit from funded account
+   */
+  async withdrawProfit(challengeAccountId, userId) {
+    const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
+    if (!account) throw new Error('Account not found');
+    if (account.status !== 'FUNDED') throw new Error('Only funded accounts can withdraw');
+    if (String(account.userId) !== String(userId)) throw new Error('Not your account');
+
+    const challenge = account.challengeId;
+    const rules = challenge.fundedSettings || {};
+
+    // Check withdrawal frequency
+    if (rules.withdrawalFrequencyDays && account.lastWithdrawalDate) {
+      const daysSince = (Date.now() - new Date(account.lastWithdrawalDate).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSince < rules.withdrawalFrequencyDays) {
+        const remaining = Math.ceil(rules.withdrawalFrequencyDays - daysSince);
+        throw new Error(`Can withdraw again in ${remaining} days`);
+      }
+    }
+
+    // Calculate withdrawable profit
+    const profit = Math.max(0, account.currentBalance - account.initialBalance);
+    if (profit <= 0) throw new Error('No profit to withdraw');
+
+    const splitPercent = account.profitSplitPercent || 80;
+    const withdrawable = (profit * splitPercent) / 100;
+    if (withdrawable <= 0) throw new Error('No withdrawable amount');
+
+    // Transfer to user's trading wallet
+    const wallet = await Wallet.findOne({ userId, type: 'trading' });
+    if (!wallet) throw new Error('User wallet not found');
+
+    await wallet.credit(withdrawable, `Prop Trading profit withdrawal (${splitPercent}% of $${profit.toFixed(2)})`);
+
+    // Reset balance to initial (platform keeps remaining)
+    account.currentBalance = account.initialBalance;
+    account.currentEquity = account.initialBalance;
+    account.totalWithdrawn += withdrawable;
+    account.lastWithdrawalDate = new Date();
+    account.phaseStartBalance = account.initialBalance;
+    await account.save();
+
+    return { withdrawnAmount: withdrawable, profit, splitPercent, account };
+  }
+
+  /**
+   * Get account dashboard data (for user view)
+   */
+  async getAccountDashboard(challengeAccountId, userId) {
+    const account = await ChallengeAccount.findById(challengeAccountId)
+      .populate('challengeId')
+      .populate('userId', 'name email oderId');
+
+    if (!account) return null;
+    if (userId && String(account.userId._id || account.userId) !== String(userId)) return null;
+
+    const challenge = account.challengeId;
+    const rules = challenge.rules || {};
+
+    // Remaining time
+    const remainingMs = new Date(account.expiresAt) - new Date();
+    const remainingDays = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+
+    // Target progress
+    let targetPercent = 0;
+    if (account.currentPhase === 1) targetPercent = rules.profitTargetPhase1Percent || 8;
+    else if (account.currentPhase === 2) targetPercent = rules.profitTargetPhase2Percent || 5;
+    const targetProgress = targetPercent > 0 ? Math.min(100, (Math.max(0, account.currentProfitPercent) / targetPercent) * 100) : 0;
+
+    // Withdrawable profit (funded only)
+    let withdrawable = 0;
+    if (account.status === 'FUNDED') {
+      const profit = Math.max(0, account.currentBalance - account.initialBalance);
+      withdrawable = (profit * (account.profitSplitPercent || 80)) / 100;
+    }
+
+    return {
+      account: {
+        _id: account._id,
+        accountId: account.accountId,
+        accountType: account.accountType,
+        status: account.status,
+        currentPhase: account.currentPhase,
+        totalPhases: account.totalPhases,
+        failReason: account.failReason,
+        passedAt: account.passedAt,
+        failedAt: account.failedAt,
+        createdAt: account.createdAt
+      },
+      balance: {
+        initial: account.initialBalance,
+        current: account.currentBalance,
+        equity: account.currentEquity,
+        profitLoss: account.totalProfitLoss
+      },
+      drawdown: {
+        dailyUsed: account.currentDailyDrawdownPercent || 0,
+        dailyMax: rules.maxDailyDrawdownPercent || 5,
+        dailyRemaining: Math.max(0, (rules.maxDailyDrawdownPercent || 5) - (account.currentDailyDrawdownPercent || 0)),
+        overallUsed: account.currentOverallDrawdownPercent || 0,
+        overallMax: rules.maxOverallDrawdownPercent || 10,
+        overallRemaining: Math.max(0, (rules.maxOverallDrawdownPercent || 10) - (account.currentOverallDrawdownPercent || 0))
+      },
+      profit: {
+        currentPercent: account.currentProfitPercent || 0,
+        targetPercent,
+        targetProgress,
+        amountToTarget: targetPercent > 0 ? Math.max(0, (targetPercent / 100) * account.phaseStartBalance - account.totalProfitLoss) : 0
+      },
+      trades: {
+        today: account.tradesToday,
+        maxPerDay: rules.maxTradesPerDay || null,
+        openCount: account.openTradesCount,
+        maxConcurrent: rules.maxConcurrentTrades || null,
+        total: account.totalTrades,
+        tradingDays: account.tradingDaysCount,
+        requiredDays: rules.tradingDaysRequired || null
+      },
+      rules: {
+        stopLossMandatory: rules.stopLossMandatory || false,
+        minHoldTimeSeconds: rules.minTradeHoldTimeSeconds || 0,
+        maxLeverage: rules.maxLeverage || 100,
+        minLotSize: rules.minLotSize || 0.01,
+        maxLotSize: rules.maxLotSize || 100
+      },
+      time: {
+        expiresAt: account.expiresAt,
+        remainingDays,
+        createdAt: account.createdAt
+      },
+      funded: {
+        profitSplitPercent: account.profitSplitPercent || 80,
+        withdrawable,
+        totalWithdrawn: account.totalWithdrawn || 0,
+        lastWithdrawalDate: account.lastWithdrawalDate
+      },
+      violations: account.violations || [],
+      challenge: {
+        _id: challenge._id,
+        name: challenge.name,
+        fundSize: challenge.fundSize,
+        stepsCount: challenge.stepsCount,
+        challengeFee: challenge.challengeFee
+      }
+    };
+  }
+}
+
+module.exports = new PropTradingEngine();
