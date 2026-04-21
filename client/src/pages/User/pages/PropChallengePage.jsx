@@ -30,6 +30,7 @@ function PropChallengePage() {
   const [myAccounts, setMyAccounts] = useState([]);
   const [activeProgram, setActiveProgram] = useState(2);
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedTierIndex, setSelectedTierIndex] = useState(0);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -50,10 +51,14 @@ function PropChallengePage() {
     setLoading(false);
   };
 
-  const buyChallenge = async (id) => {
+  const buyChallenge = async (id, tierIndex) => {
     setBuying(id);
     try {
-      const res = await fetch(`${API_URL}/api/prop/buy`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ challengeId: id }) });
+      const res = await fetch(`${API_URL}/api/prop/buy`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ challengeId: id, tierIndex: Number(tierIndex) || 0 })
+      });
       const d = await res.json();
       if (d.success) { setSelectedId(null); setAgreeTerms(false); alert(`${d.message}\nAccount ID: ${d.account.accountId}`); fetchAll(); }
       else alert(d.message || 'Purchase failed');
@@ -80,8 +85,29 @@ function PropChallengePage() {
 
   useEffect(() => {
     if (currentPlans.length > 0 && !currentPlans.find(c => c._id === selectedId)) setSelectedId(currentPlans[0]._id);
+    setSelectedTierIndex(0);
     setAgreeTerms(false);
   }, [activeProgram, currentPlans.length]);
+
+  // Normalize tiers for the currently-selected plan — fall back to the
+  // legacy (fundSize, challengeFee) pair when the admin hasn't populated
+  // the new tiers array.
+  const planTiers = useMemo(() => {
+    if (!selectedPlan) return [];
+    if (Array.isArray(selectedPlan.tiers) && selectedPlan.tiers.length > 0) return selectedPlan.tiers;
+    return [{
+      fundSize: Number(selectedPlan.fundSize) || 0,
+      challengeFee: Number(selectedPlan.challengeFee) || 0,
+      label: '',
+      isPopular: false
+    }];
+  }, [selectedPlan]);
+
+  useEffect(() => {
+    if (selectedTierIndex >= planTiers.length) setSelectedTierIndex(0);
+  }, [planTiers.length, selectedTierIndex]);
+
+  const selectedTier = planTiers[selectedTierIndex] || planTiers[0] || { fundSize: 0, challengeFee: 0 };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}>Loading challenges...</div>;
   if (!propStatus.enabled) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: '40px', marginBottom: '12px' }}>🏆</div><h2 style={{ color: 'var(--text-primary)' }}>Prop Trading</h2><p>Challenges not available right now.</p></div></div>;
@@ -192,54 +218,113 @@ function PropChallengePage() {
               </div>
             )}
 
-            {/* ===== EVALUATION PLANS GRID ===== */}
+            {/* ===== EVALUATION PLANS GRID =====
+                 Each Challenge can expose several (fundSize, fee) tiers —
+                 we flatten them so one card = one tier. Clicking a card
+                 picks both the plan _id and the tier index, which then
+                 drive the Summary panel and buy flow. */}
             <h2 style={{ color: 'var(--text-primary)', fontSize: '20px', fontWeight: '700', margin: '0 0 16px' }}>Evaluation Plans</h2>
-            <div className="prop-plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-              {currentPlans.map((ch, i) => {
-                const isSel = selectedId === ch._id;
-                const popIdx = currentPlans.length > 2 ? Math.floor(currentPlans.length / 2) : -1;
-                return (
-                  <div key={ch._id} onClick={() => { setSelectedId(ch._id); setAgreeTerms(false); }} style={{
-                    cursor: 'pointer', borderRadius: '14px', padding: '20px 18px', position: 'relative',
-                    background: isSel ? (pm.steps === 0 ? '#fef3c7' : 'var(--bg-secondary)') : 'var(--bg-secondary)',
-                    border: isSel ? '2px solid var(--text-primary)' : '1px solid var(--border-color)',
-                    transition: 'all 0.15s'
-                  }}>
-                    {i === popIdx && (
-                      <div style={{
-                        position: 'absolute', top: '-10px', left: '14px',
-                        background: '#f59e0b', color: '#000', fontSize: '9px', fontWeight: '800',
-                        padding: '2px 10px', borderRadius: '4px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px'
-                      }}>⭐ POPULAR</div>
-                    )}
-                    {isSel && (
-                      <div style={{
-                        position: 'absolute', top: '14px', right: '14px', width: '22px', height: '22px',
-                        borderRadius: '50%', background: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}>
-                        <span style={{ color: 'var(--bg-primary)', fontWeight: '800', fontSize: '13px' }}>✓</span>
+            {(() => {
+              const flat = [];
+              currentPlans.forEach(ch => {
+                const tiers = Array.isArray(ch.tiers) && ch.tiers.length > 0
+                  ? ch.tiers
+                  : [{ fundSize: Number(ch.fundSize) || 0, challengeFee: Number(ch.challengeFee) || 0, label: '', isPopular: false }];
+                tiers.forEach((t, tIdx) => flat.push({ ch, tier: t, tierIndex: tIdx }));
+              });
+              return (
+                <div className="prop-plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                  {flat.map(({ ch, tier, tierIndex }) => {
+                    const isSel = selectedId === ch._id && selectedTierIndex === tierIndex;
+                    return (
+                      <div
+                        key={`${ch._id}-${tierIndex}`}
+                        onClick={() => { setSelectedId(ch._id); setSelectedTierIndex(tierIndex); setAgreeTerms(false); }}
+                        style={{
+                          cursor: 'pointer', borderRadius: '14px', padding: '20px 18px', position: 'relative',
+                          background: isSel ? (pm.steps === 0 ? '#fef3c7' : 'var(--bg-secondary)') : 'var(--bg-secondary)',
+                          border: isSel ? '2px solid var(--text-primary)' : '1px solid var(--border-color)',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {tier.isPopular && (
+                          <div style={{
+                            position: 'absolute', top: '-10px', left: '14px',
+                            background: '#f59e0b', color: '#000', fontSize: '9px', fontWeight: '800',
+                            padding: '2px 10px', borderRadius: '4px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px'
+                          }}>⭐ POPULAR</div>
+                        )}
+                        {isSel && (
+                          <div style={{
+                            position: 'absolute', top: '14px', right: '14px', width: '22px', height: '22px',
+                            borderRadius: '50%', background: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            <span style={{ color: 'var(--bg-primary)', fontWeight: '800', fontSize: '13px' }}>✓</span>
+                          </div>
+                        )}
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {ch.name}{tier.label ? ` · ${tier.label}` : ''}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px' }}>Balance</div>
+                        <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
+                          ₹ {Number(tier.fundSize || 0).toLocaleString('en-IN')}
+                        </div>
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '10px 14px', borderRadius: '10px',
+                          background: 'var(--bg-tertiary, var(--bg-primary))', border: '1px solid var(--border-color)'
+                        }}>
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-primary)' }}>Evaluation Fee</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>One time payment</div>
+                          </div>
+                          <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                            ₹ {Number(tier.challengeFee || 0).toLocaleString('en-IN')}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '2px' }}>Balance</div>
-                    <div style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '16px' }}>
-                      ₹ {(ch.fundSize * 85).toLocaleString('en-IN')}
-                    </div>
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '10px 14px', borderRadius: '10px',
-                      background: 'var(--bg-tertiary, var(--bg-primary))', border: '1px solid var(--border-color)'
-                    }}>
-                      <div>
-                        <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-primary)' }}>Evaluation Fee</div>
-                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>One time payment</div>
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                        ₹ {(ch.challengeFee * 85).toLocaleString('en-IN')}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Static info cards below the plans — Platform + Risk Rules.
+                Hardcoded per product spec so the user always sees these two
+                reassurance blurbs under whichever program tab they're on. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 18px', borderRadius: '14px',
+                background: 'var(--bg-secondary)', border: '1px solid var(--border-color)'
+              }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', borderRadius: '8px',
+                  background: 'var(--bg-tertiary, var(--bg-primary))',
+                  color: 'var(--text-secondary)', fontSize: '16px'
+                }}>🖥️</span>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>Platform</div>
+                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 700 }}>TradingView Web Terminal</div>
+                </div>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '14px 18px', borderRadius: '14px',
+                background: 'var(--bg-secondary)', border: '1px solid var(--border-color)'
+              }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: '32px', height: '32px', borderRadius: '8px',
+                  background: 'var(--bg-tertiary, var(--bg-primary))',
+                  color: 'var(--text-secondary)', fontSize: '16px'
+                }}>🛡️</span>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500 }}>Risk Rules</div>
+                  <div style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 700 }}>Clear daily loss &amp; max loss rules.</div>
+                </div>
+              </div>
             </div>
 
             {/* My Challenges Banner */}
@@ -279,7 +364,7 @@ function PropChallengePage() {
                 }}>
                   <div style={{ fontSize: '9px', fontWeight: '700', color: pm.steps === 0 ? '#92400e' : '#3b82f6', letterSpacing: '1px', marginBottom: '4px' }}>TOTAL PAYABLE</div>
                   <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                    ₹ {(selectedPlan.challengeFee * 85).toLocaleString('en-IN')}
+                    ₹ {Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
 
@@ -293,9 +378,9 @@ function PropChallengePage() {
                 {/* Details */}
                 <div style={{ marginBottom: '14px' }}>
                   {[
-                    { l: 'Selected Account', v: `₹ ${(selectedPlan.fundSize * 85).toLocaleString('en-IN')}` },
+                    { l: 'Selected Account', v: `₹ ${Number(selectedTier.fundSize || 0).toLocaleString('en-IN')}` },
                     { l: 'Account Type', v: pm.label },
-                    { l: 'Evaluation Fee', v: `₹ ${(selectedPlan.challengeFee * 85).toLocaleString('en-IN')}` },
+                    { l: 'Evaluation Fee', v: `₹ ${Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}` },
                     { l: 'Currency', v: 'INR' },
                   ].map((r, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-color)' }}>
@@ -327,7 +412,7 @@ function PropChallengePage() {
                     opacity: agreeTerms ? 1 : 0.5, transition: 'all 0.2s'
                   }}
                 >
-                  {buying ? 'Processing...' : `Pay ₹ ${(selectedPlan.challengeFee * 85).toLocaleString('en-IN')}`}
+                  {buying ? 'Processing...' : `Pay ₹ ${Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}`}
                 </button>
 
                 <div style={{ textAlign: 'center', fontSize: '9px', color: 'var(--text-secondary)', marginTop: '8px' }}>
@@ -365,11 +450,11 @@ function PropChallengePage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
               <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>FUND SIZE</div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>₹ {(Number(selectedPlan.fundSize) * 85).toLocaleString('en-IN')}</div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>₹ {Number(selectedTier.fundSize || 0).toLocaleString('en-IN')}</div>
               </div>
               <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>EVALUATION FEE</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#f59e0b' }}>₹ {(Number(selectedPlan.challengeFee) * 85).toLocaleString('en-IN')}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#f59e0b' }}>₹ {Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}</div>
               </div>
             </div>
 
@@ -424,7 +509,7 @@ function PropChallengePage() {
                 Cancel
               </button>
               <button
-                onClick={async () => { await buyChallenge(selectedPlan._id); setConfirmOpen(false); }}
+                onClick={async () => { await buyChallenge(selectedPlan._id, selectedTierIndex); setConfirmOpen(false); }}
                 disabled={buying}
                 style={{
                   flex: 1, padding: '12px', borderRadius: 10,
@@ -432,7 +517,7 @@ function PropChallengePage() {
                   cursor: buying ? 'not-allowed' : 'pointer', fontWeight: 700
                 }}
               >
-                {buying ? 'Processing…' : `Confirm & Pay ₹ ${(Number(selectedPlan.challengeFee) * 85).toLocaleString('en-IN')}`}
+                {buying ? 'Processing…' : `Confirm & Pay ₹ ${Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}`}
               </button>
             </div>
           </div>

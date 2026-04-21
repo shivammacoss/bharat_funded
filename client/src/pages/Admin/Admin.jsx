@@ -16,7 +16,6 @@ const sidebarMenu = [
   { id: 'bank-fund-management', label: 'Bank & Fund Management', icon: '🏦' },
   { id: 'charge-management', label: 'Charge Management', icon: '💰' },
   { id: 'admin-management', label: 'Admin Management', icon: '🔐' },
-  { id: 'brand-management', label: 'Brand Management', icon: '🎨' },
   { id: 'trade-mode-settings', label: 'Trade Mode Settings', icon: '⚙️' },
   { id: 'risk-management', label: 'Risk Management', icon: '🛡️' },
   { id: 'reboorder-settings', label: 'Reboorder Settings', icon: '⏱️' },
@@ -63,12 +62,6 @@ const sectionTabs = {
     { id: 'fund-requests', label: 'Fund Requests' },
     { id: 'subadmin-logs', label: 'Sub-Admin Activity' },
     { id: 'broker-logs', label: 'Broker Activity' }
-  ],
-  'brand-management': [
-    { id: 'banner-settings', label: 'Banners' },
-    { id: 'logo-favicon', label: 'Logo & Favicon' },
-    { id: 'color-themes', label: 'Themes' },
-    { id: 'notification-settings', label: 'Notifications' }
   ],
   'trade-mode-settings': [
     { id: 'hedging-settings', label: 'Hedging Mode' },

@@ -13,7 +13,6 @@ import {
   TradeManagement,
   FundManagement,
   ChargeManagement,
-  BrandManagement,
   BinarySettings,
   RiskManagement,
   NettingSegmentSettings,
@@ -4587,8 +4586,6 @@ function AppRouter() {
           <Route path="funds/:tab" element={<FundManagement />} />
           <Route path="charges" element={<ChargeManagement />} />
           <Route path="charges/:tab" element={<ChargeManagement />} />
-          <Route path="brand" element={<BrandManagement />} />
-          <Route path="brand/:tab" element={<BrandManagement />} />
           <Route path="binary-settings" element={<BinarySettings />} />
           <Route path="segments/*" element={<Navigate to="/admin" replace />} />
           <Route path="risk-management" element={<RiskManagement />} />

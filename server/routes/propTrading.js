@@ -369,11 +369,14 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// GET /api/prop/challenges - Public: list active challenges
+// GET /api/prop/challenges - Public: list active challenges. The `tiers`
+// array MUST be projected — without it the user sees only the legacy
+// single (fundSize, challengeFee) pair and multi-tier admin pricing is
+// invisible on the evaluation-plans grid.
 router.get('/challenges', async (req, res) => {
   try {
     const challenges = await Challenge.find({ isActive: true })
-      .select('name description stepsCount fundSize challengeFee currency rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays rules.stopLossMandatory rules.maxLeverage fundedSettings.profitSplitPercent sortOrder')
+      .select('name description stepsCount fundSize challengeFee tiers currency rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays rules.stopLossMandatory rules.takeProfitMandatory rules.maxLeverage rules.tradingDaysRequired fundedSettings.profitSplitPercent fundedSettings.withdrawalFrequencyDays sortOrder')
       .sort({ sortOrder: 1, fundSize: 1 });
     res.json({ success: true, challenges });
   } catch (error) {
@@ -384,15 +387,19 @@ router.get('/challenges', async (req, res) => {
 // POST /api/prop/buy - User: buy a challenge
 router.post('/buy', verifyUserToken, async (req, res) => {
   try {
-    const { challengeId } = req.body;
+    const { challengeId, tierIndex } = req.body;
     if (!challengeId) return res.status(400).json({ success: false, message: 'challengeId required' });
 
-    const result = await propTradingEngine.buyChallenge(req.user._id, challengeId);
+    const result = await propTradingEngine.buyChallenge(
+      req.user._id,
+      challengeId,
+      Number.isInteger(tierIndex) ? tierIndex : (tierIndex != null ? Number(tierIndex) : undefined)
+    );
     res.json({
       success: true,
       message: 'Challenge purchased successfully!',
       account: result.account,
-      challenge: { name: result.challenge.name, fundSize: result.challenge.fundSize }
+      challenge: { name: result.challenge.name, fundSize: result.account.initialBalance }
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

@@ -59,7 +59,7 @@ class PropTradingEngine {
   /**
    * Buy challenge — deduct from wallet and create ChallengeAccount
    */
-  async buyChallenge(userId, challengeId) {
+  async buyChallenge(userId, challengeId, tierIndex) {
     const challenge = await Challenge.findById(challengeId);
     if (!challenge || !challenge.isActive) {
       throw new Error('Challenge not found or inactive');
@@ -72,14 +72,34 @@ class PropTradingEngine {
     const enabled = await this.isChallengeEnabled(challenge.adminId);
     if (!enabled) throw new Error('Challenge mode is currently disabled');
 
+    // Resolve the (fundSize, fee) pair the user is buying. Prefer the picked
+    // tier; fall back to the legacy single fundSize/fee if the challenge has
+    // no tiers or no tierIndex was sent.
+    let fundSize, challengeFee;
+    if (Array.isArray(challenge.tiers) && challenge.tiers.length > 0) {
+      const idx = Number.isInteger(tierIndex) ? tierIndex : 0;
+      if (idx < 0 || idx >= challenge.tiers.length) {
+        throw new Error('Invalid tier selection');
+      }
+      const tier = challenge.tiers[idx];
+      fundSize = Number(tier.fundSize);
+      challengeFee = Number(tier.challengeFee);
+    } else {
+      fundSize = Number(challenge.fundSize);
+      challengeFee = Number(challenge.challengeFee);
+    }
+    if (!(fundSize > 0) || !(challengeFee >= 0)) {
+      throw new Error('Challenge pricing is misconfigured');
+    }
+
     // Check user's wallet balance (stored on User.wallet embedded field)
     const userBalance = Number(user.wallet?.balance) || 0;
-    if (userBalance < challenge.challengeFee) {
-      throw new Error(`Insufficient balance. Need $${challenge.challengeFee}, available: $${userBalance.toFixed(2)}`);
+    if (userBalance < challengeFee) {
+      throw new Error(`Insufficient balance. Need ₹${challengeFee}, available: ₹${userBalance.toFixed(2)}`);
     }
 
     // Deduct fee from user's wallet
-    user.wallet.balance = userBalance - challenge.challengeFee;
+    user.wallet.balance = userBalance - challengeFee;
     await user.save();
 
     // Create challenge account
@@ -95,20 +115,20 @@ class PropTradingEngine {
       currentPhase: challenge.stepsCount === 0 ? 0 : 1,
       totalPhases,
       status: challenge.stepsCount === 0 ? 'FUNDED' : 'ACTIVE',
-      initialBalance: challenge.fundSize,
-      currentBalance: challenge.fundSize,
-      currentEquity: challenge.fundSize,
-      phaseStartBalance: challenge.fundSize,
-      dayStartEquity: challenge.fundSize,
-      lowestEquityToday: challenge.fundSize,
-      lowestEquityOverall: challenge.fundSize,
-      highestEquity: challenge.fundSize,
+      initialBalance: fundSize,
+      currentBalance: fundSize,
+      currentEquity: fundSize,
+      phaseStartBalance: fundSize,
+      dayStartEquity: fundSize,
+      lowestEquityToday: fundSize,
+      lowestEquityOverall: fundSize,
+      highestEquity: fundSize,
       // Isolated sub-wallet — virtual money that the user trades on.
-      walletBalance: challenge.fundSize,
-      walletEquity: challenge.fundSize,
+      walletBalance: fundSize,
+      walletEquity: fundSize,
       walletCredit: 0,
       walletMargin: 0,
-      walletFreeMargin: challenge.fundSize,
+      walletFreeMargin: fundSize,
       walletMarginLevel: 0,
       profitSplitPercent: challenge.fundedSettings?.profitSplitPercent || 80,
       paymentStatus: 'COMPLETED',

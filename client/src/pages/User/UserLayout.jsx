@@ -2246,44 +2246,61 @@ function UserLayout({ user, onLogout }) {
           >
             {mobileMenuOpen ? <LuX size={22} /> : <LuEllipsisVertical size={22} />}
           </button>
-          <img src={logoLight} alt="BharatFunded" style={{ height: '26px', width: 'auto' }} />
+          <button
+            type="button"
+            onClick={() => { navigateToPage('home'); }}
+            title="Go to Dashboard"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+          >
+            <img src={logoLight} alt="BharatFunded" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
+          </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Active account chip — shows whether trades will hit the main
-              wallet or a specific prop-challenge account. Click to switch
-              back to main wallet. */}
-          <div
-            title={activeChallengeAccountId ? 'Trading on challenge account — click to trade on main wallet' : 'Trading on main wallet'}
-            onClick={() => { if (activeChallengeAccountId) setActiveChallengeAccountId(null); }}
+          {/* Active-account chip. Click behaviour:
+              - Challenge active → click clears it (switch back to main).
+              - Main wallet     → click navigates to /app/wallet. */}
+          <button
+            type="button"
+            title={activeChallengeAccountId ? 'Trading on challenge account — click to switch back to main wallet' : 'Go to Main Wallet'}
+            onClick={() => {
+              if (activeChallengeAccountId) {
+                setActiveChallengeAccountId(null);
+              } else {
+                navigateToPage('wallet');
+              }
+            }}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600,
+              padding: '6px 12px', borderRadius: 18, fontSize: 12, fontWeight: 600,
               border: '1px solid var(--border-color)',
               background: activeChallengeAccountId ? 'color-mix(in srgb, #f59e0b 18%, var(--bg-primary))' : 'var(--bg-primary)',
-              color: activeChallengeAccountId ? '#f59e0b' : 'var(--text-secondary)',
-              cursor: activeChallengeAccountId ? 'pointer' : 'default',
-              maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+              color: activeChallengeAccountId ? '#f59e0b' : 'var(--text-primary)',
+              cursor: 'pointer',
+              maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              transition: 'background 0.15s'
             }}
           >
-            <span>{activeChallengeAccountId ? '🏆' : '💼'}</span>
+            <span style={{ fontSize: 14 }}>{activeChallengeAccountId ? '🏆' : '💼'}</span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {activeChallengeAccountId ? `Challenge · ${String(activeChallengeAccountId).slice(-6)}` : 'Main Wallet'}
             </span>
             {activeChallengeAccountId && <span style={{ marginLeft: 2, opacity: 0.7 }}>✕</span>}
-          </div>
-          <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}>
-            {isDark ? <LuSun size={18} /> : <LuMoon size={18} />}
+          </button>
+          <button onClick={toggleTheme} title={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}>
+            {isDark ? <LuSun size={20} /> : <LuMoon size={20} />}
           </button>
           <button
-            onClick={() => setShowNotificationPanel(!showNotificationPanel)}
+            onClick={() => { setShowNotificationPanel(!showNotificationPanel); if (!showNotificationPanel) fetchSystemNotifications(); }}
+            title="Notifications"
             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px', position: 'relative' }}
           >
-            <LuBell size={18} />
+            <LuBell size={20} />
             {unreadNotifCount > 0 && (
               <span style={{
-                position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', borderRadius: '50%',
-                background: '#ef4444', color: '#fff', fontSize: '8px', fontWeight: '700',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                position: 'absolute', top: 0, right: 0, minWidth: '16px', height: '16px', padding: '0 4px', borderRadius: '8px',
+                background: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: '700',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 0 2px var(--bg-secondary)'
               }}>
                 {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
               </span>
