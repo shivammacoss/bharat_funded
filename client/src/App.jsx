@@ -4442,8 +4442,21 @@ function ProtectedRoute({ children, isAuthenticated }) {
   return children;
 }
 
+// Check if we're on admin subdomain
+const isAdminSubdomain = () => {
+  const hostname = window.location.hostname;
+  return hostname.startsWith('admin.');
+};
+
 // Main App with Router
 function AppRouter() {
+  // Redirect to /admin/login if on admin subdomain and at root
+  useEffect(() => {
+    if (isAdminSubdomain() && window.location.pathname === '/') {
+      window.location.href = '/admin/login';
+    }
+  }, []);
+
   const [auth, setAuth] = useState(() => {
     const saved = localStorage.getItem('bharatfunded-auth');
     if (saved) {
