@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LuEye, LuEyeOff } from 'react-icons/lu';
 import TubesBackground from '../../components/TubesBackground';
@@ -38,19 +38,15 @@ const countries = [
 function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const termsRef = useRef(null);
   const [referralId, setReferralId] = useState('');
   const [referralFromLink, setReferralFromLink] = useState(false);
   const [formData, setFormData] = useState({
     name: '', email: '', countryCode: '+91', phone: '',
-    city: '', state: '', password: '', confirmPassword: ''
+    password: '', confirmPassword: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -75,15 +71,6 @@ function Register() {
   };
 
   const selectedCountry = countries.find(c => c.code === formData.countryCode) || countries[0];
-
-  const handleTermsScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target;
-    if (scrollTop + clientHeight >= scrollHeight - 50) setHasScrolledToBottom(true);
-  };
-
-  const openTermsModal = (e) => { e.preventDefault(); setShowTermsModal(true); setHasScrolledToBottom(false); };
-  const acceptTerms = () => { setTermsAccepted(true); setShowTermsModal(false); };
-  const declineTerms = () => { setTermsAccepted(false); setShowTermsModal(false); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -120,7 +107,7 @@ function Register() {
         <div className="auth-card" style={{ maxWidth: '440px', padding: '32px 28px' }}>
           {/* Header */}
           <div className="auth-header" style={{ marginBottom: '24px' }}>
-            <img src="/landing/img/logo1.png" alt="BharatFundedTrade" className="auth-logo-img" />
+            <img src="/landing/img/bharatfunded-logo.svg" alt="BharatFunded" className="auth-logo-img" />
             <p className="auth-subtitle">Create your account to start trading</p>
           </div>
 
@@ -150,18 +137,6 @@ function Register() {
                 <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="9876543210" autoComplete="tel" className="phone-input" />
               </div>
               <span className="phone-hint">{selectedCountry.flag} {selectedCountry.name}</span>
-            </div>
-
-            {/* City & State */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group" style={{ gap: '5px' }}>
-                <label htmlFor="city">City</label>
-                <input type="text" id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Mumbai" autoComplete="address-level2" />
-              </div>
-              <div className="form-group" style={{ gap: '5px' }}>
-                <label htmlFor="state">State</label>
-                <input type="text" id="state" name="state" value={formData.state} onChange={handleChange} placeholder="Maharashtra" autoComplete="address-level1" />
-              </div>
             </div>
 
             {/* Password */}
@@ -203,19 +178,8 @@ function Register() {
               )}
             </div>
 
-            {/* Terms */}
-            <div className="form-options" style={{ marginTop: '4px' }}>
-              <label className="remember-me">
-                <input type="checkbox" checked={termsAccepted} onChange={() => {}} required />
-                <span>
-                  I agree to the{' '}
-                  <button type="button" className="terms-link" onClick={openTermsModal}>Terms & Conditions</button>
-                </span>
-              </label>
-            </div>
-
             {/* Register Button */}
-            <button type="submit" className="auth-submit-btn" disabled={loading || !termsAccepted} style={{ marginTop: '6px' }}>
+            <button type="submit" className="auth-submit-btn" disabled={loading} style={{ marginTop: '6px' }}>
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
@@ -224,74 +188,6 @@ function Register() {
             <p>Already have an account? <Link to="/login">Login</Link></p>
           </div>
         </div>
-
-        {/* Terms Modal */}
-        {showTermsModal && (
-          <div className="terms-modal-overlay">
-            <div className="terms-modal">
-              <div className="terms-modal-header">
-                <h2>Terms & Conditions</h2>
-                <button className="terms-modal-close" onClick={declineTerms}>×</button>
-              </div>
-              <div className="terms-modal-body" ref={termsRef} onScroll={handleTermsScroll}>
-                {!hasScrolledToBottom && (
-                  <div className="scroll-indicator">Scroll down to read all terms before accepting</div>
-                )}
-                <section className="terms-section">
-                  <h2>1. Risk Disclosure</h2>
-                  <p><strong>Trading in financial markets involves substantial risk of loss.</strong> You should carefully consider whether trading is appropriate for you in light of your financial condition. The high degree of leverage that is often obtainable in trading can work against you as well as for you.</p>
-                </section>
-                <section className="terms-section warning-section">
-                  <h2>Important Warning</h2>
-                  <ul>
-                    <li>Past performance is not indicative of future results</li>
-                    <li>You may lose more than your initial investment</li>
-                    <li>Trading can cause significant mental stress and anxiety</li>
-                    <li>Financial losses can impact your personal life and relationships</li>
-                    <li>Never invest money you cannot afford to lose</li>
-                  </ul>
-                </section>
-                <section className="terms-section">
-                  <h2>2. Mental Health Advisory</h2>
-                  <p>Trading in financial markets can be mentally and emotionally challenging. We strongly recommend seeking professional guidance and maintaining a healthy work-life balance.</p>
-                </section>
-                <section className="terms-section">
-                  <h2>3. Educational Requirement</h2>
-                  <p>Before engaging in any trading activity, you should complete proper education about financial markets, understand technical and fundamental analysis, and practice with demo accounts before using real money.</p>
-                </section>
-                <section className="terms-section">
-                  <h2>4. Company's Role</h2>
-                  <p>BharatFundedTrade provides <strong>technical support and platform services only</strong>. We do not provide investment advice, guaranteed returns, or trading signals. All trading decisions are made solely by you.</p>
-                </section>
-                <section className="terms-section">
-                  <h2>5. Your Responsibilities</h2>
-                  <ul>
-                    <li>All investment decisions are your own responsibility</li>
-                    <li>You have read and understood the risks involved</li>
-                    <li>You are of legal age to trade in your jurisdiction</li>
-                    <li>You will not hold the company liable for any losses</li>
-                    <li>You will trade only with funds you can afford to lose</li>
-                  </ul>
-                </section>
-                <section className="terms-section">
-                  <h2>6. No Guarantee of Profits</h2>
-                  <p>There is <strong>no guarantee of profits</strong> in trading. Market movements are unpredictable and past performance does not guarantee future results.</p>
-                </section>
-                <section className="terms-section disclaimer-section">
-                  <h2>Final Disclaimer</h2>
-                  <p>By registering on BharatFundedTrade, you confirm that you have read, understood, and agree to all the terms and conditions stated above.</p>
-                  <p><strong>Trade responsibly. Learn before you invest. Never risk more than you can afford to lose.</strong></p>
-                </section>
-              </div>
-              <div className="terms-modal-footer">
-                <button className="terms-decline-btn" onClick={declineTerms}>Decline</button>
-                <button className="terms-accept-btn" onClick={acceptTerms} disabled={!hasScrolledToBottom}>
-                  {hasScrolledToBottom ? 'I Accept' : 'Scroll to Accept'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="tubes-hint">
           <span>Click anywhere to change colors</span>
