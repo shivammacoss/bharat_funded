@@ -4523,7 +4523,7 @@ function AppRouter() {
             <Route path="bonus-management" element={<BonusManagement />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
             <Route path="market-control" element={<MarketControl />} />
-            <Route path="zerodha-connect" element={<ZerodhaConnect />} />
+            <Route path="zerodha" element={<ZerodhaConnect />} />
             <Route path="reports" element={<Reports />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />

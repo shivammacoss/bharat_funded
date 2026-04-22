@@ -481,8 +481,10 @@ function Admin() {
         // Close the user detail panel
         setUserDetailPanel({ open: false, user: null, view: 'info', positions: [], positionsLoading: false, wallet: null });
         
-        // Redirect to user app (not landing page)
-        window.location.href = '/app';
+        // Redirect to user app on main domain (not admin subdomain)
+        const mainDomain = window.location.hostname.replace(/^admin\./, '');
+        const userAppUrl = `${window.location.protocol}//${mainDomain}/app`;
+        window.location.href = userAppUrl;
       } else {
         alert(data.error || 'Failed to login as user');
       }

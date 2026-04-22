@@ -545,8 +545,10 @@ function UserManagement() {
         }));
         // Also store token separately for API calls that use bharatfunded-token
         localStorage.setItem('bharatfunded-token', data.token);
-        // Open user app in new tab
-        window.open('/app', '_blank');
+        // Open user app in new tab - use main domain for user app
+        const mainDomain = window.location.hostname.replace(/^admin\./, '');
+        const userAppUrl = `${window.location.protocol}//${mainDomain}/app`;
+        window.open(userAppUrl, '_blank');
       } else {
         alert(data.error || 'Failed to login as user');
       }
