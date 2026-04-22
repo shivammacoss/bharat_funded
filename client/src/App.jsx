@@ -7,6 +7,7 @@ import { useMetaApiPrices, getOneClickTradeButtonStyle, isOneClickSymbolBusy } f
 import tradingSounds from './utils/sounds';
 import { useZerodhaTicks } from './hooks/useZerodhaTicks';
 import AdminLayout from './pages/Admin/AdminLayout';
+import AdminLogin from './pages/Admin/AdminLogin';
 import {
   Dashboard,
   UserManagement,
@@ -4450,12 +4451,6 @@ const isAdminSubdomain = () => {
 
 // Main App with Router
 function AppRouter() {
-  // Redirect to /admin/login if on admin subdomain and at root
-  useEffect(() => {
-    if (isAdminSubdomain() && window.location.pathname === '/') {
-      window.location.href = '/admin/login';
-    }
-  }, []);
 
   const [auth, setAuth] = useState(() => {
     const saved = localStorage.getItem('bharatfunded-auth');
@@ -4504,6 +4499,44 @@ function AppRouter() {
     localStorage.removeItem('bharatfunded-auth');
     setAuth({ isAuthenticated: false, user: null });
   };
+
+  // Admin subdomain routes
+  if (isAdminSubdomain()) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<AdminLayout />} />
+          <Route path="/dashboard" element={<AdminLayout />}>
+            <Route index element={<Dashboard />} />
+          </Route>
+          <Route path="/*" element={<AdminLayout />}>
+            <Route path="users" element={<UserManagement />} />
+            <Route path="users/:tab" element={<UserManagement />} />
+            <Route path="trades" element={<TradeManagement />} />
+            <Route path="trades/:tab" element={<TradeManagement />} />
+            <Route path="funds" element={<FundManagement />} />
+            <Route path="funds/:tab" element={<FundManagement />} />
+            <Route path="charges" element={<ChargeManagement />} />
+            <Route path="charges/:tab" element={<ChargeManagement />} />
+            <Route path="binary-settings" element={<BinarySettings />} />
+            <Route path="risk-management" element={<RiskManagement />} />
+            <Route path="netting-segments" element={<NettingSegmentSettings />} />
+            <Route path="netting-segments/:tab" element={<NettingSegmentSettings />} />
+            <Route path="bonus-management" element={<BonusManagement />} />
+            <Route path="activity-logs" element={<ActivityLogs />} />
+            <Route path="market-control" element={<MarketControl />} />
+            <Route path="zerodha-connect" element={<ZerodhaConnect />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="prop-trading" element={<PropTrading />} />
+            <Route path="prop-trading/:tab" element={<PropTrading />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    );
+  }
 
   return (
     <BrowserRouter>
