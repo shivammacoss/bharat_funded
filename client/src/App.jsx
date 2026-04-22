@@ -4505,12 +4505,9 @@ function AppRouter() {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<AdminLayout />} />
-          <Route path="/dashboard" element={<AdminLayout />}>
+          <Route path="/" element={<Navigate to="/admin" replace />} />
+          <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Dashboard />} />
-          </Route>
-          <Route path="/*" element={<AdminLayout />}>
             <Route path="users" element={<UserManagement />} />
             <Route path="users/:tab" element={<UserManagement />} />
             <Route path="trades" element={<TradeManagement />} />
@@ -4533,6 +4530,8 @@ function AppRouter() {
             <Route path="prop-trading" element={<PropTrading />} />
             <Route path="prop-trading/:tab" element={<PropTrading />} />
           </Route>
+          {/* Fallback - redirect any unmatched routes to admin dashboard */}
+          <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </BrowserRouter>
     );
