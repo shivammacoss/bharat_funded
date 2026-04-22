@@ -80,9 +80,12 @@
 }
 
 .auth-logo-img {
-  height: 48px;
+  height: 56px;
   width: auto;
-  margin-bottom: 12px;
+  max-width: 240px;
+  object-fit: contain;
+  margin-bottom: 14px;
+  display: block;
 }
 
 .auth-subtitle {
