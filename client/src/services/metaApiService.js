@@ -181,7 +181,7 @@ class MetaApiService {
         symbol: symbol,
         actionType: side === 'buy' ? 'ORDER_TYPE_BUY' : 'ORDER_TYPE_SELL',
         volume: parseFloat(volume),
-        comment: 'BharatFundedTrade'
+        comment: 'Bharat Funded Trader'
       };
 
       console.log('Executing order:', orderData);

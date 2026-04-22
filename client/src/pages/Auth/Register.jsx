@@ -120,7 +120,7 @@ function Register() {
         <div className="auth-card" style={{ maxWidth: '440px', padding: '32px 28px' }}>
           {/* Header */}
           <div className="auth-header" style={{ marginBottom: '24px' }}>
-            <img src="/landing/img/logo1.png" alt="BharatFundedTrade" className="auth-logo-img" />
+            <img src="/landing/img/logo1.png" alt="Bharat Funded Trader" className="auth-logo-img" />
             <p className="auth-subtitle">Create your account to start trading</p>
           </div>
 
@@ -261,7 +261,7 @@ function Register() {
                 </section>
                 <section className="terms-section">
                   <h2>4. Company's Role</h2>
-                  <p>BharatFundedTrade provides <strong>technical support and platform services only</strong>. We do not provide investment advice, guaranteed returns, or trading signals. All trading decisions are made solely by you.</p>
+                  <p>Bharat Funded Trader provides <strong>technical support and platform services only</strong>. We do not provide investment advice, guaranteed returns, or trading signals. All trading decisions are made solely by you.</p>
                 </section>
                 <section className="terms-section">
                   <h2>5. Your Responsibilities</h2>
@@ -279,7 +279,7 @@ function Register() {
                 </section>
                 <section className="terms-section disclaimer-section">
                   <h2>Final Disclaimer</h2>
-                  <p>By registering on BharatFundedTrade, you confirm that you have read, understood, and agree to all the terms and conditions stated above.</p>
+                  <p>By registering on Bharat Funded Trader, you confirm that you have read, understood, and agree to all the terms and conditions stated above.</p>
                   <p><strong>Trade responsibly. Learn before you invest. Never risk more than you can afford to lose.</strong></p>
                 </section>
               </div>

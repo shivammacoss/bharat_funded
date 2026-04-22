@@ -1,245 +1,191 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   BharatFundedTrade Landing Page Styles
+   Bharat Funded Trader — Premium Agency Theme
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Google Fonts ─────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Inter:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
-/* ── CSS Variables ────────────────────────────────────────────────────────── */
 :root {
-  --accent: #2563eb;
-  --accent-dark: #1d4ed8;
-  --dark: #0f172a;
-  --light: #f8fafc;
+  --bg-white: #FFFFFF;
+  --bg-light: #FAFBFD;
+  --bg-dark: #0C0C1D;
+  --bg-dark-card: #141428;
+  --blue: #2B4EFF;
+  --blue-hover: #4B6AFF;
+  --blue-glow: rgba(43,78,255,0.15);
+  --text-dark: #0D0F1A;
+  --text-gray: #6B7080;
+  --text-muted: #9AA0B4;
+  --text-white: #FFFFFF;
+  --border-light: #E8EAF0;
+  --border-dark: rgba(255,255,255,0.08);
+  --radius: 16px;
+  --radius-lg: 24px;
+  --font: 'Inter', 'DM Sans', system-ui, sans-serif;
 }
 
-/* ── Base ─────────────────────────────────────────────────────────────────── */
 .landing-page {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-white) !important;
+  color: var(--text-dark);
+  scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
-.landing-page .font-manrope {
-  font-family: 'Manrope', sans-serif;
-}
+.landing-page .font-manrope { font-family: var(--font); }
 
-/* ── Gradient blur at top ─────────────────────────────────────────────────── */
+/* ── Gradient blur ────────────────────────────────────────────────────────── */
 .landing-page .gradient-blur {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 120px;
-  background: linear-gradient(to bottom, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 100%);
-  pointer-events: none;
-  z-index: 40;
+  position: fixed; top: 0; left: 0; right: 0; height: 100px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.9), transparent);
+  pointer-events: none; z-index: 40;
 }
 
-/* ── Spin border button ───────────────────────────────────────────────────── */
-.landing-page .spin-border-btn {
+/* ── Blue gradient card background ────────────────────────────────────────── */
+.landing-page .blue-gradient-card {
+  background: linear-gradient(135deg, #1a1a3e 0%, #0C0C1D 30%, #1a2466 60%, #2B4EFF 100%);
+  border-radius: var(--radius-lg);
   position: relative;
-  border-radius: 9999px;
   overflow: hidden;
 }
-
-.landing-page .spin-border-btn .spin-ring {
+.landing-page .blue-gradient-card::before {
+  content: '';
   position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  padding: 1px;
-  background: conic-gradient(from var(--gradient-angle, 0deg), var(--accent), transparent 30%, var(--accent));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: borderSpin 2.5s linear infinite;
-}
-
-@keyframes borderSpin {
-  from { --gradient-angle: 0deg; }
-  to { --gradient-angle: 360deg; }
-}
-
-@property --gradient-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
+  top: -50%; right: -30%;
+  width: 80%; height: 150%;
+  background: radial-gradient(ellipse, rgba(43,78,255,0.4) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 /* ── Glow button ──────────────────────────────────────────────────────────── */
 .landing-page .glow-btn {
-  position: relative;
+  background: var(--blue) !important;
+  border: none !important;
+  border-radius: 50px !important;
+  box-shadow: 0 6px 20px rgba(43,78,255,0.3);
+  transition: all 0.25s ease;
 }
-
-.landing-page .glow-btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: inherit;
-  filter: blur(16px);
-  opacity: 0.4;
-  z-index: -1;
-  transition: opacity 0.3s;
-}
-
-.landing-page .glow-btn:hover::after {
-  opacity: 0.6;
+.landing-page .glow-btn:hover {
+  background: var(--blue-hover) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(43,78,255,0.4);
 }
 
 /* ── Section divider ──────────────────────────────────────────────────────── */
 .landing-page .section-divider {
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.15), transparent);
+  height: 1px;
+  background: var(--border-light);
 }
 
-/* ── Card styles ──────────────────────────────────────────────────────────── */
+/* ── Card ─────────────────────────────────────────────────────────────────── */
 .landing-page .card-light {
-  background: #fff;
-  border: 2px solid #e2e8f0;
-  border-radius: 1rem;
-  transition: all 0.3s ease;
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  transition: all 0.25s ease;
 }
-
 .landing-page .card-light:hover {
-  box-shadow: 0 20px 40px rgba(37,99,235,0.08);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
 }
 
 /* ── Dark section ─────────────────────────────────────────────────────────── */
-.landing-page .section-dark {
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-}
+.landing-page .section-dark { background: var(--bg-dark); }
 
 /* ── Stat band ────────────────────────────────────────────────────────────── */
 .landing-page .stat-band {
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+  background: linear-gradient(135deg, #2B4EFF 0%, #4B6AFF 100%);
 }
 
-/* ── Scroll reveal animations ─────────────────────────────────────────────── */
+/* ── Market circle ────────────────────────────────────────────────────────── */
+.landing-page .market-circle {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.landing-page .market-circle:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(43,78,255,0.12);
+}
+
+/* ── Scroll reveal ────────────────────────────────────────────────────────── */
 .landing-page .scroll-reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
-
-.landing-page .scroll-reveal.in-view {
-  opacity: 1;
-  transform: translateY(0);
-}
+.landing-page .scroll-reveal.in-view { opacity: 1; transform: none; }
 
 .landing-page .scroll-reveal-left {
-  opacity: 0;
-  transform: translateX(-40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  opacity: 0; transform: translateX(-40px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
-
-.landing-page .scroll-reveal-left.in-view {
-  opacity: 1;
-  transform: translateX(0);
-}
+.landing-page .scroll-reveal-left.in-view { opacity: 1; transform: none; }
 
 .landing-page .scroll-reveal-right {
-  opacity: 0;
-  transform: translateX(40px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  opacity: 0; transform: translateX(40px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
+.landing-page .scroll-reveal-right.in-view { opacity: 1; transform: none; }
 
-.landing-page .scroll-reveal-right.in-view {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* ── Stagger children ─────────────────────────────────────────────────────── */
 .landing-page .stagger-child {
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
+.landing-page .stagger-child.in-view { opacity: 1; transform: none; }
 
-.landing-page .stagger-child.in-view {
-  opacity: 1;
-  transform: translateY(0);
-}
+/* ── Animations ───────────────────────────────────────────────────────────── */
+.landing-page .float-anim { animation: float 4s ease-in-out infinite; }
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 
-/* ── Float animation ──────────────────────────────────────────────────────── */
-.landing-page .float-anim {
-  animation: float 4s ease-in-out infinite;
-}
+.landing-page .animate-fade-up { animation: fadeUp 0.8s ease-out forwards; opacity: 0; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
-}
+@keyframes char-reveal { from { opacity:0; transform:translateY(8px) scale(.95); } to { opacity:1; transform:none; } }
 
-/* ── Fade up animation ────────────────────────────────────────────────────── */
-.landing-page .animate-fade-up {
-  animation: fadeUp 0.8s ease-out forwards;
-  opacity: 0;
-}
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* ── Character reveal animation ───────────────────────────────────────────── */
-@keyframes char-reveal {
-  from { opacity: 0; transform: translateY(8px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ── Ring animations for Hero ─────────────────────────────────────────────── */
 @keyframes glow-breathe {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
-  50% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+  0%,100% { transform: translate(-50%,-50%) scale(1); opacity:.7; }
+  50% { transform: translate(-50%,-50%) scale(1.08); opacity:1; }
 }
-
 @keyframes ring-pulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
-  50% { transform: translate(-50%, -50%) scale(1.04); opacity: 1; }
+  0%,100% { transform: translate(-50%,-50%) scale(1); opacity:.7; }
+  50% { transform: translate(-50%,-50%) scale(1.04); opacity:1; }
 }
+@keyframes ring-rotate-cw { from { transform: translate(-50%,-50%) rotate(0); } to { transform: translate(-50%,-50%) rotate(360deg); } }
+@keyframes ring-rotate-ccw { from { transform: translate(-50%,-50%) rotate(0); } to { transform: translate(-50%,-50%) rotate(-360deg); } }
 
-@keyframes ring-rotate-cw {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg); }
-}
+.landing-page .marquee-track { animation: marquee 30s linear infinite; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-@keyframes ring-rotate-ccw {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(-360deg); }
-}
-
-/* ── Marquee ticker ───────────────────────────────────────────────────────── */
-.landing-page .marquee-track {
-  animation: marquee 30s linear infinite;
-}
-
-@keyframes marquee {
-  from { transform: translateX(0%); }
-  to { transform: translateX(-50%); }
-}
-
-/* ── Text stroke for watermark ────────────────────────────────────────────── */
 .landing-page .text-stroke {
-  -webkit-text-stroke: 2px #e2e8f0;
+  -webkit-text-stroke: 1px rgba(255,255,255,0.06);
   -webkit-text-fill-color: transparent;
 }
 
-/* ── Responsive adjustments ───────────────────────────────────────────────── */
-@media (max-width: 768px) {
-  .landing-page .text-stroke {
-    -webkit-text-stroke: 1px #e2e8f0;
-  }
-}
+.landing-page ::selection { background: rgba(43,78,255,0.15); color: #0D0F1A; }
 
-/* ── Smooth scroll ────────────────────────────────────────────────────────── */
-.landing-page {
-  scroll-behavior: smooth;
-}
+@property --gradient-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes borderSpin { from { --gradient-angle: 0deg; } to { --gradient-angle: 360deg; } }
 
-/* ── Selection color ──────────────────────────────────────────────────────── */
-.landing-page ::selection {
-  background: rgba(37, 99, 235, 0.2);
-  color: #1e40af;
+/* ── Premium heading utility ──────────────────────────────────────────────── */
+.landing-page .heading-xl {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.landing-page .heading-lg {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.landing-page .heading-md {
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.landing-page .body-lg {
+  font-size: clamp(1rem, 1.5vw, 1.125rem);
+  line-height: 1.7;
+  color: var(--text-gray);
 }

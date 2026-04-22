@@ -1,224 +1,145 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, TrendingUp, TrendingDown, Zap, ShieldCheck, BarChart2, Users } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import TextPressure from './TextPressure';
+import { BlurFade } from './BlurFade';
+import InfiniteGrid from './InfiniteGrid';
 
-/* ── Ticker data ─────────────────────────────────────────────────────────── */
-const tickers = [
-  { symbol: 'NIFTY 50',  price: '22,456.80', change: '+1.24%', up: true  },
-  { symbol: 'SENSEX',    price: '73,852.40', change: '+0.98%', up: true  },
-  { symbol: 'BTC/USD',   price: '$67,420',   change: '+2.31%', up: true  },
-  { symbol: 'EUR/USD',   price: '1.0842',    change: '-0.12%', up: false },
-  { symbol: 'GOLD',      price: '₹71,240',   change: '+0.45%', up: true  },
-  { symbol: 'RELIANCE',  price: '₹2,934',    change: '+0.76%', up: true  },
-  { symbol: 'TCS',       price: '₹3,812',    change: '-0.32%', up: false },
-  { symbol: 'CRUDE OIL', price: '$82.40',    change: '+1.10%', up: true  },
+/* ── Initial ticker data ──────────────────────────────────────────────────── */
+const initialTickers = [
+  { symbol: 'NIFTY 50',    base: 22456.80 },
+  { symbol: 'BANKNIFTY',   base: 48320.50 },
+  { symbol: 'SENSEX',      base: 73852.40 },
+  { symbol: 'NIFTY CE',    base: 245.60,   prefix: '₹' },
+  { symbol: 'NIFTY PE',    base: 182.30,   prefix: '₹' },
+  { symbol: 'BANKNIFTY CE',base: 312.80,   prefix: '₹' },
+  { symbol: 'BANKNIFTY PE',base: 198.40,   prefix: '₹' },
+  { symbol: 'SENSEX FUT',  base: 73910.00 },
 ];
 
-/* ── Bottom feature strip ────────────────────────────────────────────────── */
-const features = [
-  { icon: Zap,        title: 'Zero Brokerage',      desc: 'No hidden charges on equity delivery' },
-  { icon: BarChart2,  title: 'Instant Execution',   desc: 'Ultra-low latency order processing'   },
-  { icon: ShieldCheck,title: 'Secure Platform',     desc: 'SEBI registered & 256-bit encrypted'  },
-  { icon: Users,      title: '150K+ Active Traders',desc: 'Trusted by professionals worldwide'   },
-];
+function generateTick(ticker) {
+  const volatility = ticker.base > 1000 ? 0.002 : 0.008;
+  const move = (Math.random() - 0.48) * volatility * ticker.base;
+  const price = ticker.base + move;
+  const change = ((move / ticker.base) * 100);
+  return {
+    symbol: ticker.symbol,
+    price: (ticker.prefix || '') + price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    change: (change >= 0 ? '+' : '') + change.toFixed(2) + '%',
+    up: change >= 0,
+  };
+}
 
 export default function Hero() {
   const tickerRef = useRef(null);
-  const [animKey, setAnimKey] = useState(0);
+  const duplicated = useRef(false);
+  const [tickers, setTickers] = useState(() => initialTickers.map(generateTick));
 
-  useEffect(() => {
-    const el = tickerRef.current;
-    if (!el) return;
-    el.innerHTML += el.innerHTML;
+  // Simulate live price updates every 2 seconds
+  const updatePrices = useCallback(() => {
+    setTickers(initialTickers.map((t) => {
+      // Gradually shift the base to simulate drift
+      t.base += (Math.random() - 0.48) * t.base * 0.0003;
+      return generateTick(t);
+    }));
   }, []);
 
   useEffect(() => {
-    const id = setInterval(() => setAnimKey((k) => k + 1), 3500);
-    return () => clearInterval(id);
+    const interval = setInterval(updatePrices, 2000);
+    return () => clearInterval(interval);
+  }, [updatePrices]);
+
+  // Duplicate ticker content for seamless loop
+  useEffect(() => {
+    const el = tickerRef.current;
+    if (!el || duplicated.current) return;
+    duplicated.current = true;
+    const clone = el.innerHTML;
+    el.innerHTML = clone + clone;
   }, []);
 
   return (
-    <section
-      id="home"
-      className="relative min-h-screen flex flex-col overflow-hidden bg-white"
-      style={{ background: 'linear-gradient(180deg, #fff 0%, #f0f9ff 60%, #fff 100%)' }}
-    >
-      {/* ── 3D Arc / Dome background — centered at section midpoint ─────── */}
-      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+    <section id="home" className="relative overflow-hidden bg-white">
 
-        {/* Central glow burst — breathing */}
-        <div
-          className="absolute top-1/2 left-1/2 w-[600px] h-[600px] rounded-full"
-          style={{
-            background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(37,99,235,0.18) 0%, rgba(37,99,235,0.07) 45%, transparent 70%)',
-            animation: 'glow-breathe 5s ease-in-out infinite',
-          }}
-        />
+      {/* ── Infinite Grid Background ──────────────────────────────────────── */}
+      <InfiniteGrid />
 
-        {/* Arc ring 1 — outermost, slow pulse */}
-        <div
-          className="absolute top-1/2 left-1/2 w-[110vw] h-[110vw] max-w-[1100px] max-h-[1100px] rounded-full"
-          style={{
-            border: '1.5px solid rgba(37,99,235,0.10)',
-            background: 'transparent',
-            animation: 'ring-pulse 8s ease-in-out infinite',
-            animationDelay: '0s',
-          }}
-        />
+      {/* ── Main Hero Content — Centered ──────────────────────────────────── */}
+      <div className="max-w-4xl mx-auto px-6 pt-28 pb-14 md:pt-44 md:pb-28 text-center">
 
-        {/* Arc ring 2 — slow CW rotation */}
-        <div
-          className="absolute top-1/2 left-1/2 w-[85vw] h-[85vw] max-w-[860px] max-h-[860px] rounded-full"
-          style={{
-            border: '1.5px solid rgba(37,99,235,0.16)',
-            background: 'transparent',
-            animation: 'ring-rotate-cw 40s linear infinite',
-          }}
-        />
+        <BlurFade delay={0.1} inView>
+          <p className="text-sm font-semibold text-[#2B4EFF] uppercase tracking-widest mb-6">
+            India's #1 Prop Evaluation Platform
+          </p>
+        </BlurFade>
 
-        {/* Arc ring 3 — main glowing ring, pulse */}
-        <div
-          className="absolute top-1/2 left-1/2 w-[65vw] h-[65vw] max-w-[660px] max-h-[660px] rounded-full"
-          style={{
-            border: '2px solid rgba(37,99,235,0.26)',
-            background: 'radial-gradient(ellipse 70% 70% at 50% 50%, rgba(37,99,235,0.07) 0%, transparent 70%)',
-            boxShadow: '0 0 60px 10px rgba(37,99,235,0.06)',
-            animation: 'ring-pulse 6s ease-in-out infinite',
-            animationDelay: '1s',
-          }}
-        />
-
-        {/* Arc ring 4 — CCW rotation */}
-        <div
-          className="absolute top-1/2 left-1/2 w-[46vw] h-[46vw] max-w-[480px] max-h-[480px] rounded-full"
-          style={{
-            border: '2px solid rgba(37,99,235,0.32)',
-            background: 'radial-gradient(ellipse 60% 60% at 50% 50%, rgba(37,99,235,0.09) 0%, transparent 65%)',
-            boxShadow: '0 0 40px 6px rgba(37,99,235,0.08)',
-            animation: 'ring-rotate-ccw 28s linear infinite',
-          }}
-        />
-
-        {/* Arc ring 5 — innermost, fast pulse */}
-        <div
-          className="absolute top-1/2 left-1/2 w-[28vw] h-[28vw] max-w-[300px] max-h-[300px] rounded-full"
-          style={{
-            border: '2px solid rgba(37,99,235,0.42)',
-            background: 'radial-gradient(ellipse 50% 50% at 50% 50%, rgba(37,99,235,0.14) 0%, transparent 60%)',
-            boxShadow: '0 0 30px 4px rgba(37,99,235,0.12)',
-            animation: 'ring-pulse 4s ease-in-out infinite',
-            animationDelay: '2s',
-          }}
-        />
-
-        {/* Dot accents */}
-        <div className="absolute top-[30%] left-[18%] w-2 h-2 rounded-full bg-[#2563eb]/35 shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
-        <div className="absolute top-[25%] left-[35%] w-1.5 h-1.5 rounded-full bg-[#2563eb]/25 shadow-[0_0_6px_rgba(37,99,235,0.4)]" />
-        <div className="absolute top-[30%] right-[18%] w-2 h-2 rounded-full bg-[#2563eb]/35 shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
-        <div className="absolute top-[25%] right-[35%] w-1.5 h-1.5 rounded-full bg-[#2563eb]/25 shadow-[0_0_6px_rgba(37,99,235,0.4)]" />
-
-        {/* Subtle grid */}
-        <div
-          className="absolute inset-0 opacity-15"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(37,99,235,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,0.05) 1px, transparent 1px)',
-            backgroundSize: '48px 48px',
-          }}
-        />
-      </div>
-
-      {/* ── Main content — shifted slightly below center ─────────────────── */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 pt-24">
-
-        {/* H1 — TextPressure variable font effect */}
-        <h1
-          className="text-5xl md:text-7xl tracking-tight text-center leading-[1.1] mb-10 animate-fade-up select-none"
-          style={{ animationDelay: '0.2s' }}
-        >
-          <TextPressure
-            key={`line1-${animKey}`}
-            text="Trade Beyond"
-            minWeight={300}
-            maxWeight={900}
-            minWidth={75}
-            maxWidth={130}
-            minSlant={0}
-            maxSlant={-6}
-            maxDistance={250}
-            className="text-slate-900 block"
-            style={{ fontSize: 'inherit', lineHeight: 'inherit' }}
-          />
-          <TextPressure
-            key={`line2-${animKey}`}
-            text="Global Limits"
-            minWeight={300}
-            maxWeight={900}
-            minWidth={75}
-            maxWidth={130}
-            minSlant={0}
-            maxSlant={-6}
-            maxDistance={250}
-            startDelay={600}
-            className="text-[#2563eb] block"
-            style={{ fontSize: 'inherit', lineHeight: 'inherit' }}
-          />
-        </h1>
-
-        {/* CTA — appears after all 25 chars have revealed (25×50 + 350 ≈ 1.6s) */}
-        <div
-          className="flex items-center justify-center animate-fade-up"
-          style={{ animationDelay: '1.6s' }}
-        >
-          <Link
-            to="/register"
-            className="inline-flex items-center gap-2 px-10 py-4 rounded-full bg-[#2563eb] text-white font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300 font-manrope"
+        <BlurFade delay={0.3} inView yOffset={12} blur="8px" duration={0.6}>
+          <h1
+            className="text-[#0D0F1A] mb-6"
+            style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.03em' }}
           >
-            Start Trading
-            <ArrowRight size={16} />
-          </Link>
-        </div>
+            India Ka Apna{' '}
+            <span className="text-[#2B4EFF]">Funded Trader</span>
+            <br />
+            Platform
+          </h1>
+        </BlurFade>
 
-      </div>
+        <BlurFade delay={0.55} inView>
+          <p className="text-base sm:text-lg text-[#6B7080] max-w-2xl mx-auto mb-10 leading-relaxed">
+            Trade NIFTY, BANKNIFTY & SENSEX in a structured simulated evaluation.
+            Pass the challenge, follow risk rules, and earn real performance rewards.
+          </p>
+        </BlurFade>
 
-      {/* ── Bottom feature strip ─────────────────────────────────────────── */}
-      <div className="relative z-10 border-t-2 border-slate-100 bg-white/80 backdrop-blur-sm">
-        {/* Ticker above feature strip */}
-        <div className="border-b border-slate-100 overflow-hidden py-2.5">
-          <div ref={tickerRef} className="flex gap-10 marquee-track whitespace-nowrap w-max">
-            {tickers.map((t, i) => (
-              <div key={i} className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold text-slate-700 font-manrope">{t.symbol}</span>
-                <span className="text-xs text-slate-500">{t.price}</span>
-                <span className={`flex items-center gap-0.5 text-xs font-semibold ${t.up ? 'text-emerald-600' : 'text-[#2563eb]'}`}>
-                  {t.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                  {t.change}
-                </span>
-                <span className="text-slate-200">|</span>
-              </div>
-            ))}
+        <BlurFade delay={0.75} inView>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link
+              to="/register"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#2B4EFF] text-white font-semibold text-sm shadow-[0_6px_20px_rgba(43,78,255,0.3)] hover:bg-[#4B6AFF] transition-all"
+            >
+              Explore Plans
+              <ArrowRight size={16} />
+            </Link>
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full border border-[#E8EAF0] text-[#0D0F1A] font-semibold text-sm hover:border-[#2B4EFF] hover:text-[#2B4EFF] transition-all"
+            >
+              Free Trial
+            </Link>
           </div>
-        </div>
+        </BlurFade>
 
-        {/* 4-column feature strip */}
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 divide-x-2 divide-slate-100">
-          {features.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div key={f.title} className="flex items-center gap-3 px-6 py-5 group hover:bg-blue-50/50 transition-colors">
-                <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 group-hover:bg-[#2563eb] group-hover:border-[#2563eb] transition-all">
-                  <Icon size={16} className="text-[#2563eb] group-hover:text-white transition-colors" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900 font-manrope leading-tight">{f.title}</div>
-                  <div className="text-[10px] text-slate-400 leading-tight mt-0.5">{f.desc}</div>
-                </div>
-              </div>
-            );
-          })}
+      </div>
+
+      {/* ── Live Ticker Strip ─────────────────────────────────────────────── */}
+      <div className="border-y border-[#E8EAF0] bg-[#FAFBFD] overflow-hidden py-3">
+        <div
+          ref={tickerRef}
+          className="flex gap-8 whitespace-nowrap w-max"
+          style={{
+            animation: 'marquee-smooth 60s linear infinite',
+          }}
+        >
+          {tickers.map((t, i) => (
+            <div key={i} className="flex items-center gap-2.5 shrink-0">
+              <span className="text-xs font-bold text-[#0D0F1A]">{t.symbol}</span>
+              <span className="text-xs text-[#6B7080] tabular-nums transition-all duration-500">{t.price}</span>
+              <span className={`flex items-center gap-0.5 text-xs font-semibold tabular-nums transition-colors duration-500 ${t.up ? 'text-emerald-500' : 'text-red-500'}`}>
+                {t.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                {t.change}
+              </span>
+              <span className="text-[#E8EAF0] ml-2">|</span>
+            </div>
+          ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes marquee-smooth {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+      `}</style>
     </section>
   );
 }

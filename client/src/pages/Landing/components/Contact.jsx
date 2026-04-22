@@ -1,51 +1,31 @@
-import { Phone, Mail, MessageCircle, MessageSquare, MapPin, Clock, ArrowRight, Send } from 'lucide-react';
+import { Phone, Mail, MessageCircle, MessageSquare, Send } from 'lucide-react';
 import { useState } from 'react';
-import { useScrollAnimation, useStaggerAnimation } from '../hooks/useScrollAnimation';
+import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const contactMethods = [
   {
     icon: Phone,
-    title: 'Phone Support',
-    desc: 'Talk to our trading experts directly',
+    label: 'Phone Support',
     value: '+91 1800-123-4567',
     sub: 'Mon–Sat, 9AM–6PM IST',
-    color: 'text-[#2563eb]',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
-    action: 'Call Now',
   },
   {
     icon: Mail,
-    title: 'Email Support',
-    desc: 'Get detailed answers to your queries',
-    value: 'support@bharatfundedtrade.com',
+    label: 'Email Support',
+    value: 'support@bharatfundedtrader.in',
     sub: 'Response within 2 hours',
-    color: 'text-[#2563eb]',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
-    action: 'Send Email',
   },
   {
     icon: MessageCircle,
-    title: 'Live Chat',
-    desc: 'Instant help from our support team',
+    label: 'Live Chat',
     value: 'Chat with us now',
     sub: 'Available 24/7',
-    color: 'text-[#2563eb]',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
-    action: 'Start Chat',
   },
   {
     icon: MessageSquare,
-    title: 'WhatsApp',
-    desc: 'Quick support on WhatsApp',
+    label: 'WhatsApp',
     value: '+91 98765 43210',
     sub: 'Mon–Sat, 9AM–9PM IST',
-    color: 'text-[#2563eb]',
-    bg: 'bg-blue-50',
-    border: 'border-blue-100',
-    action: 'Message Us',
   },
 ];
 
@@ -53,9 +33,7 @@ export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const { ref: headerRef } = useScrollAnimation();
-  const cardsRef           = useStaggerAnimation(0.08, 80);
-  const { ref: formRef }   = useScrollAnimation(0.1);
-  const { ref: infoRef }   = useScrollAnimation(0.1);
+  const { ref: formRef } = useScrollAnimation(0.1);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -64,175 +42,129 @@ export default function Contact() {
   };
 
   return (
-    <section id="contact" className="py-28 px-6 bg-slate-50 relative overflow-hidden">
-      <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-500/4 rounded-full blur-[100px] pointer-events-none" />
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div ref={headerRef} className="scroll-reveal mb-16 text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border-2 border-blue-100 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
-            <span className="text-xs font-semibold text-[#2563eb] uppercase tracking-widest">Contact Us</span>
-          </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight font-manrope mb-4">
-            Need Help? Contact Our{' '}
-            <span className="text-[#2563eb]">Support Team</span>
-          </h2>
-          <p className="text-lg text-slate-500 font-light">
-            We're here to help you 24/7. Reach out through any channel that works best for you.
-          </p>
-        </div>
+    <section id="contact" className="bg-[#0C0C1D] py-14 md:py-24 px-6 relative overflow-hidden">
+      <div className="absolute bottom-0 left-0 w-72 h-72 bg-[rgba(43,78,255,0.06)] rounded-full blur-[100px] pointer-events-none" />
+      <div className="max-w-6xl mx-auto">
 
-        {/* Contact Method Cards */}
-        <div ref={cardsRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-16">
-          {contactMethods.map((method) => {
-            const Icon = method.icon;
-            return (
-              <div key={method.title} className="stagger-child card-light group p-6 flex flex-col gap-4 hover:border-[#2563eb]">
-                <div className={`w-12 h-12 rounded-2xl ${method.bg} border-2 ${method.border} flex items-center justify-center group-hover:scale-110 group-hover:bg-[#2563eb] group-hover:border-[#2563eb] transition-all`}>
-                  <Icon size={22} className={`${method.color} group-hover:text-white transition-colors`} />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-slate-900 font-manrope mb-0.5">{method.title}</div>
-                  <div className="text-xs text-slate-400 mb-3">{method.desc}</div>
-                  <div className={`text-sm font-semibold ${method.color}`}>{method.value}</div>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Clock size={10} className="text-slate-400" />
-                    <span className="text-[10px] text-slate-400">{method.sub}</span>
+        {/* Two-column layout: left info, right form */}
+        <div ref={formRef} className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
+
+          {/* Left — Heading + Contact Methods */}
+          <div ref={headerRef} className="scroll-reveal flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[rgba(43,78,255,0.1)] border border-[rgba(43,78,255,0.2)] mb-5 w-fit">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2B4EFF]" />
+              <span className="text-xs font-semibold text-[#2B4EFF] uppercase tracking-widest">Contact Us</span>
+            </div>
+            <h2
+              className="font-manrope font-[800] tracking-[-0.02em] text-white mb-4"
+              style={{ fontSize: 'clamp(1.875rem, 4vw, 3rem)' }}
+            >
+              Contact Our{' '}
+              <span className="text-[#2B4EFF]">Support</span> Team
+            </h2>
+            <p className="text-base sm:text-lg text-[#9AA0B4] font-light mb-10">
+              We're here to help you 24/7. Reach out through any channel that works best for you.
+            </p>
+
+            {/* Contact list */}
+            <div className="space-y-5">
+              {contactMethods.map((method) => {
+                const Icon = method.icon;
+                return (
+                  <div key={method.label} className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-[rgba(43,78,255,0.1)] border border-[rgba(43,78,255,0.2)] flex items-center justify-center shrink-0">
+                      <Icon size={18} className="text-[#2B4EFF]" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white font-manrope">{method.label}</div>
+                      <div className="text-sm text-[#2B4EFF] font-semibold">{method.value}</div>
+                      <div className="text-xs text-[#9AA0B4] mt-0.5">{method.sub}</div>
+                    </div>
                   </div>
-                </div>
-                <button className={`mt-auto flex items-center gap-1.5 text-xs font-bold ${method.color} group-hover:gap-2.5 transition-all`}>
-                  {method.action} <ArrowRight size={12} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </div>
 
-        {/* Contact Form + Office Info */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form */}
-          <div ref={formRef} className="scroll-reveal-left lg:col-span-2 bg-white border-2 border-slate-200 rounded-2xl p-8 shadow-sm">
-            <div className="text-lg font-bold text-slate-900 font-manrope mb-6">Send Us a Message</div>
+          {/* Right — Form */}
+          <div className="bg-[#141428] border border-[rgba(255,255,255,0.08)] rounded-2xl p-6 sm:p-8">
+            <div className="text-lg font-bold text-white font-manrope mb-6">Send Us a Message</div>
 
             {submitted ? (
               <div className="flex flex-col items-center justify-center py-12 gap-4">
-                <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] flex items-center justify-center">
                   <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
                     <path d="M6 14l6 6 10-12" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </div>
-                <div className="text-base font-bold text-slate-900 font-manrope">Message Sent!</div>
-                <div className="text-sm text-slate-500">We'll get back to you within 2 hours.</div>
+                <div className="text-base font-bold text-white font-manrope">Message Sent!</div>
+                <div className="text-sm text-[#9AA0B4]">We'll get back to you within 2 hours.</div>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Your Name</label>
+                    <label className="text-xs font-semibold text-[#9AA0B4] mb-1.5 block">Your Name</label>
                     <input
                       type="text"
                       placeholder="Rahul Sharma"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-[#2563eb] focus:bg-white transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] text-white text-sm placeholder-[rgba(154,160,180,0.5)] focus:outline-none focus:border-[#2B4EFF] focus:bg-[rgba(255,255,255,0.08)] transition-all"
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Email Address</label>
+                    <label className="text-xs font-semibold text-[#9AA0B4] mb-1.5 block">Email Address</label>
                     <input
                       type="email"
                       placeholder="rahul@example.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-[#2563eb] focus:bg-white transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] text-white text-sm placeholder-[rgba(154,160,180,0.5)] focus:outline-none focus:border-[#2B4EFF] focus:bg-[rgba(255,255,255,0.08)] transition-all"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Subject</label>
+                  <label className="text-xs font-semibold text-[#9AA0B4] mb-1.5 block">Subject</label>
                   <select
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-[#2563eb] focus:bg-white transition-all"
+                    className="w-full px-4 py-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] text-white text-sm focus:outline-none focus:border-[#2B4EFF] focus:bg-[rgba(255,255,255,0.08)] transition-all"
                     required
                   >
-                    <option value="">Select a topic</option>
-                    <option>Account Opening</option>
-                    <option>Fund Deposit / Withdrawal</option>
-                    <option>Technical Issue</option>
-                    <option>Trading Query</option>
-                    <option>Other</option>
+                    <option value="" className="bg-[#141428] text-white">Select a topic</option>
+                    <option className="bg-[#141428] text-white">Account Opening</option>
+                    <option className="bg-[#141428] text-white">Fund Deposit / Withdrawal</option>
+                    <option className="bg-[#141428] text-white">Technical Issue</option>
+                    <option className="bg-[#141428] text-white">Trading Query</option>
+                    <option className="bg-[#141428] text-white">Other</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Message</label>
+                  <label className="text-xs font-semibold text-[#9AA0B4] mb-1.5 block">Message</label>
                   <textarea
                     rows={5}
                     placeholder="Describe your query in detail..."
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm focus:outline-none focus:border-[#2563eb] focus:bg-white transition-all resize-none"
+                    className="w-full px-4 py-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.05)] text-white text-sm placeholder-[rgba(154,160,180,0.5)] focus:outline-none focus:border-[#2B4EFF] focus:bg-[rgba(255,255,255,0.08)] transition-all resize-none"
                     required
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4 rounded-xl bg-[#2563eb] text-white font-bold text-sm hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                  className="w-full py-4 rounded-full bg-[#2B4EFF] text-white font-bold text-sm hover:bg-[#4B6AFF] transition-all shadow-[0_6px_20px_rgba(43,78,255,0.3)] flex items-center justify-center gap-2"
                 >
                   <Send size={16} />
                   Send Message
                 </button>
               </form>
             )}
-          </div>
-
-          {/* Office Info */}
-          <div ref={infoRef} className="scroll-reveal-right flex flex-col gap-5">
-            {/* Office Card */}
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm hover:border-blue-200 transition-all">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border-2 border-blue-100 flex items-center justify-center">
-                  <MapPin size={18} className="text-[#2563eb]" />
-                </div>
-                <div className="text-sm font-bold text-slate-900 font-manrope">Our Office</div>
-              </div>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                BharatFundedTrade Financial Services Pvt. Ltd.<br />
-                14th Floor, Infinity Tower,<br />
-                Bandra Kurla Complex,<br />
-                Mumbai – 400 051, Maharashtra
-              </p>
-            </div>
-
-            {/* Hours Card */}
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-sm hover:border-blue-200 transition-all">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 border-2 border-blue-100 flex items-center justify-center">
-                  <Clock size={18} className="text-[#2563eb]" />
-                </div>
-                <div className="text-sm font-bold text-slate-900 font-manrope">Support Hours</div>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { day: 'Monday – Friday', time: '9:00 AM – 6:00 PM' },
-                  { day: 'Saturday', time: '9:00 AM – 2:00 PM' },
-                  { day: 'Sunday', time: 'Closed' },
-                  { day: 'Live Chat', time: '24 / 7' },
-                ].map((row) => (
-                  <div key={row.day} className="flex justify-between text-xs">
-                    <span className="text-slate-500">{row.day}</span>
-                    <span className={`font-semibold ${row.time === 'Closed' ? 'text-red-400' : row.time === '24 / 7' ? 'text-emerald-600' : 'text-slate-700'}`}>
-                      {row.time}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>

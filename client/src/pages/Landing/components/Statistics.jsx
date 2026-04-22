@@ -1,36 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
-import { TrendingUp, Users, BarChart3, Download } from 'lucide-react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const stats = [
   {
-    icon: BarChart3,
-    value: 1000000,
-    display: '1M+',
-    label: 'Orders Processed',
-    sub: 'Every month, reliably',
+    value: 50000,
+    display: '50K+',
+    label: 'Evaluations Completed',
   },
   {
-    icon: Users,
-    value: 150000,
-    display: '150K+',
-    label: 'Active Clients',
-    sub: 'Across India & globally',
+    value: 10000,
+    display: '10K+',
+    label: 'Active Traders',
   },
   {
-    icon: TrendingUp,
     value: 5,
-    display: '₹5M+',
-    label: 'Monthly Trading Volume',
-    sub: 'Processed securely',
+    display: '₹5Cr+',
+    label: 'Rewards Paid Out',
     prefix: '₹',
   },
   {
-    icon: Download,
-    value: 900000,
-    display: '900K+',
-    label: 'App Downloads',
-    sub: 'Android & iOS combined',
+    value: 3,
+    display: '3',
+    label: 'Index Instruments',
   },
 ];
 
@@ -65,7 +56,6 @@ function CountUp({ target, prefix = '', isVisible }) {
 export default function Statistics() {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef(null);
-  const { ref: trustRef } = useScrollAnimation(0.1);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -77,78 +67,41 @@ export default function Statistics() {
   }, []);
 
   return (
-    <section id="stats" className="relative">
-
-      {/* ── Dark blue stat band ── */}
-      <div ref={sectionRef} className="stat-band py-20 px-6 relative overflow-hidden">
-        {/* Background pattern */}
-        <div
-          className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-        {/* Glow orbs */}
-        <div className="absolute top-0 left-1/4 w-64 h-64 bg-white/5 rounded-full blur-[80px]" />
-        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-[80px]" />
-
-        <div className="max-w-7xl mx-auto relative">
-          {/* Header */}
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 border-2 border-white/20 mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-white" />
-              <span className="text-xs font-semibold text-white uppercase tracking-widest">Our Numbers</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight font-manrope mb-3">
-              Trusted by Thousands of Traders
-            </h2>
-            <p className="text-blue-100/80 text-lg font-light">
-              Real numbers that reflect the trust our clients place in us every day.
-            </p>
-          </div>
-
-          {/* Stats row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, i) => {
-              const Icon = stat.icon;
-              return (
-                <div
-                  key={stat.label}
-                  className="group text-center p-6 rounded-2xl bg-white/10 border-2 border-white/20 hover:bg-white/15 hover:border-white/30 transition-all duration-300 backdrop-blur-sm"
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                >
-                  <div className="w-12 h-12 rounded-xl bg-white/15 border-2 border-white/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                    <Icon size={22} className="text-white" />
-                  </div>
-                  <div className="text-4xl md:text-5xl font-bold text-white font-manrope mb-2">
-                    <CountUp target={stat.value} prefix={stat.prefix || ''} isVisible={isVisible} />
-                  </div>
-                  <div className="text-sm font-semibold text-blue-100 font-manrope">{stat.label}</div>
-                  <div className="text-xs text-blue-200/70 mt-1">{stat.sub}</div>
-                </div>
-              );
-            })}
-          </div>
+    <section id="stats" ref={sectionRef} className="bg-[#0C0C1D] py-24 px-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <h2
+            className="font-manrope text-white mb-4"
+            style={{
+              fontSize: 'clamp(2rem, 4.5vw, 3.5rem)',
+              fontWeight: 800,
+              lineHeight: 1.1,
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Trusted by Thousands of Traders
+          </h2>
+          <p className="text-base sm:text-lg text-[rgba(154,160,180,0.8)] font-light max-w-2xl mx-auto">
+            Real numbers that reflect the trust our clients place in us every day.
+          </p>
         </div>
-      </div>
 
-      {/* ── Trust badges strip ── */}
-      <div ref={trustRef} className="scroll-reveal bg-white py-8 px-6 border-b-2 border-slate-100">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-8">
-          {[
-            { label: 'SEBI Registered',        icon: '🏛️' },
-            { label: 'NSE Member',              icon: '📊' },
-            { label: 'BSE Member',              icon: '📈' },
-            { label: 'ISO 27001 Certified',     icon: '🔒' },
-            { label: '256-bit SSL Encryption',  icon: '🛡️' },
-          ].map((item) => (
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+          {stats.map((stat, i) => (
             <div
-              key={item.label}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 border-2 border-slate-200 text-sm text-slate-600 font-medium hover:border-blue-200 hover:bg-blue-50 hover:text-[#2563eb] transition-all"
+              key={stat.label}
+              className="bg-[#141428] border border-[rgba(255,255,255,0.08)] rounded-2xl p-6 sm:p-8 text-center"
+              style={{ animationDelay: `${i * 0.1}s` }}
             >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
+              <div
+                className="text-4xl sm:text-5xl font-extrabold text-white font-manrope mb-2"
+                style={{ letterSpacing: '-0.04em' }}
+              >
+                <CountUp target={stat.value} prefix={stat.prefix || ''} isVisible={isVisible} />
+              </div>
+              <div className="text-sm text-[#9AA0B4] mt-2">{stat.label}</div>
             </div>
           ))}
         </div>

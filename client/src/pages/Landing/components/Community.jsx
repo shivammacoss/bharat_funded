@@ -1,4 +1,4 @@
-import { Users, Star, ArrowRight } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { useScrollAnimation, useStaggerAnimation } from '../hooks/useScrollAnimation';
 
 const experts = [
@@ -7,10 +7,7 @@ const experts = [
     role: 'Equity & Derivatives Trader',
     avatar: 'RS',
     followers: '48.2K',
-    trades: '12,400+',
-    returns: '+34.2%',
     rating: 4.9,
-    tags: ['NSE', 'Options', 'Swing Trading'],
     color: 'bg-blue-600',
   },
   {
@@ -18,10 +15,7 @@ const experts = [
     role: 'Forex & Crypto Analyst',
     avatar: 'PM',
     followers: '31.7K',
-    trades: '8,900+',
-    returns: '+28.6%',
     rating: 4.8,
-    tags: ['Forex', 'BTC', 'Technical Analysis'],
     color: 'bg-violet-600',
   },
   {
@@ -29,10 +23,7 @@ const experts = [
     role: 'Commodity & Index Trader',
     avatar: 'AK',
     followers: '22.5K',
-    trades: '6,200+',
-    returns: '+41.8%',
     rating: 4.7,
-    tags: ['Gold', 'Crude Oil', 'NIFTY'],
     color: 'bg-amber-600',
   },
   {
@@ -40,71 +31,54 @@ const experts = [
     role: 'US Stocks & ETF Specialist',
     avatar: 'SP',
     followers: '19.3K',
-    trades: '4,800+',
-    returns: '+22.4%',
     rating: 4.9,
-    tags: ['US Stocks', 'ETFs', 'Long-term'],
     color: 'bg-emerald-600',
   },
 ];
 
-const communityStats = [
-  { value: '50K+', label: 'Community Members' },
-  { value: '200+', label: 'Expert Traders' },
-  { value: '1,000+', label: 'Daily Signals' },
-  { value: '95%', label: 'Satisfaction Rate' },
-];
-
 export default function Community() {
   const { ref: headerRef } = useScrollAnimation();
-  const { ref: statsRef }  = useScrollAnimation(0.1);
-  const cardsRef           = useStaggerAnimation(0.08, 90);
-  const { ref: ctaRef }    = useScrollAnimation(0.1);
+  const cardsRef = useStaggerAnimation(0.08, 90);
 
   return (
-    <section className="py-28 px-6 bg-white relative overflow-hidden">
-      <div className="absolute bottom-0 right-0 w-72 h-72 bg-blue-500/4 rounded-full blur-[100px] pointer-events-none" />
-      <div className="max-w-7xl mx-auto">
+    <section className="bg-white py-24 px-6 relative overflow-hidden">
+      <div className="absolute bottom-0 right-0 w-72 h-72 bg-[rgba(43,78,255,0.04)] rounded-full blur-[100px] pointer-events-none" />
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div ref={headerRef} className="scroll-reveal mb-16 text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border-2 border-blue-100 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
-            <span className="text-xs font-semibold text-[#2563eb] uppercase tracking-widest">Community</span>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[rgba(43,78,255,0.08)] border border-[rgba(43,78,255,0.15)] mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#2B4EFF]" />
+            <span className="text-xs font-semibold text-[#2B4EFF] uppercase tracking-widest">Community</span>
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight font-manrope mb-4">
-            Learn from Top{' '}
-            <span className="text-[#2563eb]">Trading Experts</span>
+          <h2
+            className="font-manrope font-[800] tracking-[-0.02em] text-[#0D0F1A] mb-4"
+            style={{ fontSize: 'clamp(1.875rem, 4vw, 3rem)' }}
+          >
+            Learn from Top Trading{' '}
+            <span className="text-[#2B4EFF]">Experts</span>
           </h2>
-          <p className="text-lg text-slate-500 font-light">
+          <p className="text-base sm:text-lg text-[#6B7080] font-light">
             Join a growing community of professional traders and financial educators who trust our platform.
           </p>
         </div>
 
-        {/* Community Stats */}
-        <div ref={statsRef} className="scroll-reveal grid grid-cols-2 md:grid-cols-4 gap-4 mb-14">
-          {communityStats.map((stat) => (
-            <div key={stat.label} className="text-center p-5 rounded-2xl bg-slate-50 border-2 border-slate-200 hover:border-[#2563eb] hover:bg-blue-50/30 transition-all">
-              <div className="text-2xl font-bold font-manrope text-[#2563eb]">{stat.value}</div>
-              <div className="text-sm text-slate-500 mt-1">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-
         {/* Expert Cards */}
-        <div ref={cardsRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div ref={cardsRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {experts.map((expert) => (
             <div
               key={expert.name}
-              className="stagger-child card-light group p-6 flex flex-col gap-4 hover:border-[#2563eb]"
+              className="stagger-child group p-6 flex flex-col gap-4 rounded-2xl bg-white border border-[#E8EAF0] shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:border-[#2B4EFF] transition-all"
             >
               {/* Avatar & Name */}
               <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full ${expert.color} flex items-center justify-center text-white font-bold text-sm font-manrope shrink-0`}>
+                <div
+                  className={`w-12 h-12 rounded-full ${expert.color} flex items-center justify-center text-white font-bold text-sm font-manrope shrink-0`}
+                >
                   {expert.avatar}
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-900 font-manrope">{expert.name}</div>
-                  <div className="text-xs text-slate-400">{expert.role}</div>
+                  <div className="text-sm font-bold text-[#0D0F1A] font-manrope">{expert.name}</div>
+                  <div className="text-xs text-[#6B7080]">{expert.role}</div>
                 </div>
               </div>
 
@@ -114,60 +88,27 @@ export default function Community() {
                   <Star
                     key={i}
                     size={12}
-                    className={i < Math.floor(expert.rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'}
+                    className={
+                      i < Math.floor(expert.rating)
+                        ? 'text-amber-400 fill-amber-400'
+                        : 'text-[#E8EAF0] fill-[#E8EAF0]'
+                    }
                   />
                 ))}
-                <span className="text-xs text-slate-500 ml-1">{expert.rating}</span>
+                <span className="text-xs text-[#6B7080] ml-1">{expert.rating}</span>
               </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="text-center p-2 rounded-lg bg-slate-50 border border-slate-100">
-                  <div className="text-xs font-bold text-slate-800">{expert.followers}</div>
-                  <div className="text-[10px] text-slate-400">Followers</div>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-slate-50 border border-slate-100">
-                  <div className="text-xs font-bold text-slate-800">{expert.trades}</div>
-                  <div className="text-[10px] text-slate-400">Trades</div>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-                  <div className="text-xs font-bold text-emerald-600">{expert.returns}</div>
-                  <div className="text-[10px] text-slate-400">Returns</div>
-                </div>
-              </div>
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1.5">
-                {expert.tags.map((tag) => (
-                  <span key={tag} className="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
-                    {tag}
-                  </span>
-                ))}
+              {/* Followers */}
+              <div className="text-xs text-[#6B7080]">
+                <span className="font-bold text-[#0D0F1A]">{expert.followers}</span> followers
               </div>
 
               {/* Follow Button */}
-              <button className="w-full py-2 rounded-xl border border-[#2563eb]/20 text-[#2563eb] text-xs font-bold uppercase tracking-wider hover:bg-[#2563eb] hover:text-white transition-all group-hover:border-[#2563eb]">
+              <button className="w-full py-2 rounded-full border border-[rgba(43,78,255,0.2)] text-[#2B4EFF] text-xs font-bold uppercase tracking-wider hover:bg-[#2B4EFF] hover:text-white transition-all group-hover:border-[#2B4EFF]">
                 Follow Expert
               </button>
             </div>
           ))}
-        </div>
-
-        {/* Bottom CTA */}
-        <div ref={ctaRef} className="scroll-reveal mt-12 text-center">
-          <div className="inline-flex items-center gap-3 p-4 pr-6 rounded-full bg-slate-50 border-2 border-slate-200 hover:border-[#2563eb] hover:bg-blue-50/50 transition-all cursor-pointer group">
-            <div className="flex -space-x-2">
-              {['bg-blue-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500'].map((c, i) => (
-                <div key={i} className={`w-8 h-8 rounded-full ${c} border-2 border-white flex items-center justify-center text-white text-xs font-bold`}>
-                  {['R', 'P', 'A', 'S'][i]}
-                </div>
-              ))}
-            </div>
-            <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900">
-              Join <strong className="text-slate-900">50,000+</strong> traders in our community
-            </span>
-            <ArrowRight size={16} className="text-[#2563eb] group-hover:translate-x-1 transition-transform" />
-          </div>
         </div>
       </div>
     </section>

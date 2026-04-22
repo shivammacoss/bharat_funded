@@ -1,72 +1,66 @@
 import { useState } from 'react';
-import { ChevronDown, HelpCircle, MessageCircle, Phone, Mail } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const faqs = [
   {
-    q: 'What documents are required to open an account?',
-    a: 'You need a valid PAN card, Aadhaar card, a bank account with cancelled cheque or bank statement, and a passport-size photograph. The entire process is digital and takes less than 10 minutes.',
+    q: 'What is Bharat Funded Trader?',
+    a: 'Bharat Funded Trader is a simulated prop firm evaluation platform built for Indian intraday traders. You trade with virtual capital under defined rules and earn rewards upon successful completion.',
   },
   {
-    q: 'Is there any brokerage charge?',
-    a: 'No! BharatFundedTrade operates on a zero brokerage model for equity delivery trades. For intraday and F&O trades, we charge a flat fee of ₹20 per order, regardless of trade size. No hidden charges.',
+    q: 'Is this legal in India?',
+    a: 'Yes. Bharat Funded Trader operates as a simulated evaluation platform. It is not a broker or SEBI-registered intermediary. Simulated trading is legal in India.',
   },
   {
-    q: 'How can I withdraw funds?',
-    a: 'Fund withdrawals are processed instantly to your registered bank account. Simply go to the Funds section, enter the withdrawal amount, and confirm. Funds are credited within 24 hours on working days.',
+    q: 'Which instruments can I trade?',
+    a: 'You can trade NIFTY, BANKNIFTY, and SENSEX futures and options (buying only). Options selling is currently not supported.',
   },
   {
-    q: 'Is trading safe on your platform?',
-    a: 'Absolutely. We use 256-bit SSL encryption, two-factor authentication (2FA), and are registered with SEBI. Your funds are held in a separate client account and are never used for any other purpose.',
+    q: 'What are the risk rules?',
+    a: 'Each plan has a Max Daily Loss limit, a Max Total Drawdown limit, and intraday square-off at 3:15 PM. Breaking any rule disqualifies the current evaluation.',
   },
   {
-    q: 'How long does account verification take?',
-    a: 'Account verification is typically completed within 24 hours on working days. With our instant KYC process using Aadhaar OTP, many accounts are verified in under 10 minutes.',
+    q: 'How do I get paid?',
+    a: 'After passing the evaluation and completing KYC verification, you become eligible for performance-based rewards paid directly to your verified Indian bank account.',
   },
   {
-    q: 'Can I trade on mobile?',
-    a: 'Yes! Our mobile app is available on both Android (Google Play) and iOS (App Store). It offers the full trading experience including charts, order placement, portfolio tracking, and fund management.',
-  },
-  {
-    q: 'What markets can I trade on BharatFundedTrade?',
-    a: 'You can trade NSE & BSE equities, derivatives (F&O), commodities (MCX), forex currency pairs, US stocks & ETFs, and cryptocurrencies — all from a single unified account.',
-  },
-  {
-    q: 'Is there a minimum deposit requirement?',
-    a: 'There is no minimum deposit to open an account. However, you need sufficient margin in your account to place trades. For equity delivery, you can start with as little as ₹100.',
+    q: 'Is my evaluation fee refundable?',
+    a: 'Evaluation fees are non-refundable except in case of payment errors. However, upon successful completion and first approved payout, your evaluation fee benefit is credited back as part of your reward.',
   },
 ];
 
 function FAQItem({ faq, isOpen, onToggle }) {
   return (
     <div
-      className={`border-2 rounded-xl overflow-hidden transition-all duration-300 ${
-        isOpen ? 'border-[#2563eb] bg-blue-50/30' : 'border-slate-200 bg-white hover:border-blue-200'
+      className={`border rounded-2xl overflow-hidden transition-all duration-300 mb-3 ${
+        isOpen
+          ? 'border-[#2B4EFF] bg-[rgba(43,78,255,0.03)]'
+          : 'border-[#E8EAF0] bg-white hover:border-[rgba(43,78,255,0.3)]'
       }`}
     >
       <button
         className="w-full flex items-center justify-between px-5 py-4 text-left gap-4"
         onClick={onToggle}
       >
-        <span className={`text-sm font-semibold font-manrope transition-colors ${isOpen ? 'text-[#2563eb]' : 'text-slate-800'}`}>
+        <span className={`text-sm sm:text-base font-semibold font-manrope transition-colors ${isOpen ? 'text-[#2B4EFF]' : 'text-[#0D0F1A]'}`}>
           {faq.q}
         </span>
         <ChevronDown
           size={16}
-          className={`shrink-0 transition-all duration-300 ${isOpen ? 'rotate-180 text-[#2563eb]' : 'text-slate-400'}`}
+          className={`shrink-0 transition-all duration-300 ${isOpen ? 'rotate-180 text-[#2B4EFF]' : 'text-[#6B7080]'}`}
         />
       </button>
       <div
         className="overflow-hidden"
         style={{
-          maxHeight: isOpen ? '200px' : '0',
+          maxHeight: isOpen ? '500px' : '0',
           opacity: isOpen ? 1 : 0,
           transition: 'max-height 0.4s ease, opacity 0.3s ease',
         }}
       >
         <div className="px-5 pb-4">
-          <div className="h-px bg-blue-100 mb-3" />
-          <p className="text-sm text-slate-600 leading-relaxed">{faq.a}</p>
+          <div className="h-px bg-[rgba(43,78,255,0.15)] mb-3" />
+          <p className="text-sm sm:text-base text-[#6B7080] leading-relaxed">{faq.a}</p>
         </div>
       </div>
     </div>
@@ -76,36 +70,31 @@ function FAQItem({ faq, isOpen, onToggle }) {
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState(0);
   const { ref: headerRef } = useScrollAnimation();
-  const { ref: leftRef } = useScrollAnimation(0.1);
-  const { ref: rightRef } = useScrollAnimation(0.1);
+  const { ref: contentRef } = useScrollAnimation(0.1);
 
   return (
-    <section className="py-28 px-6 bg-white relative overflow-hidden">
-      {/* Decorative */}
-      <div className="absolute top-0 left-0 w-72 h-72 bg-blue-500/4 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="max-w-7xl mx-auto">
-
-        {/* Header */}
-        <div ref={headerRef} className="scroll-reveal mb-16 text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border-2 border-blue-100 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
-            <span className="text-xs font-semibold text-[#2563eb] uppercase tracking-widest">FAQ</span>
-          </div>
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight font-manrope mb-4">
-            Frequently Asked{' '}
-            <span className="text-[#2563eb]">Questions</span>
-          </h2>
-          <p className="text-lg text-slate-500 font-light">
-            Everything you need to know about BharatFundedTrade.
-          </p>
-        </div>
+    <section className="bg-white py-14 md:py-24 px-6">
+      <div className="max-w-6xl mx-auto">
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div ref={headerRef} className="scroll-reveal grid grid-cols-1 lg:grid-cols-3 gap-12 lg:gap-16">
 
-          {/* LEFT — FAQ accordion (2/3 width) */}
-          <div ref={leftRef} className="scroll-reveal-left lg:col-span-2 space-y-3">
+          {/* LEFT — Heading (1/3) */}
+          <div className="lg:col-span-1">
+            <h2
+              className="font-extrabold text-[#0D0F1A] tracking-[-0.02em] font-manrope mb-4"
+              style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}
+            >
+              Frequently Asked{' '}
+              <span className="text-[#2B4EFF]">Questions</span>
+            </h2>
+            <p className="text-base sm:text-lg text-[#6B7080] font-light">
+              Everything you need to know before you start.
+            </p>
+          </div>
+
+          {/* RIGHT — FAQ accordion (2/3) */}
+          <div ref={contentRef} className="scroll-reveal lg:col-span-2">
             {faqs.map((faq, i) => (
               <FAQItem
                 key={i}
@@ -114,72 +103,6 @@ export default function FAQ() {
                 onToggle={() => setOpenIndex(openIndex === i ? -1 : i)}
               />
             ))}
-          </div>
-
-          {/* RIGHT — Help card (1/3 width) */}
-          <div ref={rightRef} className="scroll-reveal-right flex flex-col gap-5">
-
-            {/* Still have questions card */}
-            <div className="bg-[#2563eb] rounded-2xl p-7 text-white relative overflow-hidden">
-              {/* Pattern */}
-              <div
-                className="absolute inset-0 opacity-10 pointer-events-none"
-                style={{
-                  backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
-                  backgroundSize: '24px 24px',
-                }}
-              />
-              <div className="relative">
-                <div className="w-12 h-12 rounded-xl bg-white/20 border-2 border-white/30 flex items-center justify-center mb-5">
-                  <HelpCircle size={22} className="text-white" />
-                </div>
-                <h3 className="text-lg font-bold font-manrope mb-2">More Questions?</h3>
-                <p className="text-blue-100 text-sm leading-relaxed mb-6">
-                  Our support team is available 24/7 to help you with any queries about trading, accounts, or funds.
-                </p>
-                <a
-                  href="#contact"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#2563eb] text-sm font-bold hover:bg-blue-50 transition-all"
-                >
-                  Contact Support
-                </a>
-              </div>
-            </div>
-
-            {/* Quick contact options */}
-            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 space-y-4">
-              <div className="text-sm font-bold text-slate-700 font-manrope mb-2">Reach us directly</div>
-              {[
-                { icon: Phone, label: 'Phone Support', value: '+91 98765 43210', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-                { icon: Mail, label: 'Email Support', value: 'support@bharatfundedtrade.com', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-                { icon: MessageCircle, label: 'Live Chat', value: 'Available 24/7', color: 'text-[#2563eb]', bg: 'bg-blue-50', border: 'border-blue-100' },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.label} className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl ${item.bg} border-2 ${item.border} flex items-center justify-center shrink-0`}>
-                      <Icon size={15} className={item.color} />
-                    </div>
-                    <div>
-                      <div className="text-xs text-slate-400">{item.label}</div>
-                      <div className="text-sm font-semibold text-slate-800">{item.value}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Response time badge */}
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border-2 border-emerald-100">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
-              </span>
-              <div>
-                <div className="text-xs font-bold text-emerald-700">Average Response Time</div>
-                <div className="text-sm font-bold text-emerald-800 font-manrope">Under 2 minutes</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

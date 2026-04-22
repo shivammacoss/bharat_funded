@@ -683,7 +683,7 @@ function HomePage() {
           {banners.length === 0 ? (
             <div className="default-banner">
               <div className="banner-content">
-                <h2>WELCOME TO BHARATFUNDEDTRADE</h2>
+                <h2>WELCOME TO BHARAT FUNDED TRADER</h2>
                 <p>THE BEST CHOICE FOR FUTURE TRADING</p>
               </div>
             </div>

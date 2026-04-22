@@ -10,7 +10,7 @@ export default function RefundPolicy() {
       <section className="terms-section">
         <h2>1. General</h2>
         <p>
-          This Refund Policy explains how refundable amounts, chargebacks, and related disputes are handled on BharatFundedTrade.
+          This Refund Policy explains how refundable amounts, chargebacks, and related disputes are handled on Bharat Funded Trader.
           Trading profits and losses from market activity are not &quot;refunds&quot; in the sense of reversing completed
           trades; they follow market execution and Platform rules.
         </p>

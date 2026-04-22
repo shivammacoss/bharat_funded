@@ -5,8 +5,8 @@
 @tailwind utilities;
 
 :root {
-  --accent-blue: #2563eb;
-  --accent-blue-glow: rgba(37, 99, 235, 0.3);
+  --accent-blue: #2B4EFF;
+  --accent-blue-glow: rgba(43, 78, 255, 0.15);
   --gradient-angle: 0deg;
 }
 
@@ -49,7 +49,7 @@ input[type="number"] {
 
 /* Custom selection */
 .landing-page ::selection {
-  background: #2563eb;
+  background: rgba(59,91,255,0.3);
   color: white;
 }
 
@@ -58,10 +58,10 @@ input[type="number"] {
   width: 6px;
 }
 .landing-page ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #F0F2F8;
 }
 .landing-page ::-webkit-scrollbar-thumb {
-  background: #2563eb;
+  background: #2B4EFF;
   border-radius: 3px;
 }
 
@@ -93,8 +93,8 @@ input[type="number"] {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(37, 99, 235, 0.25); }
-  50% { box-shadow: 0 0 40px rgba(37, 99, 235, 0.45); }
+  0%, 100% { box-shadow: 0 0 20px rgba(43, 78, 255, 0.25); }
+  50% { box-shadow: 0 0 40px rgba(43, 78, 255, 0.45); }
 }
 
 @keyframes spin {
@@ -140,14 +140,15 @@ input[type="number"] {
   inset: 0 0 auto 0;
   height: 100px;
   pointer-events: none;
-  background: linear-gradient(to bottom, rgba(248,250,252,0.95), transparent);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.9), transparent);
   -webkit-mask-image: linear-gradient(to bottom, white, transparent);
   mask-image: linear-gradient(to bottom, white, transparent);
 }
 
 /* Text stroke */
 .landing-page .text-stroke {
-  -webkit-text-stroke: 1px rgba(15, 23, 42, 0.08);
+  -webkit-text-stroke: 2px rgba(0, 0, 0, 0.04);
+  -webkit-text-fill-color: transparent;
   color: transparent;
 }
 
@@ -171,10 +172,10 @@ input[type="number"] {
   position: relative;
   overflow: hidden;
   border-radius: 9999px;
-  background: rgba(37, 99, 235, 0.06);
+  background: rgba(43, 78, 255, 0.06);
   cursor: pointer;
   transition: transform 0.2s ease;
-  border: 1px solid rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(43, 78, 255, 0.15);
 }
 
 .landing-page .spin-border-btn:hover .spin-ring {
@@ -185,7 +186,7 @@ input[type="number"] {
   position: absolute;
   inset: -100%;
   animation: spin 3s linear infinite;
-  background: conic-gradient(from 90deg at 50% 50%, transparent 0%, transparent 75%, #2563eb 100%);
+  background: conic-gradient(from 90deg at 50% 50%, transparent 0%, transparent 75%, #2B4EFF 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -199,7 +200,7 @@ input[type="number"] {
 }
 
 .landing-page .card-light:hover {
-  border-color: rgba(37, 99, 235, 0.3);
+  border-color: rgba(43, 78, 255, 0.3);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
 }
@@ -258,19 +259,19 @@ input[type="number"] {
 /* ── Section divider ─────────────────────────────────────────────────────── */
 .landing-page .section-divider {
   height: 3px;
-  background: linear-gradient(90deg, transparent, #2563eb 30%, #2563eb 70%, transparent);
+  background: linear-gradient(90deg, transparent, #2B4EFF 30%, #2B4EFF 70%, transparent);
   opacity: 0.25;
 }
 
 /* ── Dark section (testimonials) ────────────────────────────────────────── */
 .landing-page .section-dark {
-  background: #0f172a;
-  color: #f8fafc;
+  background: #1A1F2E;
+  color: #FFFFFF;
 }
 
 /* ── Stat band ───────────────────────────────────────────────────────────── */
 .landing-page .stat-band {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #2B4EFF 0%, #4B6AFF 100%);
 }
 
 /* ── Market circle card ─────────────────────────────────────────────────── */
@@ -279,7 +280,7 @@ input[type="number"] {
 }
 .landing-page .market-circle:hover {
   transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 20px 40px rgba(43, 78, 255, 0.18);
 }
 
 /* Font family helper */

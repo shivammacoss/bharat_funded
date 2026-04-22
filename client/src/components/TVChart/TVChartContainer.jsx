@@ -80,7 +80,7 @@ const TVChartContainer = ({
             ],
             charts_storage_url: 'https://saveload.tradingview.com',
             charts_storage_api_version: '1.1',
-            client_id: 'bharatfundedtrade.local',
+            client_id: 'bharatfundedtrader.local',
             user_id: 'public_user',
             fullscreen: false,
             autosize: true,

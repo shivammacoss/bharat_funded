@@ -130,7 +130,7 @@ function SubAdminLayout() {
         try {
           const sessionData = JSON.parse(atob(impersonateData));
           if (sessionData.admin && sessionData.admin.role === 'sub_admin') {
-            // Store BharatFundedTrade impersonated session in sessionStorage (tab-specific, won't affect other tabs)
+            // Store Bharat Funded Trader impersonated session in sessionStorage (tab-specific, won't affect other tabs)
             sessionStorage.setItem('bharatfunded-impersonate-token', sessionData.token);
             sessionStorage.setItem('bharatfunded-impersonate-admin', JSON.stringify(sessionData.admin));
             // Remove impersonate param from URL

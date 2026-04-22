@@ -1,191 +1,110 @@
-import { Star, Quote } from 'lucide-react';
+import { useState } from 'react';
 import { useScrollAnimation, useStaggerAnimation } from '../hooks/useScrollAnimation';
 
-const testimonials = [
+const markets = [
   {
-    name: 'Vikram Nair',
-    role: 'Full-time Trader, Mumbai',
-    avatar: 'VN',
-    rating: 5,
-    review:
-      'BharatFundedTrade has completely transformed how I trade. The zero brokerage model alone saves me thousands every month. The execution speed is unmatched — orders fill in milliseconds.',
-    color: 'bg-blue-600',
-    market: 'NSE & Derivatives',
+    name: 'NIFTY 50',
+    exchange: 'NSE',
+    type: 'Index Futures & Options',
+    lotSize: '25 units',
+    description: 'India\'s benchmark index tracking the top 50 companies. The most liquid derivative in India — ideal for intraday scalping and momentum strategies.',
+    highlight: true,
   },
   {
-    name: 'Ananya Singh',
-    role: 'Forex Trader, Bangalore',
-    avatar: 'AS',
-    rating: 5,
-    review:
-      'I have tried many platforms but BharatFundedTrade stands out for its clean interface and tight spreads on forex pairs. The mobile app is incredibly smooth and reliable.',
-    color: 'bg-violet-600',
-    market: 'Forex & Crypto',
+    name: 'BANKNIFTY',
+    exchange: 'NSE',
+    type: 'Index Futures & Options',
+    lotSize: '15 units',
+    description: 'Tracks 12 most liquid banking stocks. Known for higher volatility and wider intraday ranges — favoured by experienced traders who thrive on fast moves.',
+    highlight: false,
   },
   {
-    name: 'Rohit Gupta',
-    role: 'Retail Investor, Delhi',
-    avatar: 'RG',
-    rating: 5,
-    review:
-      'As a beginner, I was worried about complexity. BharatFundedTrade made it so easy to start. The educational resources and daily market insights helped me grow my portfolio by 28% in 6 months.',
-    color: 'bg-emerald-600',
-    market: 'Stocks & ETFs',
-  },
-  {
-    name: 'Meera Krishnan',
-    role: 'Portfolio Manager, Chennai',
-    avatar: 'MK',
-    rating: 5,
-    review:
-      'The advanced charting tools and technical indicators are on par with professional-grade software. Managing multiple client accounts is seamless with the multi-account feature.',
-    color: 'bg-amber-600',
-    market: 'Multi-Asset',
+    name: 'SENSEX',
+    exchange: 'BSE',
+    type: 'Index Futures & Options',
+    lotSize: '10 units',
+    description: 'India\'s oldest index representing 30 well-established companies. Lower lot size makes it accessible for tighter risk management and smaller positions.',
+    highlight: false,
   },
 ];
 
 export default function Testimonials() {
-  const { ref: bannerRef } = useScrollAnimation(0.1);
   const { ref: headerRef } = useScrollAnimation(0.1);
-  const { ref: ratingRef } = useScrollAnimation(0.1);
-  const cardsRef = useStaggerAnimation(0.08, 100);
+  // removed stagger animation to prevent cards disappearing
+  const [activeIndex, setActiveIndex] = useState(0);
 
   return (
-    <section className="py-0">
+    <section className="bg-[#0C0C1D] py-14 md:py-24 px-6">
+      <div className="max-w-6xl mx-auto">
 
-      {/* ── Blue Banner Quote ── */}
-      <div ref={bannerRef} className="scroll-reveal w-full bg-[#2563eb] py-20 px-6 relative overflow-hidden">
-        {/* Background grid */}
-        <div
-          className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-        <div className="max-w-4xl mx-auto text-center relative">
-          <div className="flex justify-center gap-1 text-white/80 mb-5">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={22} className="fill-white text-white" />
-            ))}
-          </div>
-          <Quote size={40} className="text-white/20 mx-auto mb-4" />
-          <h3 className="text-2xl md:text-4xl font-bold text-white font-manrope leading-tight mb-8">
-            "BharatFundedTrade has completely transformed how we trade. What used to take hours of analysis now takes minutes. The platform is fast, reliable, and truly zero brokerage."
-          </h3>
-          <div className="flex items-center justify-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-white font-bold text-sm border-2 border-white/30">
-              AK
-            </div>
-            <div className="text-left">
-              <div className="text-white font-bold text-base">Arjun Kapoor</div>
-              <div className="text-white/70 text-sm">Head of Trading, FinEdge Capital</div>
-            </div>
-          </div>
+        {/* Header */}
+        <div ref={headerRef} className="scroll-reveal mb-10 md:mb-16 text-center max-w-3xl mx-auto">
+          <h2
+            className="font-extrabold text-white tracking-[-0.02em] font-manrope mb-4"
+            style={{ fontSize: 'clamp(2rem, 4vw, 3rem)' }}
+          >
+            Trade India's Top{' '}
+            <span className="text-[#2B4EFF]">Indices</span>
+          </h2>
+          <p className="text-base sm:text-lg text-[#9AA0B4] font-light">
+            We focus on what Indian intraday traders know best — NIFTY, BANKNIFTY, and SENSEX. No forex, no crypto, no distractions.
+          </p>
         </div>
-      </div>
 
-      {/* ── Dark Testimonials Section ── */}
-      <div className="section-dark py-28 px-6 relative overflow-hidden">
-        {/* Subtle blue glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-blue-600/8 rounded-full blur-[120px] pointer-events-none" />
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-5 pointer-events-none"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }}
-        />
-
-        <div className="max-w-7xl mx-auto relative">
-
-          {/* Header */}
-          <div ref={headerRef} className="scroll-reveal mb-12 text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/15 border-2 border-blue-500/30 mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb]" />
-              <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest">Testimonials</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight font-manrope mb-4">
-              What Our{' '}
-              <span className="text-[#2563eb]">Clients Say</span>
-            </h2>
-            <p className="text-lg text-slate-400 font-light">
-              Real feedback from real traders who use BharatFundedTrade every day.
-            </p>
-          </div>
-
-          {/* Overall Rating */}
-          <div ref={ratingRef} className="scroll-reveal flex flex-col sm:flex-row items-center justify-center gap-6 mb-12 p-6 rounded-2xl bg-white/5 border-2 border-white/10 max-w-lg mx-auto backdrop-blur-sm">
-            <div className="text-center">
-              <div className="text-5xl font-bold text-white font-manrope">4.9</div>
-              <div className="flex justify-center gap-0.5 mt-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">Overall Rating</div>
-            </div>
-            <div className="w-px h-16 bg-white/10 hidden sm:block" />
-            <div className="space-y-1.5">
-              {[
-                { stars: 5, pct: 82 },
-                { stars: 4, pct: 13 },
-                { stars: 3, pct: 4 },
-                { stars: 2, pct: 1 },
-              ].map((row) => (
-                <div key={row.stars} className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400 w-4">{row.stars}</span>
-                  <Star size={10} className="fill-amber-400 text-amber-400" />
-                  <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-400 rounded-full" style={{ width: `${row.pct}%` }} />
-                  </div>
-                  <span className="text-xs text-slate-400">{row.pct}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Testimonial Cards */}
-          <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {testimonials.map((t) => (
+        {/* Market Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {markets.map((m, index) => {
+            const isActive = index === activeIndex;
+            return (
               <div
-                key={t.name}
-                className="stagger-child group bg-white/5 border-2 border-white/10 rounded-2xl p-7 flex flex-col gap-5 hover:border-[#2563eb]/40 hover:bg-white/8 transition-all duration-300 backdrop-blur-sm"
+                key={m.name}
+                onMouseEnter={() => setActiveIndex(index)}
+                className={`rounded-2xl p-6 sm:p-8 flex flex-col gap-4 cursor-pointer transition-all duration-300 ${
+                  isActive
+                    ? 'bg-[#2B4EFF] text-white border border-[rgba(255,255,255,0.15)] scale-[1.02]'
+                    : 'bg-[#141428] text-white border border-[rgba(255,255,255,0.08)]'
+                }`}
               >
-                {/* Top */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-full ${t.color} flex items-center justify-center text-white font-bold text-sm shrink-0 border-2 border-white/20`}>
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-white font-manrope">{t.name}</div>
-                      <div className="text-xs text-slate-400">{t.role}</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-semibold text-[#2563eb] bg-blue-500/15 border-2 border-blue-500/25 px-2 py-1 rounded-full">
-                    {t.market}
+                {/* Exchange badge + type */}
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    isActive ? 'bg-[rgba(255,255,255,0.2)] text-white' : 'bg-[rgba(43,78,255,0.15)] text-[#2B4EFF]'
+                  }`}>
+                    {m.exchange}
+                  </span>
+                  <span className={`text-xs ${isActive ? 'text-[rgba(255,255,255,0.7)]' : 'text-[#9AA0B4]'}`}>
+                    {m.type}
                   </span>
                 </div>
 
-                {/* Stars */}
-                <div className="flex gap-0.5">
-                  {[...Array(t.rating)].map((_, i) => (
-                    <Star key={i} size={13} className="fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
+                {/* Name */}
+                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ letterSpacing: '-0.03em' }}>
+                  {m.name}
+                </h3>
 
-                {/* Review */}
-                <p className="text-sm text-slate-300 leading-relaxed italic">
-                  "{t.review}"
+                {/* Description */}
+                <p className={`text-sm sm:text-base leading-relaxed flex-1 ${
+                  isActive ? 'text-[rgba(255,255,255,0.85)]' : 'text-[#9AA0B4]'
+                }`}>
+                  {m.description}
                 </p>
 
-                {/* Bottom divider */}
-                <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                {/* Lot size */}
+                <div className={`pt-4 border-t ${isActive ? 'border-[rgba(255,255,255,0.15)]' : 'border-[rgba(255,255,255,0.08)]'}`}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className={`text-xs ${isActive ? 'text-[rgba(255,255,255,0.6)]' : 'text-[#9AA0B4]'}`}>Lot Size</p>
+                      <p className="text-sm font-bold">{m.lotSize}</p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${isActive ? 'text-[rgba(255,255,255,0.6)]' : 'text-[#9AA0B4]'}`}>Allowed</p>
+                      <p className="text-sm font-bold">Futures & Options Buy</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
     </section>

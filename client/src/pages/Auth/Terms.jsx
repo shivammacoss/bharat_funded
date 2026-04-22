@@ -6,7 +6,7 @@ function Terms() {
     <div className="auth-container">
       <div className="auth-card terms-card">
         <div className="auth-header">
-          <h1 className="auth-logo">BharatFundedTrade</h1>
+          <h1 className="auth-logo">Bharat Funded Trader</h1>
           <p className="auth-subtitle">Terms & Conditions</p>
         </div>
 
@@ -70,7 +70,7 @@ function Terms() {
           <section className="terms-section">
             <h2>4. Company's Role</h2>
             <p>
-              BharatFundedTrade provides <strong>technical support and platform services only</strong>. 
+              Bharat Funded Trader provides <strong>technical support and platform services only</strong>. 
               We do not provide:
             </p>
             <ul>
@@ -87,7 +87,7 @@ function Terms() {
 
           <section className="terms-section">
             <h2>5. Your Responsibilities</h2>
-            <p>By using BharatFundedTrade, you acknowledge and agree that:</p>
+            <p>By using Bharat Funded Trader, you acknowledge and agree that:</p>
             <ul>
               <li>All investment decisions are your own responsibility</li>
               <li>You have read and understood the risks involved</li>
@@ -111,7 +111,7 @@ function Terms() {
             <h2>7. Regulatory Compliance</h2>
             <p>
               You are responsible for ensuring that your trading activities comply with 
-              all applicable laws and regulations in your jurisdiction. BharatFundedTrade does not 
+              all applicable laws and regulations in your jurisdiction. Bharat Funded Trader does not 
               provide services in jurisdictions where such services are prohibited.
             </p>
           </section>
@@ -119,7 +119,7 @@ function Terms() {
           <section className="terms-section disclaimer-section">
             <h2>📋 Final Disclaimer</h2>
             <p>
-              By registering on BharatFundedTrade, you confirm that you have read, understood, 
+              By registering on Bharat Funded Trader, you confirm that you have read, understood, 
               and agree to all the terms and conditions stated above. You acknowledge 
               that trading involves substantial risk and that you are solely responsible 
               for your trading decisions and their outcomes.

@@ -1,6 +1,6 @@
 /**
  * ========================================
- * BHARATFUNDEDTRADE LANDING PAGE CONFIGURATION
+ * BHARAT FUNDED TRADER LANDING PAGE CONFIGURATION
  * ========================================
  * 
  * Edit this file to customize your landing page.
@@ -13,64 +13,63 @@ const landingConfig = {
 
   // ─── BRAND ─────────────────────────────────────
   brand: {
-    name: 'BharatFundedTrade',
-    tagline: 'India Ka Apna Trading Platform',
+    name: 'Bharat Funded Trader',
+    tagline: 'India Ka Apna Funded Trader Platform',
     logo: '/landing/img/bharatfunded-logo.svg',
   },
 
   // ─── HERO SECTION ──────────────────────────────
   hero: {
-    title: 'Trade Global Markets',
-    highlight: 'With Confidence',
-    subtitle: 'Access Forex, Stocks, Crypto, Indices & Commodities — all from one powerful platform with real-time charts, advanced order types, and lightning-fast execution.',
+    title: 'India Ka Apna',
+    highlight: 'Funded Trader Platform',
+    subtitle: 'Trade NIFTY, BANKNIFTY & SENSEX in a structured simulated evaluation. Pass the challenge, follow risk rules, and earn real performance rewards. Built for serious Indian intraday traders.',
     primaryCTA: {
-      text: 'Start Trading Now',
+      text: 'Explore Plans',
       link: '/register',
     },
     secondaryCTA: {
-      text: 'Login to Account',
+      text: 'Try For Free',
       link: '/login',
     },
     // Floating instrument badges shown in hero
-    floatingBadges: ['XAUUSD', 'BTCUSD', 'EURUSD', 'AAPL', 'US100'],
+    floatingBadges: ['Rules-Based Evaluation', 'Simulated Trading Only', 'Intraday Focused', "India's #1 Prop Evaluation"],
   },
 
   // ─── FEATURES SECTION ─────────────────────────
   // Add, remove, or reorder items. Each needs icon, title, description.
   features: [
     {
+      icon: '📡',
+      title: 'Live Market Data',
+      description: 'Real-time NIFTY & BANKNIFTY feeds with fast tick updates inside a clean trading terminal.',
+    },
+    {
+      icon: '🛡️',
+      title: 'Built-in Risk Rules',
+      description: 'Max Daily Loss and Max Drawdown enforced automatically — trade with discipline by design.',
+    },
+    {
       icon: '⚡',
-      title: 'Lightning Execution',
-      description: 'Execute trades in milliseconds with our optimized engine supporting Hedging, Netting, and Binary modes.',
+      title: 'Instant Order Execution',
+      description: 'Fast simulated order execution with live PnL tracking and open position monitoring.',
+    },
+    {
+      icon: '🇮🇳',
+      title: 'India-First Platform',
+      description: 'INR payments, Indian market hours, and instruments designed for Indian index traders.',
     },
     {
       icon: '📊',
-      title: 'Advanced Charts',
-      description:
-        'Professional charts powered by TradingView (third-party): indicators, timeframes, and drawing tools — see site footer for TradingView terms and attribution.',
-    },
-    {
-      icon: '🔐',
-      title: 'Bank-Grade Security',
-      description: 'Enterprise-level encryption, 2FA authentication, and real-time fraud detection to protect your funds.',
-    },
-    {
-      icon: '🌍',
-      title: '500+ Instruments',
-      description: 'Trade Forex, Stocks, Crypto, Indices, Commodities & Metals — all from a single account.',
-    },
-    {
-      icon: '📱',
-      title: 'Trade Anywhere',
-      description: 'Fully responsive platform that works beautifully on desktop, tablet, and mobile devices.',
+      title: 'Performance Analytics',
+      description: 'Daily session reports, behavior tracking, and consistency scores to help you improve.',
     },
   ],
 
   // ─── STATS SECTION ────────────────────────────
   stats: [
-    { value: '50K+', label: 'Active Traders' },
-    { value: '$2B+', label: 'Monthly Volume' },
-    { value: '500+', label: 'Instruments' },
+    { value: '10K+', label: 'Active Traders' },
+    { value: '₹50Cr+', label: 'Simulated Volume' },
+    { value: '3', label: 'Instruments' },
     { value: '99.9%', label: 'Uptime' },
   ],
 
@@ -78,18 +77,23 @@ const landingConfig = {
   steps: [
     {
       step: '01',
-      title: 'Create Account',
-      description: 'Sign up in under 60 seconds. No paperwork, no hassle.',
+      title: 'Choose Your Plan',
+      description: 'Pick a Qualifier tier that matches your trading style. Each plan comes with a defined simulated capital size and clear rules.',
     },
     {
       step: '02',
-      title: 'Fund Your Wallet',
-      description: 'Deposit via UPI, Bank Transfer, or Crypto. Instant processing.',
+      title: 'Trade & Follow Rules',
+      description: 'Trade intraday on NIFTY/BANKNIFTY within our risk rules — Max Daily Loss, Max Drawdown, and Intraday Square-off by 3:15 PM.',
     },
     {
       step: '03',
-      title: 'Start Trading',
-      description: 'Choose your instrument, set your strategy, and execute trades instantly.',
+      title: 'Hit Your Targets',
+      description: 'Achieve your profit target while staying within loss limits. Consistency and discipline are rewarded, not just big wins.',
+    },
+    {
+      step: '04',
+      title: 'Earn Your Rewards',
+      description: 'Pass the evaluation, complete KYC verification, and unlock your performance-based reward payout directly to your bank account.',
     },
   ],
 
@@ -97,58 +101,57 @@ const landingConfig = {
   testimonials: [
     {
       name: 'Rajesh K.',
-      role: 'Forex Trader',
+      role: 'Intraday Trader',
       avatar: 'RK',
-      text: 'BharatFundedTrade changed the way I trade. The execution speed is unmatched and the interface is incredibly intuitive.',
+      text: 'Bharat Funded Trader gave me the structure I needed. The rules keep me disciplined and the payouts are real.',
       rating: 5,
     },
     {
       name: 'Priya M.',
-      role: 'Crypto Investor',
+      role: 'Options Trader',
       avatar: 'PM',
-      text: 'Finally a platform that handles both crypto and forex seamlessly. The advanced tools have been a game changer for me.',
+      text: 'Finally a funded evaluation platform built for Indian traders. NIFTY and BANKNIFTY with INR — exactly what I wanted.',
       rating: 5,
     },
     {
       name: 'Amit S.',
       role: 'Day Trader',
       avatar: 'AS',
-      text: 'The advanced charting tools and multiple order types give me everything I need. Best trading platform I\'ve used.',
+      text: 'The simulated environment feels real. Clear rules, transparent payouts, and a platform that respects Indian market hours.',
       rating: 5,
     },
   ],
 
   // ─── CTA BANNER ───────────────────────────────
   ctaBanner: {
-    title: 'Ready to Start Your Trading Journey?',
-    subtitle: 'Join thousands of traders who trust BharatFundedTrade for their daily trading needs.',
-    buttonText: 'Create Free Account',
+    title: 'Ready to Start Your Funded Trading Journey?',
+    subtitle: 'Join thousands of traders who trust Bharat Funded Trader for structured evaluations and real rewards.',
+    buttonText: 'Start Your Journey',
     buttonLink: '/register',
   },
 
   // ─── FOOTER ───────────────────────────────────
   footer: {
-    description: 'A next-generation trading platform built for speed, security, and simplicity.',
+    description: 'India Ka Apna Funded Trader Platform. Simulated evaluations for serious Indian intraday traders.',
     links: {
       Platform: [
-        { text: 'Login', href: '/login' },
-        { text: 'Register', href: '/register' },
+        { text: 'Home', href: '#home' },
+        { text: 'How It Works', href: '#howItWorks' },
+        { text: 'Evaluation Plans', href: '/register' },
+      ],
+      Resources: [
+        { text: 'Proof & Payouts', href: '#' },
+        { text: 'FAQs', href: '#' },
+        { text: 'Contact Us', href: '#contact' },
+      ],
+      Legal: [
+        { text: 'Privacy Policy', href: '/privacy-policy' },
         { text: 'Terms & Conditions', href: '/terms' },
-      ],
-      Markets: [
-        { text: 'Forex', href: '/register' },
-        { text: 'Crypto', href: '/register' },
-        { text: 'Stocks', href: '/register' },
-        { text: 'Indices', href: '/register' },
-      ],
-      Support: [
-        { text: 'Help Center', href: '#' },
-        { text: 'Contact Us', href: '#' },
-        { text: 'FAQ', href: '#' },
+        { text: 'Refund Policy', href: '/refund-policy' },
       ],
     },
-    copyright: `© ${new Date().getFullYear()} BharatFundedTrade. All rights reserved.`,
-    disclaimer: 'Trading involves risk. Past performance is not indicative of future results.',
+    copyright: `© ${new Date().getFullYear()} Bharat Funded Trader. All rights reserved.`,
+    disclaimer: 'Bharat Funded Trader is not a broker and does not execute live trades on NSE or BSE. The platform provides simulated evaluations and performance-based reward programs. Trading involves risk. Please read all terms before participating.',
   },
 
   // ─── SECTION VISIBILITY ───────────────────────

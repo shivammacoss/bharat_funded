@@ -54,6 +54,15 @@ import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
 import RefundPolicy from './pages/Legal/RefundPolicy';
 import RiskDisclaimer from './pages/Legal/RiskDisclaimer';
 import NewLandingPage from './pages/Landing/NewLandingPage';
+import AboutPage from './pages/Landing/pages/AboutPage';
+import HowItWorksPage from './pages/Landing/pages/HowItWorksPage';
+import PricingPage from './pages/Landing/pages/PricingPage';
+import FAQsPage from './pages/Landing/pages/FAQsPage';
+import LandingContactPage from './pages/Landing/pages/ContactPage';
+import InstrumentsPage from './pages/Landing/pages/InstrumentsPage';
+import BlogPage from './pages/Landing/pages/BlogPage';
+import ResultsPage from './pages/Landing/pages/ResultsPage';
+import ScrollToTop from './pages/Landing/components/ScrollToTop';
 import SubAdminLogin from './pages/Admin/SubAdminLogin';
 import BrokerLogin from './pages/Admin/BrokerLogin';
 import SubAdminLayout from './pages/SubAdmin/SubAdminLayout';
@@ -504,7 +513,7 @@ function HomePageContent() {
         {banners.length === 0 ? (
           <div className="default-banner">
             <div className="banner-content">
-              <h2>WELCOME TO BHARATFUNDEDTRADE</h2>
+              <h2>WELCOME TO BHARAT FUNDED TRADER</h2>
               <p>THE BEST CHOICE FOR FUTURE TRADING</p>
             </div>
           </div>
@@ -2381,7 +2390,7 @@ function App({ user, onLogout }) {
       {/* Header with Navigation */}
       <header className="header">
         <div className="header-left">
-          <span className="logo">BharatFundedTrade</span>
+          <span className="logo">Bharat Funded Trader</span>
         </div>
         <div className="header-nav">
           <button
@@ -4495,8 +4504,17 @@ function AppRouter() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/landing" element={<NewLandingPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/faqs" element={<FAQsPage />} />
+        <Route path="/contact-us" element={<LandingContactPage />} />
+        <Route path="/instruments" element={<InstrumentsPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/results" element={<ResultsPage />} />
         <Route path="/login" element={
           auth.isAuthenticated ? <Navigate to="/app" replace /> : <Login onLogin={handleLogin} />
         } />

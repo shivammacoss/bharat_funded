@@ -6,7 +6,7 @@ function Settings() {
   const { API_URL } = useOutletContext();
   const location = useLocation();
   const [settings, setSettings] = useState({
-    siteName: 'BharatFundedTrade',
+    siteName: 'Bharat Funded Trader',
     siteUrl: '',
     supportEmail: '',
     maintenanceMode: false,

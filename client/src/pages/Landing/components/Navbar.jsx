@@ -3,12 +3,14 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const navLinks = [
-  { label: 'Home', href: '#home' },
-  { label: 'Markets', href: '#markets' },
-  { label: 'Platform', href: '#platform' },
-  { label: 'Education', href: '#education' },
-  { label: 'Tools', href: '#tools' },
-  { label: 'Company', href: '#contact' },
+  { label: 'Home', to: '/' },
+  { label: 'How it works', to: '/how-it-works' },
+  { label: 'Instruments', to: '/instruments' },
+  { label: 'Blog', to: '/blog' },
+  { label: 'Results', to: '/results' },
+  { label: 'FAQ', to: '/faqs' },
+  { label: 'About', to: '/about' },
+  { label: 'Contact', to: '/contact-us' },
 ];
 
 export default function Navbar() {
@@ -22,108 +24,84 @@ export default function Navbar() {
   }, []);
 
   return (
-    <>
-      {/* Top gradient blur */}
-      <div className="gradient-blur" />
+    <header
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+        scrolled
+          ? 'bg-white/95 backdrop-blur-xl shadow-[0_1px_0_#E8EAF0]'
+          : 'bg-transparent'
+      }`}
+    >
+      <div className="max-w-6xl mx-auto px-6 h-[72px] flex items-center justify-between">
 
-      <header className="fixed top-0 left-0 w-full z-50 pt-5 px-4">
-        <nav
-          className={`max-w-6xl mx-auto flex items-center justify-between backdrop-blur-xl border rounded-full px-6 py-3 shadow-lg transition-all duration-300 ${
-            scrolled
-              ? 'bg-white/95 border-slate-200 shadow-slate-200/60'
-              : 'bg-white/80 border-slate-200/80'
-          }`}
-        >
-          {/* Logo */}
-          <a href="#home" className="flex items-center gap-2 group">
-            <img 
-              src="/landing/img/logo1.png" 
-              alt="BharatFundedTrade" 
-              className="h-8 w-auto group-hover:scale-105 transition-transform duration-300"
-            />
-          </a>
+        <Link to="/" className="flex items-center gap-2 shrink-0">
+          <img
+            src="/landing/img/bharat funded trader landscape.png"
+            alt="Bharat Funded Trader"
+            className="h-9 w-auto"
+          />
+        </Link>
 
-          {/* Desktop Links */}
-          <div className="hidden md:flex items-center gap-7">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors duration-200 relative group"
-              >
-                {link.label}
-                <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-[#2563eb] group-hover:w-full transition-all duration-300" />
-              </a>
-            ))}
-          </div>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-8">
+          {navLinks.map((link) => (
             <Link
-              to="/login"
-              className="hidden md:block text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              key={link.label}
+              to={link.to}
+              className="text-sm font-medium text-[#0D0F1A] hover:text-[#2B4EFF] transition-colors"
             >
-              Login
+              {link.label}
             </Link>
+          ))}
+        </div>
 
-            {/* Spin border CTA button */}
-            <Link
-              to="/register"
-              className="spin-border-btn group inline-flex items-center justify-center px-5 py-2"
-            >
-              <span className="spin-ring" />
-              <span className="absolute inset-[1px] rounded-full bg-slate-50" />
-              <span className="relative z-10 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#2563eb]">
-                Open Account
-                <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
-              </span>
-            </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/login"
+            className="hidden md:block text-sm font-medium text-[#0D0F1A] hover:text-[#2B4EFF] transition-colors"
+          >
+            Login
+          </Link>
+          <Link
+            to="/register"
+            className="hidden sm:inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border-2 border-[#2B4EFF] text-[#2B4EFF] text-sm font-semibold hover:bg-[#2B4EFF] hover:text-white transition-all"
+          >
+            Get Started
+            <ArrowRight size={14} />
+          </Link>
 
-            {/* Mobile toggle */}
-            <button
-              className="md:hidden text-slate-500 hover:text-slate-900 transition-colors p-1"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label="Toggle menu"
-            >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
-        </nav>
+          <button
+            className="md:hidden text-[#0D0F1A] p-1"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </div>
 
-        {/* Mobile Menu */}
-        <div
-          className={`md:hidden max-w-6xl mx-auto mt-2 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-xl overflow-hidden transition-all duration-300 shadow-lg ${
-            mobileOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <div className="px-6 py-4 flex flex-col gap-4">
+      {mobileOpen && (
+        <div className="md:hidden bg-white border-t border-[#E8EAF0] shadow-lg">
+          <div className="max-w-6xl mx-auto px-6 py-6 flex flex-col gap-4">
             {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors py-1 border-b border-slate-100"
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className="flex gap-3 pt-2">
               <Link
-                to="/login"
-                className="flex-1 text-center py-2.5 rounded-full border border-slate-200 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-all"
+                key={link.label}
+                to={link.to}
+                onClick={() => setMobileOpen(false)}
+                className="text-base font-medium text-[#0D0F1A] hover:text-[#2B4EFF] transition-colors py-2 border-b border-[#E8EAF0]"
               >
+                {link.label}
+              </Link>
+            ))}
+            <div className="flex gap-3 pt-3">
+              <Link to="/login" className="flex-1 text-center py-3 rounded-full border border-[#E8EAF0] text-sm font-semibold text-[#0D0F1A]">
                 Login
               </Link>
-              <Link
-                to="/register"
-                className="flex-1 text-center py-2.5 rounded-full bg-[#2563eb] text-sm font-bold text-white hover:bg-blue-700 transition-all"
-              >
-                Open Account
+              <Link to="/register" className="flex-1 text-center py-3 rounded-full bg-[#2B4EFF] text-sm font-semibold text-white">
+                Get Started
               </Link>
             </div>
           </div>
         </div>
-      </header>
-    </>
+      )}
+    </header>
   );
 }
