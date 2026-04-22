@@ -290,6 +290,11 @@ connectDB().then(async () => {
 
 // ============== API ROUTES ==============
 
+// Root endpoint - returns 200 OK
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Bharat Funded Trader API', timestamp: new Date().toISOString() });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
