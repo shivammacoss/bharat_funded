@@ -33,6 +33,12 @@ function PropChallengePage() {
   const [selectedTierIndex, setSelectedTierIndex] = useState(0);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -60,9 +66,9 @@ function PropChallengePage() {
         body: JSON.stringify({ challengeId: id, tierIndex: Number(tierIndex) || 0 })
       });
       const d = await res.json();
-      if (d.success) { setSelectedId(null); setAgreeTerms(false); alert(`${d.message}\nAccount ID: ${d.account.accountId}`); fetchAll(); }
-      else alert(d.message || 'Purchase failed');
-    } catch (e) { alert('Error purchasing challenge'); }
+      if (d.success) { setSelectedId(null); setAgreeTerms(false); showToast(`${d.message} - Account ID: ${d.account.accountId}`, 'success'); fetchAll(); }
+      else showToast(d.message || 'Purchase failed', 'error');
+    } catch (e) { showToast('Error purchasing challenge', 'error'); }
     setBuying(null);
   };
 
@@ -531,6 +537,33 @@ function PropChallengePage() {
         }
         @media (max-width: 600px) {
           .prop-plans-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          padding: '14px 24px',
+          borderRadius: '12px',
+          background: toast.type === 'error' ? '#ef4444' : '#10b981',
+          color: '#fff',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+          zIndex: 9999,
+          maxWidth: '400px',
+          animation: 'slideIn 0.3s ease'
+        }}>
+          {toast.type === 'error' ? '❌ ' : '✅ '}{toast.message}
+        </div>
+      )}
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
       `}</style>
     </div>
