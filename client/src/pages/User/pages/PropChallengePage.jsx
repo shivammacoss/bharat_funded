@@ -24,6 +24,8 @@ function PropChallengePage() {
   const { user } = useOutletContext();
   const navigate = useNavigate();
   const [challenges, setChallenges] = useState([]);
+  // First-paint skeleton only — we never flip back to true during
+  // re-fetches. buyChallenge just patches state directly.
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState(null);
   const [propStatus, setPropStatus] = useState({ enabled: false });
@@ -40,21 +42,38 @@ function PropChallengePage() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  // Fire all three fetches in parallel, flip loading off as soon as the
+  // first one returns so the UI paints progressively. No blocking
+  // full-page "Loading…" screen.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const kickedFetches = [
+        fetch(`${API_URL}/api/prop/status`).then(r => r.json())
+          .then(s => { if (!cancelled && s.success) setPropStatus(s); })
+          .catch(() => {}),
+        fetch(`${API_URL}/api/prop/challenges`).then(r => r.json())
+          .then(c => { if (!cancelled && c.success) setChallenges(c.challenges); })
+          .catch(() => {}),
+        fetch(`${API_URL}/api/prop/my-accounts`, { headers: getAuthHeaders() }).then(r => r.json())
+          .then(a => { if (!cancelled && a.success) setMyAccounts(a.accounts); })
+          .catch(() => {})
+      ];
+      // Flip loading off as soon as challenges land (the main content);
+      // the other two panels just fill in when they arrive.
+      await Promise.race(kickedFetches);
+      if (!cancelled) setLoading(false);
+      await Promise.all(kickedFetches);
+    };
+    run();
+    return () => { cancelled = true; };
+  }, []);
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const [s, c, a] = await Promise.all([
-        fetch(`${API_URL}/api/prop/status`).then(r => r.json()),
-        fetch(`${API_URL}/api/prop/challenges`).then(r => r.json()),
-        fetch(`${API_URL}/api/prop/my-accounts`, { headers: getAuthHeaders() }).then(r => r.json()),
-      ]);
-      if (s.success) setPropStatus(s);
-      if (c.success) setChallenges(c.challenges);
-      if (a.success) setMyAccounts(a.accounts);
-    } catch (e) { console.error(e); }
-    setLoading(false);
+  const refetchMyAccounts = () => {
+    fetch(`${API_URL}/api/prop/my-accounts`, { headers: getAuthHeaders() })
+      .then(r => r.json())
+      .then(a => { if (a.success) setMyAccounts(a.accounts); })
+      .catch(() => {});
   };
 
   const buyChallenge = async (id, tierIndex) => {
@@ -66,9 +85,20 @@ function PropChallengePage() {
         body: JSON.stringify({ challengeId: id, tierIndex: Number(tierIndex) || 0 })
       });
       const d = await res.json();
-      if (d.success) { setSelectedId(null); setAgreeTerms(false); showToast(`${d.message} - Account ID: ${d.account.accountId}`, 'success'); fetchAll(); }
-      else showToast(d.message || 'Purchase failed', 'error');
-    } catch (e) { showToast('Error purchasing challenge', 'error'); }
+      if (d.success) {
+        setSelectedId(null);
+        setAgreeTerms(false);
+        showToast(`${d.message} - Account ID: ${d.account.accountId}`, 'success');
+        // Patch the accounts list in place so the banner updates without
+        // blanking the page again.
+        if (d.account) setMyAccounts(prev => [d.account, ...prev]);
+        refetchMyAccounts();
+      } else {
+        showToast(d.message || 'Purchase failed', 'error');
+      }
+    } catch (e) {
+      showToast('Error purchasing challenge', 'error');
+    }
     setBuying(null);
   };
 
@@ -115,7 +145,29 @@ function PropChallengePage() {
 
   const selectedTier = planTiers[selectedTierIndex] || planTiers[0] || { fundSize: 0, challengeFee: 0 };
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}>Loading challenges...</div>;
+  if (loading) {
+    // Shimmer-style skeleton that mirrors the real page layout so the user
+    // never stares at bare "Loading…" text. Animations degrade gracefully.
+    const shimmer = {
+      background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-tertiary, var(--bg-primary)) 50%, var(--bg-secondary) 100%)',
+      backgroundSize: '200% 100%',
+      animation: 'bft-shimmer 1.2s ease-in-out infinite',
+      borderRadius: '10px'
+    };
+    return (
+      <div style={{ padding: '20px', maxWidth: 1200, margin: '0 auto' }}>
+        <style>{`@keyframes bft-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+          {[1,2,3].map(i => <div key={i} style={{ ...shimmer, height: 64, flex: 1 }} />)}
+        </div>
+        <div style={{ ...shimmer, height: 88, marginBottom: 20 }} />
+        <div style={{ height: 18, width: 180, ...shimmer, marginBottom: 14 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+          {[1,2,3,4].map(i => <div key={i} style={{ ...shimmer, height: 140 }} />)}
+        </div>
+      </div>
+    );
+  }
   if (!propStatus.enabled) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}><div style={{ textAlign: 'center' }}><div style={{ fontSize: '40px', marginBottom: '12px' }}>🏆</div><h2 style={{ color: 'var(--text-primary)' }}>Prop Trading</h2><p>Challenges not available right now.</p></div></div>;
 
   const sty = {

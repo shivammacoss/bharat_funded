@@ -54,12 +54,21 @@ function MyChallengesPage() {
   };
 
   if (loading) {
+    // Skeleton that mirrors the real page: stat pills + 3 card placeholders.
+    const shimmer = {
+      background: 'linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-tertiary, var(--bg-primary)) 50%, var(--bg-secondary) 100%)',
+      backgroundSize: '200% 100%',
+      animation: 'bft-shimmer 1.2s ease-in-out infinite',
+      borderRadius: '10px'
+    };
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh', color: 'var(--text-secondary)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
-          <p>Loading your challenges...</p>
+      <div style={{ padding: '20px', maxWidth: 960, margin: '0 auto' }}>
+        <style>{`@keyframes bft-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+        <div style={{ ...shimmer, height: 32, width: 200, marginBottom: 16 }} />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+          {[1,2,3,4,5].map(i => <div key={i} style={{ ...shimmer, height: 34, width: 92 }} />)}
         </div>
+        {[1,2,3].map(i => <div key={i} style={{ ...shimmer, height: 150, marginBottom: 12 }} />)}
       </div>
     );
   }

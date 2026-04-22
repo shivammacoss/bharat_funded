@@ -189,7 +189,7 @@ function SettingsPage() {
     padding: '10px 16px',
     borderRadius: 12,
     border: 'none',
-    background: isActive ? 'var(--accent)' : 'var(--bg-secondary)',
+    background: isActive ? 'var(--accent-primary)' : 'var(--bg-secondary)',
     color: isActive ? '#fff' : 'var(--text-secondary)',
     fontSize: 13,
     fontWeight: 500,
@@ -204,7 +204,7 @@ function SettingsPage() {
     borderRadius: 16,
     padding: 24,
     marginBottom: 16,
-    border: '1px solid var(--border)',
+    border: '1px solid var(--border-color)',
     position: 'relative',
     zIndex: 1,
     width: '100%',
@@ -225,12 +225,15 @@ function SettingsPage() {
     width: '100%',
     padding: '14px 16px',
     borderRadius: 12,
-    border: '1px solid var(--border)',
-    background: 'var(--bg-secondary)',
+    // `--bg-primary` contrasts with the parent section card
+    // (`--bg-secondary`) so the input boxes are clearly visible in both
+    // themes. Adding a subtle shadow gives the field a filled look.
+    border: '1px solid var(--border-color)',
+    background: 'var(--bg-primary)',
     color: 'var(--text-primary)',
     fontSize: 14,
     outline: 'none',
-    transition: 'border-color 0.2s ease',
+    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
     boxSizing: 'border-box'
   };
 
@@ -247,7 +250,7 @@ function SettingsPage() {
     padding: '14px 24px',
     borderRadius: 12,
     border: 'none',
-    background: 'linear-gradient(135deg, var(--accent), #8b5cf6)',
+    background: 'linear-gradient(135deg, var(--accent-primary), #8b5cf6)',
     color: '#fff',
     fontSize: 14,
     fontWeight: 600,
@@ -282,12 +285,62 @@ function SettingsPage() {
   });
 
   return (
-    <div className="page-content settings-page" style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
+    <div className="page-content settings-page" style={{
+      display: 'flex',
+      flexDirection: 'column',
       height: '100%',
       overflow: 'hidden'
     }}>
+      <style>{`
+        /* Settings page polish — inputs/selects/textareas get a focus ring
+           and readable placeholder colour in both themes. The base style
+           object (inputStyle) handles border + background; this layer adds
+           interactive states and the dropdown arrow on <select>. */
+        .settings-page input,
+        .settings-page select,
+        .settings-page textarea {
+          font-family: inherit;
+        }
+        .settings-page input::placeholder,
+        .settings-page textarea::placeholder {
+          color: var(--text-muted);
+          opacity: 1;
+        }
+        .settings-page input:focus,
+        .settings-page select:focus,
+        .settings-page textarea:focus {
+          border-color: var(--accent-primary) !important;
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 18%, transparent) !important;
+        }
+        .settings-page select {
+          appearance: none;
+          -webkit-appearance: none;
+          background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%23787b86' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+          background-repeat: no-repeat;
+          background-position: right 14px center;
+          padding-right: 40px !important;
+        }
+        /* Light theme — give inputs a bit more contrast since the card bg
+           (var(--bg-secondary) = #f8f9fa) is very close to the input bg
+           (var(--bg-primary) = #ffffff) otherwise. */
+        html[data-theme="light"] .settings-page input,
+        html[data-theme="light"] .settings-page select,
+        html[data-theme="light"] .settings-page textarea {
+          background: #ffffff !important;
+          border: 1px solid #d1d5db !important;
+          color: #131722 !important;
+        }
+        html[data-theme="light"] .settings-page input::placeholder,
+        html[data-theme="light"] .settings-page textarea::placeholder {
+          color: #9ca3af !important;
+        }
+        html[data-theme="light"] .settings-page input:focus,
+        html[data-theme="light"] .settings-page select:focus,
+        html[data-theme="light"] .settings-page textarea:focus {
+          border-color: #2563eb !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+        }
+      `}</style>
       {/* Fixed Header & Navigation */}
       <div style={{
         flexShrink: 0,
@@ -338,7 +391,7 @@ function SettingsPage() {
               width: '100%',
               padding: '12px 14px',
               borderRadius: 12,
-              border: '1px solid var(--border)',
+              border: '1px solid var(--border-color)',
               background: 'var(--bg-secondary)',
               color: 'var(--text-primary)',
               fontSize: 14,
@@ -380,7 +433,7 @@ function SettingsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24, padding: 20, background: 'var(--bg-primary)', borderRadius: 16 }}>
               <div style={{ 
                 width: 80, height: 80, borderRadius: '50%', 
-                background: 'linear-gradient(135deg, var(--accent), #8b5cf6)',
+                background: 'linear-gradient(135deg, var(--accent-primary), #8b5cf6)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 32, fontWeight: 700, color: '#fff',
                 overflow: 'hidden',
@@ -424,7 +477,7 @@ function SettingsPage() {
                 />
                 <button 
                   onClick={() => document.getElementById('avatar-upload').click()}
-                  style={{ marginTop: 12, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--accent)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                  style={{ marginTop: 12, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--accent-primary)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
                 >
                   📷 Change Photo
                 </button>
@@ -453,11 +506,11 @@ function SettingsPage() {
                   </div>
                   <div style={infoRowStyle}>
                     <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>🆔 User ID</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)', fontFamily: 'monospace' }}>{user?.oderId || user?.id || '-'}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-primary)', fontFamily: 'monospace' }}>{user?.oderId || user?.id || '-'}</span>
                   </div>
                   <button 
                     onClick={() => setIsEditingProfile(true)}
-                    style={{ marginTop: 16, padding: '12px 24px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, var(--accent), #8b5cf6)', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%' }}
+                    style={{ marginTop: 16, padding: '12px 24px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, var(--accent-primary), #8b5cf6)', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', width: '100%' }}
                   >
                     ✏️ Edit Profile
                   </button>
@@ -470,7 +523,7 @@ function SettingsPage() {
                       type="email"
                       value={profileForm.email}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
                     />
                   </div>
                   <div>
@@ -479,7 +532,7 @@ function SettingsPage() {
                       type="tel"
                       value={profileForm.phone}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
                     />
                   </div>
                   <div>
@@ -488,7 +541,7 @@ function SettingsPage() {
                       type="text"
                       value={profileForm.city}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, city: e.target.value }))}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
                       placeholder="Enter city"
                     />
                   </div>
@@ -498,18 +551,18 @@ function SettingsPage() {
                       type="text"
                       value={profileForm.state}
                       onChange={(e) => setProfileForm(prev => ({ ...prev, state: e.target.value }))}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }}
                       placeholder="Enter state"
                     />
                   </div>
                   <div style={infoRowStyle}>
                     <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>🆔 User ID</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)', fontFamily: 'monospace' }}>{user?.oderId || user?.id || '-'}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent-primary)', fontFamily: 'monospace' }}>{user?.oderId || user?.id || '-'}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                     <button 
                       onClick={() => setIsEditingProfile(false)}
-                      style={{ flex: 1, padding: '12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 14, cursor: 'pointer' }}
                     >
                       Cancel
                     </button>
@@ -547,7 +600,7 @@ function SettingsPage() {
             
             {/* Add Bank Form */}
             {showAddBank && (
-              <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20, border: '1px solid var(--border)' }}>
+              <div style={{ background: 'var(--bg-primary)', padding: 20, borderRadius: 12, marginBottom: 20, border: '1px solid var(--border-color)' }}>
                 <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Add New Bank Account</h3>
                 <div style={{ display: 'grid', gap: 12 }}>
                   <div>
@@ -604,7 +657,7 @@ function SettingsPage() {
                   <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                     <button 
                       onClick={() => { setShowAddBank(false); setNewBankForm({ bankName: '', accountNumber: '', ifsc: '', accountHolder: '', upiId: '' }); }}
-                      style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                      style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
                     >
                       Cancel
                     </button>
@@ -635,7 +688,7 @@ function SettingsPage() {
                     background: 'var(--bg-primary)', 
                     padding: 16, 
                     borderRadius: 12, 
-                    border: '1px solid var(--border)',
+                    border: '1px solid var(--border-color)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center'
@@ -721,7 +774,7 @@ function SettingsPage() {
             </form>
 
             {/* Logout Section */}
-            <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border)' }}>
+            <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border-color)' }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>� Session</h3>
               <button 
                 onClick={onLogout}
@@ -803,7 +856,7 @@ function SettingsPage() {
                     <label style={labelStyle}>Document Images</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div style={{ 
-                        border: `2px dashed ${kycForm.frontImage ? '#10b981' : 'var(--border)'}`, 
+                        border: `2px dashed ${kycForm.frontImage ? '#10b981' : 'var(--border-color)'}`, 
                         borderRadius: 12, 
                         padding: 20, 
                         textAlign: 'center', 
@@ -820,7 +873,7 @@ function SettingsPage() {
                         </label>
                       </div>
                       <div style={{ 
-                        border: `2px dashed ${kycForm.backImage ? '#10b981' : 'var(--border)'}`, 
+                        border: `2px dashed ${kycForm.backImage ? '#10b981' : 'var(--border-color)'}`, 
                         borderRadius: 12, 
                         padding: 20, 
                         textAlign: 'center', 
@@ -841,7 +894,7 @@ function SettingsPage() {
 
                   {/* Selfie Upload */}
                   <div style={{ 
-                    border: `2px dashed ${kycForm.selfieImage ? '#10b981' : 'var(--border)'}`, 
+                    border: `2px dashed ${kycForm.selfieImage ? '#10b981' : 'var(--border-color)'}`, 
                     borderRadius: 12, 
                     padding: 24, 
                     textAlign: 'center', 
@@ -885,7 +938,7 @@ function SettingsPage() {
                   borderRadius: 14, 
                   padding: 18, 
                   textAlign: 'center',
-                  border: '1px solid var(--border)'
+                  border: '1px solid var(--border-color)'
                 }}>
                   <div style={{ fontSize: 24, marginBottom: 8 }}>{item.icon}</div>
                   <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</p>
@@ -895,7 +948,7 @@ function SettingsPage() {
             </div>
 
             {/* Trade Stats - uses user.stats for actual trade data */}
-            <div style={{ background: 'var(--bg-primary)', borderRadius: 14, padding: 20, border: '1px solid var(--border)' }}>
+            <div style={{ background: 'var(--bg-primary)', borderRadius: 14, padding: 20, border: '1px solid var(--border-color)' }}>
               <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>📊 Trade Performance</h3>
               <div style={{ display: 'grid', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -910,7 +963,7 @@ function SettingsPage() {
                   <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Losing Trades</span>
                   <span style={{ fontSize: 15, fontWeight: 600, color: '#ef4444' }}>{user?.stats?.losingTrades || 0}</span>
                 </div>
-                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+                <div style={{ height: 1, background: 'var(--border-color)', margin: '4px 0' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Net P/L</span>
                   <span style={{ fontSize: 16, fontWeight: 700, color: (user?.stats?.netPnL || 0) >= 0 ? '#10b981' : '#ef4444' }}>
