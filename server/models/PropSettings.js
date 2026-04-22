@@ -9,7 +9,7 @@ const propSettingsSchema = new mongoose.Schema({
   },
   challengeModeEnabled: {
     type: Boolean,
-    default: false
+    default: true
   },
   displayName: {
     type: String,

@@ -355,12 +355,20 @@ async function verifyUserToken(req, res, next) {
 // GET /api/prop/status - Public: check if challenge mode enabled
 router.get('/status', async (req, res) => {
   try {
-    // Check global settings first, then any admin-level settings
-    let settings = await PropSettings.findOne({ challengeModeEnabled: true });
-    if (!settings) settings = await PropSettings.findOne({});
+    // Check global settings
+    let settings = await PropSettings.findOne({});
+    
+    // If challengeModeEnabled is explicitly true, use that
+    // Otherwise, auto-enable if there are active challenges
+    let isEnabled = settings?.challengeModeEnabled === true;
+    if (!isEnabled) {
+      const activeCount = await Challenge.countDocuments({ isActive: true });
+      isEnabled = activeCount > 0;
+    }
+    
     res.json({
       success: true,
-      enabled: settings?.challengeModeEnabled || false,
+      enabled: isEnabled,
       displayName: settings?.displayName || 'Prop Trading Challenge',
       description: settings?.description || ''
     });
