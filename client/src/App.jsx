@@ -4622,34 +4622,8 @@ function AppRouter() {
           <Route path="scoped-audit" element={<ScopedAuditLog />} />
         </Route>
 
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="users/:tab" element={<UserManagement />} />
-          <Route path="trades" element={<TradeManagement />} />
-          <Route path="trades/:tab" element={<TradeManagement />} />
-          <Route path="funds" element={<FundManagement />} />
-          <Route path="funds/:tab" element={<FundManagement />} />
-          <Route path="charges" element={<ChargeManagement />} />
-          <Route path="charges/:tab" element={<ChargeManagement />} />
-          <Route path="binary-settings" element={<BinarySettings />} />
-          <Route path="segments/*" element={<Navigate to="/admin" replace />} />
-          <Route path="risk-management" element={<RiskManagement />} />
-          <Route path="netting-segments" element={<NettingSegmentSettings />} />
-          <Route path="netting-segments/:tab" element={<NettingSegmentSettings />} />
-          <Route path="bonus-management" element={<BonusManagement />} />
-          <Route path="activity-logs" element={<ActivityLogs />} />
-          <Route path="scoped-audit" element={<ScopedAuditLog />} />
-          <Route path="zerodha" element={<ZerodhaConnect />} />
-          <Route path="market-control" element={<MarketControl />} />
-          <Route path="prop-trading" element={<PropTrading />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="reports/:tab" element={<Reports />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="notifications/:tab" element={<Notifications />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="settings/:tab" element={<Settings />} />
-        </Route>
+        {/* Admin routes blocked on main domain - redirect to admin subdomain */}
+        <Route path="/admin/*" element={<Navigate to="https://admin.bharathfundedtrader.com" replace />} />
         {/* Landing page at root */}
         <Route path="/" element={<NewLandingPage />} />
         {/* User App - requires authentication with nested routes */}
