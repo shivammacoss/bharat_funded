@@ -36,6 +36,24 @@ function ProgressBar({ value, max, color = '#3b82f6', dangerColor = '#ef4444', d
   );
 }
 
+// Default Indian-market symbols users can quickly pick to trade from the
+// challenge terminal. Matches the instruments the platform supports after
+// the forex/USD purge — NSE large-caps + indices.
+const QUICK_SYMBOLS = [
+  { symbol: 'NIFTY50', name: 'Nifty 50' },
+  { symbol: 'BANKNIFTY', name: 'Bank Nifty' },
+  { symbol: 'FINNIFTY', name: 'Fin Nifty' },
+  { symbol: 'SENSEX', name: 'BSE Sensex' },
+  { symbol: 'RELIANCE', name: 'Reliance' },
+  { symbol: 'TCS', name: 'TCS' },
+  { symbol: 'INFY', name: 'Infosys' },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank' },
+  { symbol: 'ICICIBANK', name: 'ICICI Bank' },
+  { symbol: 'SBIN', name: 'SBI' },
+  { symbol: 'ITC', name: 'ITC' },
+  { symbol: 'LT', name: 'Larsen & Toubro' }
+];
+
 function ChallengeDashboard() {
   const { user, setActiveChallengeAccountId } = useOutletContext();
   const { id } = useParams();
@@ -45,11 +63,73 @@ function ChallengeDashboard() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [showViolations, setShowViolations] = useState(false);
 
+  // Quick-trade panel state — user picks a symbol + lot size, clicks
+  // Buy/Sell, order is placed on the challenge's isolated sub-wallet via
+  // the /api/orders endpoint with `challengeAccountId`.
+  const [qtSymbol, setQtSymbol] = useState('NIFTY50');
+  const [qtVolume, setQtVolume] = useState('1');
+  const [qtPrice, setQtPrice] = useState('');
+  const [qtPlacing, setQtPlacing] = useState(false);
+  const [qtMessage, setQtMessage] = useState(null);
+
+  // Whenever the user opens this dashboard, set the active-challenge context
+  // so any trade placed (from the embedded quick trade panel OR from a
+  // subsequent /app/market navigation) routes to THIS challenge's
+  // sub-wallet — not the user's main wallet.
+  useEffect(() => {
+    if (id && setActiveChallengeAccountId) {
+      setActiveChallengeAccountId(id);
+    }
+  }, [id, setActiveChallengeAccountId]);
+
   useEffect(() => {
     fetchDashboard();
     const interval = setInterval(fetchDashboard, 10000);
     return () => clearInterval(interval);
   }, [id]);
+
+  const placeQuickOrder = async (side) => {
+    const volNum = parseFloat(qtVolume);
+    const priceNum = parseFloat(qtPrice);
+    if (!qtSymbol.trim()) { setQtMessage({ type: 'error', text: 'Pick a symbol' }); return; }
+    if (!(volNum > 0)) { setQtMessage({ type: 'error', text: 'Lots must be > 0' }); return; }
+    if (!(priceNum > 0)) { setQtMessage({ type: 'error', text: 'Enter price (use latest market price)' }); return; }
+    setQtPlacing(true);
+    setQtMessage(null);
+    try {
+      const userData = JSON.parse(localStorage.getItem('bharatfunded-user') || '{}');
+      const userId = userData.oderId || userData.userId || user?.oderId;
+      const res = await fetch(`${API_URL}/api/orders`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          mode: 'netting',
+          userId,
+          challengeAccountId: id,
+          symbol: qtSymbol.trim().toUpperCase(),
+          side,
+          volume: volNum,
+          quantity: volNum,
+          price: priceNum,
+          entryPrice: priceNum,
+          leverage: 100,
+          orderType: 'market',
+          exchange: 'NSE'
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setQtMessage({ type: 'success', text: `${side.toUpperCase()} ${volNum} lot ${qtSymbol.toUpperCase()} placed on challenge` });
+        fetchDashboard();
+      } else {
+        setQtMessage({ type: 'error', text: result.error || result.message || 'Order failed' });
+      }
+    } catch (err) {
+      setQtMessage({ type: 'error', text: 'Network error placing order' });
+    } finally {
+      setQtPlacing(false);
+    }
+  };
 
   const fetchDashboard = async () => {
     try {
@@ -328,6 +408,124 @@ function ChallengeDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Quick Trade — places orders directly on THIS challenge's sub-wallet.
+          For full charts / complex orders the user taps "Open Full Terminal"
+          which navigates to /app/market with the active-challenge context
+          already set (see `useEffect` at mount), so the OrderPanel on that
+          page will also route to this challenge. */}
+      {(account.status === 'ACTIVE' || account.status === 'FUNDED') && (
+        <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: 8 }}>
+            <h3 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '15px' }}>🛒 Market & Quick Trade</h3>
+            <button
+              type="button"
+              onClick={() => { setActiveChallengeAccountId?.(account._id || id); navigate('/app/market'); }}
+              style={{ padding: '8px 14px', borderRadius: '8px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '12px' }}
+            >
+              Open Full Terminal →
+            </button>
+          </div>
+
+          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            Tap a symbol to pick it, enter lots and price, then Buy or Sell. Orders route to this challenge's virtual wallet only — your main wallet stays untouched.
+          </div>
+
+          {/* Symbol chips */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
+            {QUICK_SYMBOLS.map(s => (
+              <button
+                key={s.symbol}
+                type="button"
+                onClick={() => setQtSymbol(s.symbol)}
+                style={{
+                  padding: '6px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                  border: qtSymbol === s.symbol ? '1px solid #3b82f6' : '1px solid var(--border-color)',
+                  background: qtSymbol === s.symbol ? 'color-mix(in srgb, #3b82f6 15%, var(--bg-primary))' : 'var(--bg-primary)',
+                  color: qtSymbol === s.symbol ? '#3b82f6' : 'var(--text-primary)'
+                }}
+                title={s.name}
+              >
+                {s.symbol}
+              </button>
+            ))}
+          </div>
+
+          {/* Order form */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '4px' }}>Symbol</label>
+              <input
+                type="text"
+                value={qtSymbol}
+                onChange={e => setQtSymbol(e.target.value.toUpperCase())}
+                placeholder="e.g. RELIANCE"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '4px' }}>Lots</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={qtVolume}
+                onChange={e => setQtVolume(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '11px', marginBottom: '4px' }}>Price (₹)</label>
+              <input
+                type="number"
+                step="0.05"
+                min="0"
+                value={qtPrice}
+                onChange={e => setQtPrice(e.target.value)}
+                placeholder="Current market"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+              />
+            </div>
+          </div>
+
+          {/* Buy / Sell */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => placeQuickOrder('sell')}
+              disabled={qtPlacing}
+              style={{
+                padding: '14px', borderRadius: '10px', border: 'none', cursor: qtPlacing ? 'not-allowed' : 'pointer',
+                background: '#ef4444', color: '#fff', fontWeight: 700, fontSize: '14px', opacity: qtPlacing ? 0.6 : 1
+              }}
+            >
+              {qtPlacing ? '…' : 'SELL'}
+            </button>
+            <button
+              type="button"
+              onClick={() => placeQuickOrder('buy')}
+              disabled={qtPlacing}
+              style={{
+                padding: '14px', borderRadius: '10px', border: 'none', cursor: qtPlacing ? 'not-allowed' : 'pointer',
+                background: '#10b981', color: '#fff', fontWeight: 700, fontSize: '14px', opacity: qtPlacing ? 0.6 : 1
+              }}
+            >
+              {qtPlacing ? '…' : 'BUY'}
+            </button>
+          </div>
+
+          {qtMessage && (
+            <div style={{
+              marginTop: '12px', padding: '10px 12px', borderRadius: '8px', fontSize: '12px',
+              background: qtMessage.type === 'success' ? 'color-mix(in srgb, #10b981 12%, var(--bg-primary))' : 'color-mix(in srgb, #ef4444 12%, var(--bg-primary))',
+              border: `1px solid ${qtMessage.type === 'success' ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
+              color: qtMessage.type === 'success' ? '#10b981' : '#ef4444'
+            }}>
+              {qtMessage.text}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Rules Summary */}
       <div style={{ padding: '20px', background: 'var(--bg-secondary)', borderRadius: '16px', border: '1px solid var(--border-color)', marginBottom: '16px' }}>

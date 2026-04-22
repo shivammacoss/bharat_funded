@@ -170,7 +170,7 @@
     display: none;
   }
 
-  /* Bottom nav — mock: Home, Market, FAB Trade, Orders, Profile */
+  /* Bottom nav — 5 equal tabs: Home | Challenges | Orders | Wallet | More */
   .mobile-bottom-nav.mobi-bharatfunded-bnav {
     display: flex !important;
     align-items: flex-end;

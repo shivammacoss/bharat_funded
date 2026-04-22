@@ -42,8 +42,25 @@ function DashboardPage() {
   };
 
   return (
-    <div style={{ width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
-      <div style={{ padding: '24px 28px 60px' }}>
+    <div className="bft-dashboard-root" style={{ width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+      <style>{`
+        .bft-dashboard-root .bft-dash-shell { padding: 24px 28px 60px; }
+        .bft-dashboard-root .bft-dash-stepper-card { padding: 32px; }
+        .bft-dashboard-root .bft-dash-stepper-line { width: 80px; }
+        @media (max-width: 768px) {
+          .bft-dashboard-root .bft-dash-shell { padding: 16px 12px 90px; }
+          .bft-dashboard-root .bft-dash-stepper-card { padding: 20px 12px; }
+          .bft-dashboard-root .bft-dash-stepper-line { width: 28px !important; }
+          .bft-dashboard-root .bft-dash-stepper-card h2 { font-size: 18px !important; }
+          .bft-dashboard-root .bft-dash-quick-actions { grid-template-columns: 1fr !important; gap: 12px !important; }
+          .bft-dashboard-root .bft-dash-quick-card { padding: 16px !important; }
+        }
+        @media (max-width: 380px) {
+          .bft-dashboard-root .bft-dash-stepper-line { width: 16px !important; margin: 0 4px !important; }
+          .bft-dashboard-root .bft-dash-stepper-label { font-size: 10px !important; }
+        }
+      `}</style>
+      <div className="bft-dash-shell">
 
         {/* Breadcrumb */}
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
@@ -54,8 +71,8 @@ function DashboardPage() {
         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '0 0 28px' }}>Manage all your trading accounts.</p>
 
         {/* Evaluation Progress Stepper */}
-        <div style={{
-          padding: '32px', borderRadius: '16px', marginBottom: '28px', textAlign: 'center',
+        <div className="bft-dash-stepper-card" style={{
+          borderRadius: '16px', marginBottom: '28px', textAlign: 'center',
           background: 'var(--bg-secondary)', border: '1px solid var(--border-color)'
         }}>
           <h2 style={{ color: 'var(--text-primary)', fontSize: '22px', fontWeight: '700', margin: '0 0 6px' }}>
@@ -83,13 +100,13 @@ function DashboardPage() {
                   }}>
                     {step.done ? '\u2713' : i === arr.length - 1 ? '\u2691' : (i + 1)}
                   </div>
-                  <span style={{ fontSize: '11px', color: step.done ? '#10b981' : 'var(--text-secondary)', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                  <span className="bft-dash-stepper-label" style={{ fontSize: '11px', color: step.done ? '#10b981' : 'var(--text-secondary)', fontWeight: '600', whiteSpace: 'nowrap' }}>
                     {step.label}
                   </span>
                 </div>
                 {i < arr.length - 1 && (
-                  <div style={{
-                    width: '80px', height: '2px', margin: '0 8px', marginBottom: '20px',
+                  <div className="bft-dash-stepper-line" style={{
+                    height: '2px', margin: '0 8px', marginBottom: '20px',
                     background: step.done ? '#10b981' : 'var(--border-color)'
                   }} />
                 )}
@@ -103,10 +120,11 @@ function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+        <div className="bft-dash-quick-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '28px' }}>
           {/* Explore Programs */}
           <div
             onClick={() => navigate('/app/challenges')}
+            className="bft-dash-quick-card"
             style={{
               padding: '24px', borderRadius: '14px', cursor: 'pointer',
               background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
@@ -135,6 +153,7 @@ function DashboardPage() {
           {/* Wallet */}
           <div
             onClick={() => navigate('/app/wallet')}
+            className="bft-dash-quick-card"
             style={{
               padding: '24px', borderRadius: '14px', cursor: 'pointer',
               background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
