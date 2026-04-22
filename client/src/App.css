@@ -1206,11 +1206,42 @@
   border-color: var(--accent-primary);
 }
 
+/* Light-theme override — inputs in the wallet form were rendering with a
+   dark slate-grey background in light mode because the default
+   `var(--bg-tertiary)` token resolves to #e9ecef only via the html
+   data-theme cascade, which some browsers don't inherit cleanly into
+   nested form elements. Force a clean white field with a mid-grey border
+   and readable placeholder colour. */
+html[data-theme="light"] .wallet-form input,
+html[data-theme="light"] .wallet-form select,
+html[data-theme="light"] .wallet-form textarea,
+html[data-theme="light"] .wallet-input {
+  background: #ffffff;
+  color: #131722;
+  border: 1px solid #d1d5db;
+}
+html[data-theme="light"] .wallet-form input::placeholder,
+html[data-theme="light"] .wallet-form textarea::placeholder,
+html[data-theme="light"] .wallet-input::placeholder {
+  color: #9ca3af;
+}
+html[data-theme="light"] .wallet-form input:focus,
+html[data-theme="light"] .wallet-form select:focus,
+html[data-theme="light"] .wallet-form textarea:focus,
+html[data-theme="light"] .wallet-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 .payment-details-box {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
+}
+html[data-theme="light"] .payment-details-box {
+  background: #f8fafc;
+  border: 1px solid #d1d5db;
 }
 
 .payment-details-box h4 {

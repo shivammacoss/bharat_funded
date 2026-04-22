@@ -259,7 +259,10 @@ export default function ScopedUserList({ status = 'all' }) {
         isAuthenticated: true, token: data.token, user: data.user,
       }));
       localStorage.setItem('bharatfunded-token', data.token);
-      window.open('/app', '_blank');
+      // Open user app on main domain (not admin/subadmin subdomain)
+      const mainDomain = window.location.hostname.replace(/^(admin|subadmin|broker)\./, '');
+      const userAppUrl = `${window.location.protocol}//${mainDomain}/app`;
+      window.open(userAppUrl, '_blank');
     } catch (e) { setError(e.message); } finally { setBusyId(null); }
   };
 

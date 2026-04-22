@@ -50,8 +50,13 @@ const PropTrading = () => {
       name: '',
       description: '',
       stepsCount: 2,
+      // Legacy single-tier pricing kept for back-compat — new challenges
+      // should populate `tiers` below with multiple (fundSize, fee) pairs.
       fundSize: 10000,
       challengeFee: 100,
+      tiers: [
+        { fundSize: 10000, challengeFee: 100, label: '', isPopular: false }
+      ],
       currency: 'INR',
       isActive: true,
       rules: {
@@ -266,11 +271,9 @@ const PropTrading = () => {
     if (!challengeForm.name?.trim()) {
       alert('Challenge name is required'); return;
     }
-    if (!challengeForm.fundSize || challengeForm.fundSize <= 0) {
-      alert('Fund size must be greater than 0'); return;
-    }
-    if (!challengeForm.challengeFee || challengeForm.challengeFee <= 0) {
-      alert('Challenge fee must be greater than 0'); return;
+    const tiers = (challengeForm.tiers || []).filter(t => Number(t.fundSize) > 0 && Number(t.challengeFee) >= 0);
+    if (tiers.length === 0) {
+      alert('Add at least one pricing tier with a valid fund size and fee'); return;
     }
     try {
       const isEdit = challengeModal.mode === 'edit' && challengeModal.editItem;
@@ -279,10 +282,19 @@ const PropTrading = () => {
         : `${API_URL}/api/prop/admin/challenges`;
       const method = isEdit ? 'PUT' : 'POST';
 
+      // Mirror the first tier into legacy fundSize/challengeFee so old
+      // consumers and the list view still have a sensible default.
+      const payload = {
+        ...challengeForm,
+        tiers,
+        fundSize: tiers[0].fundSize,
+        challengeFee: tiers[0].challengeFee
+      };
+
       const res = await fetch(url, {
         method,
         headers: getAuthHeaders(),
-        body: JSON.stringify(challengeForm)
+        body: JSON.stringify(payload)
       });
       let data;
       const text = await res.text();
@@ -323,12 +335,24 @@ const PropTrading = () => {
 
   // Edit challenge
   const editChallenge = (ch) => {
+    // Hydrate tiers — use the stored `tiers` if present, otherwise synthesize
+    // a single tier from the legacy fundSize/challengeFee so edits don't
+    // silently drop the old pricing.
+    const existingTiers = Array.isArray(ch.tiers) && ch.tiers.length > 0
+      ? ch.tiers.map(t => ({
+          fundSize: Number(t.fundSize) || 0,
+          challengeFee: Number(t.challengeFee) || 0,
+          label: t.label || '',
+          isPopular: !!t.isPopular
+        }))
+      : [{ fundSize: Number(ch.fundSize) || 0, challengeFee: Number(ch.challengeFee) || 0, label: '', isPopular: false }];
     setChallengeForm({
       name: ch.name,
       description: ch.description || '',
       stepsCount: ch.stepsCount,
       fundSize: ch.fundSize,
       challengeFee: ch.challengeFee,
+      tiers: existingTiers,
       currency: ch.currency || 'INR',
       isActive: ch.isActive,
       rules: { ...getDefaultChallengeForm().rules, ...ch.rules },
@@ -872,18 +896,118 @@ const PropTrading = () => {
                   </select>
                 </div>
                 <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Fund Size (₹)</label>
-                  <input type="number" value={challengeForm.fundSize} onChange={e => setChallengeForm(p => ({ ...p, fundSize: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Fee (₹)</label>
-                  <input type="number" value={challengeForm.challengeFee} onChange={e => setChallengeForm(p => ({ ...p, challengeFee: Number(e.target.value) }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', marginTop: '20px' }}>
                     <input type="checkbox" checked={challengeForm.isActive} onChange={e => setChallengeForm(p => ({ ...p, isActive: e.target.checked }))} /> Active
                   </label>
                 </div>
+              </div>
+            </div>
+
+            {/* Pricing Tiers — admin can offer multiple fund sizes at
+                different fees so the user picks one at purchase time. */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', margin: 0 }}>Pricing Tiers</h4>
+                <button
+                  type="button"
+                  onClick={() => setChallengeForm(p => ({
+                    ...p,
+                    tiers: [...(p.tiers || []), { fundSize: 0, challengeFee: 0, label: '', isPopular: false }]
+                  }))}
+                  style={{ padding: '6px 12px', borderRadius: '6px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                >
+                  + Add Tier
+                </button>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '11px', margin: '0 0 10px' }}>
+                Each tier is one (Fee → Fund Size) option the user sees. e.g. ₹100 → ₹1,000 fund.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(challengeForm.tiers || []).map((tier, i) => (
+                  <div key={i} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr 1fr auto auto',
+                    gap: '8px', alignItems: 'center',
+                    padding: '10px',
+                    background: 'var(--bg-primary)',
+                    border: tier.isPopular ? '1px solid #f59e0b' : '1px solid var(--border-color)',
+                    borderRadius: '8px'
+                  }}>
+                    <div>
+                      <label style={{ color: 'var(--text-secondary)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Fund Size (₹)</label>
+                      <input
+                        type="number"
+                        value={tier.fundSize ? tier.fundSize : ''}
+                        placeholder="0"
+                        onChange={e => {
+                          const raw = e.target.value;
+                          const num = raw === '' ? 0 : Number(raw);
+                          setChallengeForm(p => {
+                            const tiers = [...(p.tiers || [])];
+                            tiers[i] = { ...tiers[i], fundSize: Number.isFinite(num) ? num : 0 };
+                            return { ...p, tiers };
+                          });
+                        }}
+                        style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ color: 'var(--text-secondary)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Fee (₹)</label>
+                      <input
+                        type="number"
+                        value={tier.challengeFee ? tier.challengeFee : ''}
+                        placeholder="0"
+                        onChange={e => {
+                          const raw = e.target.value;
+                          const num = raw === '' ? 0 : Number(raw);
+                          setChallengeForm(p => {
+                            const tiers = [...(p.tiers || [])];
+                            tiers[i] = { ...tiers[i], challengeFee: Number.isFinite(num) ? num : 0 };
+                            return { ...p, tiers };
+                          });
+                        }}
+                        style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ color: 'var(--text-secondary)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Label (optional)</label>
+                      <input
+                        type="text"
+                        value={tier.label}
+                        placeholder="e.g. Starter"
+                        onChange={e => setChallengeForm(p => {
+                          const tiers = [...(p.tiers || [])];
+                          tiers[i] = { ...tiers[i], label: e.target.value };
+                          return { ...p, tiers };
+                        })}
+                        style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                      />
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: tier.isPopular ? '#f59e0b' : 'var(--text-secondary)', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!tier.isPopular}
+                        onChange={e => setChallengeForm(p => {
+                          const tiers = [...(p.tiers || [])];
+                          tiers[i] = { ...tiers[i], isPopular: e.target.checked };
+                          return { ...p, tiers };
+                        })}
+                      />
+                      Popular
+                    </label>
+                    <button
+                      type="button"
+                      title="Remove tier"
+                      onClick={() => setChallengeForm(p => {
+                        const tiers = (p.tiers || []).filter((_, j) => j !== i);
+                        return { ...p, tiers: tiers.length ? tiers : [{ fundSize: 0, challengeFee: 0, label: '', isPopular: false }] };
+                      })}
+                      style={{ padding: '6px 10px', borderRadius: '6px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
 

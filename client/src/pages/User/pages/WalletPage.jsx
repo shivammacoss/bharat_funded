@@ -16,7 +16,6 @@ function WalletPage() {
   const [transactions, setTransactions] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState({ bankAccounts: [], upiIds: [], cryptoWallets: [] });
   const [userWallet, setUserWallet] = useState({ balance: 0, credit: 0, equity: 0, margin: 0, freeMargin: 0 });
-  const [walletINR, setWalletINR] = useState({ balance: 0, totalDeposits: 0, totalWithdrawals: 0 });
   const [uploadedHashes, setUploadedHashes] = useState([]);
   const [withdrawMethod, setWithdrawMethod] = useState('bank');
   const [withdrawBankDetails, setWithdrawBankDetails] = useState({
@@ -59,7 +58,6 @@ function WalletPage() {
             freeMargin: Number(data.wallet.freeMargin) || 0
           });
         }
-        if (data.walletINR) setWalletINR(data.walletINR);
       }
     } catch (error) {
       // Silent fail - wallet will show 0
@@ -417,21 +415,21 @@ function WalletPage() {
       <div className="wallet-balance-card">
         <h2>My Wallet</h2>
         {(() => {
-          const inrBalance = Number(walletINR?.balance || displayBalance || 0);
-          const inrCredit = Number(walletData?.creditInr || displayCredit || 0);
-          const inrEquity = inrBalance + inrCredit;
-          const inrMargin = Number(displayMargin || 0);
-          const inrFreeMargin = Math.max(0, inrEquity - inrMargin);
+          // Single source of truth — use the server-side `wallet` doc
+          // (displayBalance / displayFreeMargin / displayMargin / displayEquity
+          // / displayCredit). The legacy `walletINR` mirror can drift due to
+          // old migrations and must NOT be shown here or the top cards will
+          // contradict the "Available for Withdrawal" box below.
           const fmt = (v) => Number(v || 0).toFixed(2);
           return (
             <div className="balance-row inr">
               <span className="currency-label">INR</span>
               <div className="balance-grid">
-                <div className="balance-item"><span className="balance-label">Balance</span><span className="balance-value">₹{fmt(inrBalance)}</span></div>
-                <div className="balance-item"><span className="balance-label">Credit</span><span className="balance-value">₹{fmt(inrCredit)}</span></div>
-                <div className="balance-item"><span className="balance-label">Equity</span><span className="balance-value">₹{fmt(inrEquity)}</span></div>
-                <div className="balance-item"><span className="balance-label">Margin</span><span className="balance-value">₹{fmt(inrMargin)}</span></div>
-                <div className="balance-item highlight-inr"><span className="balance-label">Free Margin</span><span className="balance-value">₹{fmt(inrFreeMargin)}</span></div>
+                <div className="balance-item"><span className="balance-label">Balance</span><span className="balance-value">₹{fmt(displayBalance)}</span></div>
+                <div className="balance-item"><span className="balance-label">Credit</span><span className="balance-value">₹{fmt(displayCredit)}</span></div>
+                <div className="balance-item"><span className="balance-label">Equity</span><span className="balance-value">₹{fmt(displayEquity)}</span></div>
+                <div className="balance-item"><span className="balance-label">Margin</span><span className="balance-value">₹{fmt(displayMargin)}</span></div>
+                <div className="balance-item highlight-inr"><span className="balance-label">Free Margin</span><span className="balance-value">₹{fmt(displayFreeMargin)}</span></div>
               </div>
             </div>
           );
@@ -449,7 +447,7 @@ function WalletPage() {
           <div className="wallet-form">
             <div className="form-group">
               <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>
-                <span>INR Balance: ₹{walletINR.balance?.toFixed(2) || '0.00'}</span>
+                <span>INR Balance: ₹{Number(displayBalance || 0).toFixed(2)}</span>
               </div>
             </div>
 
@@ -627,12 +625,12 @@ function WalletPage() {
               <>
                 <div className="form-group">
                   <label>Transaction ID / UTR Number</label>
-                  <input 
-                    type="text" 
-                    value={transactionId} 
+                  <input
+                    className="wallet-input"
+                    type="text"
+                    value={transactionId}
                     onChange={(e) => setTransactionId(e.target.value)}
                     placeholder="Enter transaction ID or UTR number"
-                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                   />
                   <small style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>Optional: Enter the transaction reference for faster verification</small>
                 </div>

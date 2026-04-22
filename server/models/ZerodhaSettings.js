@@ -51,7 +51,7 @@ const zerodhaSettingsSchema = new mongoose.Schema({
   wsLastError: { type: String, default: null },
   
   // Callback URL for OAuth
-  redirectUrl: { type: String, default: process.env.ZERODHA_REDIRECT_URL || (process.env.NODE_ENV === 'production' ? 'https://api.bharatfundedtrade.com/api/zerodha/callback' : 'http://localhost:3001/api/zerodha/callback') }
+  redirectUrl: { type: String, default: process.env.ZERODHA_REDIRECT_URL || (process.env.NODE_ENV === 'production' ? 'https://api.bharathfundedtrader.com/api/zerodha/callback' : 'http://localhost:3001/api/zerodha/callback') }
 }, { timestamps: true });
 
 // In-memory cache — the trade engines read this singleton 3-4× per order

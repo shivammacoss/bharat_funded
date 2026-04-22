@@ -20,14 +20,30 @@ const challengeSchema = new mongoose.Schema({
     required: true,
     default: 2
   },
+  // Legacy single-tier fields — kept for back-compat so old challenges still
+  // render. New challenges should populate `tiers` instead; if `tiers` is
+  // non-empty the user UI iterates that. buyChallenge falls back to the
+  // legacy pair when `tiers` is empty or `tierIndex` is not provided.
   fundSize: {
     type: Number,
-    required: true
+    required: false,
+    default: 0
   },
   challengeFee: {
     type: Number,
-    required: true
+    required: false,
+    default: 0
   },
+  // Multi-tier pricing: admin can expose several (fundSize, fee) pairs per
+  // challenge so the user can pick — e.g. ₹100 → ₹1,000 fund, ₹300 → ₹8,000
+  // fund, etc. `label` is optional (e.g. "Starter", "Popular"); `isPopular`
+  // makes the user UI badge the tier.
+  tiers: [{
+    fundSize: { type: Number, required: true },
+    challengeFee: { type: Number, required: true },
+    label: { type: String, default: '' },
+    isPopular: { type: Boolean, default: false }
+  }],
   currency: {
     type: String,
     default: 'INR'

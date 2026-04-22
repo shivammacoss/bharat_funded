@@ -2232,7 +2232,7 @@ function UserLayout({ user, onLogout }) {
       </div>
 
       {/* ===== TOP BAR ===== */}
-      <header style={{
+      <header className="bft-topbar" style={{
         position: 'fixed', top: 0, left: 0, right: 0, height: '56px', zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 20px', background: 'var(--bg-secondary)',
@@ -2246,44 +2246,62 @@ function UserLayout({ user, onLogout }) {
           >
             {mobileMenuOpen ? <LuX size={22} /> : <LuEllipsisVertical size={22} />}
           </button>
-          <img src={logoLight} alt="BharatFunded" style={{ height: '26px', width: 'auto' }} />
+          <button
+            type="button"
+            onClick={() => { navigateToPage('home'); }}
+            title="Go to Dashboard"
+            className="bft-header-logo-btn"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
+          >
+            <img src={logoLight} alt="BharatFunded" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
+          </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Active account chip — shows whether trades will hit the main
-              wallet or a specific prop-challenge account. Click to switch
-              back to main wallet. */}
-          <div
-            title={activeChallengeAccountId ? 'Trading on challenge account — click to trade on main wallet' : 'Trading on main wallet'}
-            onClick={() => { if (activeChallengeAccountId) setActiveChallengeAccountId(null); }}
+          {/* Active-account chip. Click behaviour:
+              - Challenge active → click clears it (switch back to main).
+              - Main wallet     → click navigates to /app/wallet. */}
+          <button
+            type="button"
+            title={activeChallengeAccountId ? 'Trading on challenge account — click to switch back to main wallet' : 'Go to Main Wallet'}
+            onClick={() => {
+              if (activeChallengeAccountId) {
+                setActiveChallengeAccountId(null);
+              } else {
+                navigateToPage('wallet');
+              }
+            }}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 600,
+              padding: '6px 12px', borderRadius: 18, fontSize: 12, fontWeight: 600,
               border: '1px solid var(--border-color)',
               background: activeChallengeAccountId ? 'color-mix(in srgb, #f59e0b 18%, var(--bg-primary))' : 'var(--bg-primary)',
-              color: activeChallengeAccountId ? '#f59e0b' : 'var(--text-secondary)',
-              cursor: activeChallengeAccountId ? 'pointer' : 'default',
-              maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+              color: activeChallengeAccountId ? '#f59e0b' : 'var(--text-primary)',
+              cursor: 'pointer',
+              maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              transition: 'background 0.15s'
             }}
           >
-            <span>{activeChallengeAccountId ? '🏆' : '💼'}</span>
+            <span style={{ fontSize: 14 }}>{activeChallengeAccountId ? '🏆' : '💼'}</span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {activeChallengeAccountId ? `Challenge · ${String(activeChallengeAccountId).slice(-6)}` : 'Main Wallet'}
             </span>
             {activeChallengeAccountId && <span style={{ marginLeft: 2, opacity: 0.7 }}>✕</span>}
-          </div>
-          <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}>
-            {isDark ? <LuSun size={18} /> : <LuMoon size={18} />}
+          </button>
+          <button onClick={toggleTheme} title={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}>
+            {isDark ? <LuSun size={20} /> : <LuMoon size={20} />}
           </button>
           <button
-            onClick={() => setShowNotificationPanel(!showNotificationPanel)}
+            onClick={() => { setShowNotificationPanel(!showNotificationPanel); if (!showNotificationPanel) fetchSystemNotifications(); }}
+            title="Notifications"
             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px', position: 'relative' }}
           >
-            <LuBell size={18} />
+            <LuBell size={20} />
             {unreadNotifCount > 0 && (
               <span style={{
-                position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', borderRadius: '50%',
-                background: '#ef4444', color: '#fff', fontSize: '8px', fontWeight: '700',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                position: 'absolute', top: 0, right: 0, minWidth: '16px', height: '16px', padding: '0 4px', borderRadius: '8px',
+                background: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: '700',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 0 0 2px var(--bg-secondary)'
               }}>
                 {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
               </span>
@@ -2297,7 +2315,7 @@ function UserLayout({ user, onLogout }) {
                 border: 'none', cursor: 'pointer', color: 'var(--text-primary)', padding: '4px'
               }}
             >
-              <span style={{ fontWeight: '600', fontSize: '13px' }}>{user?.name || 'User'}</span>
+              <span className="bft-header-username" style={{ fontWeight: '600', fontSize: '13px' }}>{user?.name || 'User'}</span>
               <div style={{
                 width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '13px', fontWeight: '700'
@@ -2652,9 +2670,10 @@ function UserLayout({ user, onLogout }) {
         </>
       )}
 
-      {/* Hide original footer/status bar and mobile nav for prop firm UI */}
-      <div style={{ display: 'none' }}>
-      <footer className="status-bar">
+      {/* Desktop-only legacy status bar — hidden on mobile by the media query
+          below. The mobile bottom nav and sheets live OUTSIDE this footer
+          now so they render normally on small screens. */}
+      <footer className="status-bar bft-desktop-only">
         <div className="status-left">
           <span className="status-symbol">{selectedSymbol}</span>
         </div>
@@ -2763,28 +2782,9 @@ function UserLayout({ user, onLogout }) {
           <span>
             Bal{' '}
             <span className="m-mono">
-              {displayCurrency === 'INR' ? '₹' : '$'}
-              {displayCurrency === 'INR'
-                ? (Number(walletData.balance || 0) * (usdInrRate + usdMarkup)).toFixed(2)
-                : Number(walletData.balance || 0).toFixed(2)}
+              ₹{Number(walletData.balance || 0).toFixed(2)}
             </span>
           </span>
-          <div className="mobi-status-currency-toggle">
-            <button
-              type="button"
-              className={displayCurrency === 'USD' ? 'active' : ''}
-              onClick={() => handleCurrencyChange('USD')}
-            >
-              USD
-            </button>
-            <button
-              type="button"
-              className={displayCurrency === 'INR' ? 'active' : ''}
-              onClick={() => handleCurrencyChange('INR')}
-            >
-              INR
-            </button>
-          </div>
           <button
             type="button"
             className="mobi-status-expand-btn"
@@ -2796,9 +2796,7 @@ function UserLayout({ user, onLogout }) {
         <div className="mobi-status-detail">
           {Number(walletData.credit || 0) > 0 && (
             <span>
-              Credit: <span style={{ color: '#fbbf24' }}>
-                ₹{(Number(walletData.credit || 0) * (usdInrRate + usdMarkup)).toFixed(2)}
-              </span>
+              Credit: <span style={{ color: '#fbbf24' }}>₹{Number(walletData.credit || 0).toFixed(2)}</span>
             </span>
           )}
           {(() => {
@@ -2807,65 +2805,26 @@ function UserLayout({ user, onLogout }) {
             const eqShown = isStopOut ? 0 : eqRaw;
             return (
               <span>
-                Equity: {displayCurrency === 'INR' ? '₹' : '$'}
-                {displayCurrency === 'INR'
-                  ? (eqShown * (usdInrRate + usdMarkup)).toFixed(2)
-                  : eqShown.toFixed(2)}
+                Equity: ₹{eqShown.toFixed(2)}
                 {isStopOut && (
-                  <span
-                    style={{
-                      marginLeft: 6,
-                      color: '#fff',
-                      background: '#7a0e0e',
-                      padding: '1px 6px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                      fontSize: '0.75em'
-                    }}
-                  >
-                    STOP OUT
-                  </span>
+                  <span style={{ marginLeft: 6, color: '#fff', background: '#7a0e0e', padding: '1px 6px', borderRadius: 4, fontWeight: 700, fontSize: '0.75em' }}>STOP OUT</span>
                 )}
               </span>
             );
           })()}
-          <span>
-            Margin: {displayCurrency === 'INR' ? '₹' : '$'}
-            {displayCurrency === 'INR'
-              ? (Number(walletData.margin || 0) * (usdInrRate + usdMarkup)).toFixed(2)
-              : Number(walletData.margin || 0).toFixed(2)}
-          </span>
+          <span>Margin: ₹{Number(walletData.margin || 0).toFixed(2)}</span>
           {(() => {
-            // Clamp display to 0 when free margin is negative; the underlying
-            // walletData.freeMargin is left untouched so margin-call/stop-out
-            // logic still triggers. See option 3 in agent.md §13.
             const fmRaw = Number(walletData.freeMargin || 0);
             const fmShown = fmRaw < 0 ? 0 : fmRaw;
             return (
               <span>
-                Free: {displayCurrency === 'INR' ? '₹' : '$'}
-                {displayCurrency === 'INR'
-                  ? (fmShown * (usdInrRate + usdMarkup)).toFixed(2)
-                  : fmShown.toFixed(2)}
+                Free: ₹{fmShown.toFixed(2)}
                 {fmRaw < 0 && (
-                  <span
-                    style={{
-                      marginLeft: 6,
-                      color: '#fff',
-                      background: '#e02424',
-                      padding: '1px 6px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                      fontSize: '0.75em'
-                    }}
-                  >
-                    MARGIN CALL
-                  </span>
+                  <span style={{ marginLeft: 6, color: '#fff', background: '#e02424', padding: '1px 6px', borderRadius: 4, fontWeight: 700, fontSize: '0.75em' }}>MARGIN CALL</span>
                 )}
               </span>
             );
           })()}
-          <span>1 USD = ₹{(usdInrRate + usdMarkup).toFixed(2)}</span>
           <span>Positions: {positions.length}</span>
           <span>{isMetaApiConnected ? '● Live' : '○ Offline'}</span>
         </div>
@@ -2884,34 +2843,16 @@ function UserLayout({ user, onLogout }) {
           </button>
           <button
             type="button"
-            className={`mobi-bnav-item ${activePage === 'market' && mobileMarketTab !== 'chart' ? 'mobi-active' : ''}`}
+            className={`mobi-bnav-item ${activePage === 'my-challenges' ? 'mobi-active' : ''}`}
             onClick={() => {
-              navigateToPage('market');
-              setMobileMarketTab('instruments');
-              setMobileShowChartBelow(false);
+              navigateToPage('my-challenges');
               setMobileMenuOpen(false);
             }}
           >
             <span className="mobi-bnav-dot" aria-hidden />
-            <span className="mobi-bnav-icon" aria-hidden><LuChartColumn size={22} /></span>
-            <span className="mobi-bnav-label">Market</span>
+            <span className="mobi-bnav-icon" aria-hidden><LuTrophy size={22} /></span>
+            <span className="mobi-bnav-label">Challenges</span>
           </button>
-          <div className="mobi-bnav-trade-wrap">
-            <button
-              type="button"
-              className={`mobi-bnav-trade ${activePage === 'market' && mobileMarketTab === 'chart' ? 'mobi-fab-active' : ''}`}
-              aria-label="Open price chart"
-              onClick={() => {
-                navigateToPage('market');
-                setMobileMarketTab('chart');
-                setMobileShowChartBelow(false);
-                setMobileMenuOpen(false);
-              }}
-            >
-              <LuZap size={24} />
-            </button>
-            <span className="mobi-bnav-trade-label">Chart</span>
-          </div>
           <button
             type="button"
             className={`mobi-bnav-item ${activePage === 'orders' ? 'mobi-active' : ''}`}
@@ -2923,6 +2864,18 @@ function UserLayout({ user, onLogout }) {
             <span className="mobi-bnav-dot" aria-hidden />
             <span className="mobi-bnav-icon" aria-hidden><LuClipboardList size={22} /></span>
             <span className="mobi-bnav-label">Orders</span>
+          </button>
+          <button
+            type="button"
+            className={`mobi-bnav-item ${activePage === 'wallet' ? 'mobi-active' : ''}`}
+            onClick={() => {
+              navigateToPage('wallet');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <span className="mobi-bnav-dot" aria-hidden />
+            <span className="mobi-bnav-icon" aria-hidden><LuWallet size={22} /></span>
+            <span className="mobi-bnav-label">Wallet</span>
           </button>
           <button
             type="button"
@@ -2953,23 +2906,14 @@ function UserLayout({ user, onLogout }) {
                 type="button"
                 className="mobi-more-item"
                 onClick={() => {
-                  navigateToPage('settings');
+                  navigateToPage('market');
+                  setMobileMarketTab('instruments');
+                  setMobileShowChartBelow(false);
                   setMoreMenuOpen(false);
                 }}
               >
-                <span className="mobi-more-icon"><LuUser size={22} /></span>
-                <span className="mobi-more-label">Profile</span>
-              </button>
-              <button
-                type="button"
-                className="mobi-more-item"
-                onClick={() => {
-                  navigateToPage('business');
-                  setMoreMenuOpen(false);
-                }}
-              >
-                <span className="mobi-more-icon"><LuBriefcase size={22} /></span>
-                <span className="mobi-more-label">Business</span>
+                <span className="mobi-more-icon"><LuChartColumn size={22} /></span>
+                <span className="mobi-more-label">Market</span>
               </button>
               <button
                 type="button"
@@ -2980,31 +2924,71 @@ function UserLayout({ user, onLogout }) {
                 }}
               >
                 <span className="mobi-more-icon"><LuTrophy size={22} /></span>
-                <span className="mobi-more-label">Challenges</span>
+                <span className="mobi-more-label">Start Evaluation</span>
               </button>
               <button
                 type="button"
                 className="mobi-more-item"
                 onClick={() => {
-                  navigateToPage('wallet');
+                  navigateToPage('billing');
                   setMoreMenuOpen(false);
                 }}
               >
-                <span className="mobi-more-icon"><LuWallet size={22} /></span>
-                <span className="mobi-more-label">Wallet</span>
+                <span className="mobi-more-icon"><LuBriefcase size={22} /></span>
+                <span className="mobi-more-label">Billing</span>
+              </button>
+              <button
+                type="button"
+                className="mobi-more-item"
+                onClick={() => {
+                  navigateToPage('contact');
+                  setMoreMenuOpen(false);
+                }}
+              >
+                <span className="mobi-more-icon"><LuBell size={22} /></span>
+                <span className="mobi-more-label">Contact</span>
+              </button>
+              <button
+                type="button"
+                className="mobi-more-item"
+                onClick={() => {
+                  navigateToPage('settings');
+                  setMoreMenuOpen(false);
+                }}
+              >
+                <span className="mobi-more-icon"><LuUser size={22} /></span>
+                <span className="mobi-more-label">Profile</span>
               </button>
             </div>
           </>
         )}
       </div>
-      </div>{/* end display:none wrapper */}
 
-      {/* Responsive: hide sidebar on mobile, show hamburger */}
+      {/* Responsive: hide sidebar on mobile, compact top bar,
+          hide desktop status-bar, show mobile bottom nav. */}
       <style>{`
         @media (max-width: 768px) {
           .prop-sidebar { display: none !important; }
           .main-content { left: 0 !important; }
-          .prop-hamburger { display: block !important; }
+          /* The mobile bottom nav replaces the old sidebar; the 3-dot
+             hamburger is not needed on mobile and only clutters the header. */
+          .prop-hamburger { display: none !important; }
+          /* Top bar compaction */
+          .bft-topbar { padding: 0 10px !important; }
+          .bft-topbar .bft-header-logo-btn img { height: 28px !important; }
+          /* Hide the username text — keep just the avatar circle */
+          .bft-topbar .bft-header-username { display: none !important; }
+          /* Desktop-only legacy footer is hidden; mobile bottom nav takes over */
+          .bft-desktop-only { display: none !important; }
+        }
+        /* Keep the desktop status-bar visible only on wider screens */
+        @media (min-width: 769px) {
+          .mobile-bottom-nav { display: none !important; }
+          .mobi-fixed-footer { display: none !important; }
+        }
+        @media (max-width: 380px) {
+          .bft-topbar { padding: 0 6px !important; gap: 6px; }
+          .bft-topbar .bft-header-logo-btn img { height: 24px !important; }
         }
       `}</style>
     </div>

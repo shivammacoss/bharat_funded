@@ -290,6 +290,11 @@ connectDB().then(async () => {
 
 // ============== API ROUTES ==============
 
+// Root endpoint - returns 200 OK
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'Bharat Funded Trader API', timestamp: new Date().toISOString() });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -2545,13 +2550,18 @@ app.get('/api/zerodha/settings', async (req, res) => {
   try {
     const settings = await ZerodhaSettings.getSettings();
     
-    // Generate redirect URL dynamically based on environment
+    // Redirect URL resolution order:
+    // 1. ZERODHA_REDIRECT_URL env var (authoritative — must match the URL
+    //    you registered in the Kite Connect developer portal).
+    // 2. Saved `settings.redirectUrl` from the DB (set by admin).
+    // 3. Built from the incoming request headers — works for localhost dev
+    //    and any production host where this server is actually reachable.
     const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const host = req.headers['x-forwarded-host'] || req.get('host') || 'api.bharatfundedtrade.com';
-    const isProduction = process.env.NODE_ENV === 'production' || !host.includes('localhost');
-    const dynamicRedirectUrl = isProduction 
-      ? `https://api.bharatfundedtrade.com/api/zerodha/callback`
-      : `http://${host}/api/zerodha/callback`;
+    const host = req.headers['x-forwarded-host'] || req.get('host') || 'localhost:3001';
+    const dynamicRedirectUrl =
+      process.env.ZERODHA_REDIRECT_URL ||
+      settings.redirectUrl ||
+      `${protocol}://${host}/api/zerodha/callback`;
     
     // Check if token is expired
     const isTokenExpired = settings.tokenExpiry ? new Date() >= new Date(settings.tokenExpiry) : true;
@@ -2616,17 +2626,17 @@ app.get('/api/zerodha/callback', async (req, res) => {
   const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
   try {
     const { request_token, status } = req.query;
-    
+
     if (status === 'cancelled') {
       return res.redirect(`${frontendUrl}/admin/zerodha?error=cancelled`);
     }
-    
+
     if (!request_token) {
       return res.redirect(`${frontendUrl}/admin/zerodha?error=no_token`);
     }
-    
+
     await zerodhaService.generateSession(request_token);
-    
+
     // Auto-connect WebSocket after successful authentication
     try {
       await zerodhaService.connectWebSocket();
@@ -2634,11 +2644,33 @@ app.get('/api/zerodha/callback', async (req, res) => {
     } catch (wsError) {
       console.log('WebSocket auto-connect failed:', wsError.message);
     }
-    
+
     res.redirect(`${frontendUrl}/admin/zerodha?success=true`);
   } catch (error) {
     console.error('Zerodha callback error:', error);
     res.redirect(`${frontendUrl}/admin/zerodha?error=${encodeURIComponent(error.message)}`);
+  }
+});
+
+// Manual token entry — for when the OAuth redirect URL is broken (e.g. DNS
+// not configured) the admin can copy the `request_token` from the failed
+// callback URL in their browser and paste it here to complete the login.
+app.post('/api/zerodha/connect-with-token', async (req, res) => {
+  try {
+    const { request_token } = req.body || {};
+    if (!request_token || !String(request_token).trim()) {
+      return res.status(400).json({ success: false, error: 'request_token is required' });
+    }
+    await zerodhaService.generateSession(String(request_token).trim());
+    try {
+      await zerodhaService.connectWebSocket();
+    } catch (wsError) {
+      console.log('WebSocket auto-connect failed:', wsError.message);
+    }
+    res.json({ success: true, message: 'Zerodha connected with manual token' });
+  } catch (error) {
+    console.error('Zerodha manual-token error:', error);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 

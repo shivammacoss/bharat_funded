@@ -513,6 +513,32 @@ function OrdersPage() {
 
   return (
     <div className="page-content orders-page">
+      <style>{`
+        @media (max-width: 768px) {
+          .orders-page .orders-header { padding: 14px 12px !important; gap: 10px !important; }
+          .orders-page .orders-header h2 { font-size: 20px !important; }
+          .orders-page .orders-header .subtitle { font-size: 12px !important; }
+          .orders-page .orders-filters { width: 100%; gap: 6px !important; flex-wrap: wrap; }
+          .orders-page .date-filter { flex: 1 1 44%; min-width: 120px; }
+          .orders-page .date-filter label { font-size: 11px !important; min-width: 32px; }
+          .orders-page .date-filter input[type="date"] { padding: 8px 10px !important; font-size: 12px !important; flex: 1; min-width: 0; border-radius: 8px !important; }
+          .orders-page .orders-filters .filter-btn { padding: 8px 12px !important; font-size: 12px !important; }
+          .orders-page .orders-tabs { padding: 10px 12px !important; gap: 6px !important; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+          .orders-page .orders-tab { padding: 8px 12px !important; font-size: 12px !important; white-space: nowrap; flex-shrink: 0; }
+          .orders-page .orders-section { padding: 0 12px !important; }
+          .orders-page .section-header { flex-direction: column; align-items: flex-start !important; gap: 6px !important; padding: 12px 0 !important; }
+          .orders-page .section-header h3 { font-size: 15px !important; }
+          .orders-page .orders-table-container { display: none !important; }
+          .orders-page .orders-cards-mobile { display: flex !important; flex-direction: column; gap: 10px; padding-bottom: 12px; }
+          .orders-page .order-card { padding: 12px !important; border-radius: 10px !important; border: 1px solid var(--border-color); background: var(--bg-secondary); }
+          .orders-page .order-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+          .orders-page .no-data-card { padding: 28px 12px !important; text-align: center; color: var(--text-secondary); border: 1px dashed var(--border-color); border-radius: 12px; background: var(--bg-secondary); }
+          .orders-page .orders-pagination { flex-direction: column; gap: 10px !important; padding: 12px !important; }
+        }
+        @media (min-width: 769px) {
+          .orders-page .orders-cards-mobile { display: none; }
+        }
+      `}</style>
       {/* Header */}
       <div className="orders-header">
         <div>

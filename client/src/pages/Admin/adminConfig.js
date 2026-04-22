@@ -7,17 +7,18 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localho
 // with no React dependency.
 export const sidebarMenu = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', path: '/admin' },
+  // Prop Trading is this platform's flagship section — pulled up right under
+  // Dashboard so it stays visible in the primary nav.
+  { id: 'prop-trading', label: 'Prop Trading', icon: 'trophy', path: '/admin/prop-trading' },
   { id: 'user-management', label: 'User Management', icon: 'users', path: '/admin/users' },
   { id: 'trade-management', label: 'Trade Management', icon: 'trades', path: '/admin/trades' },
   { id: 'bank-fund-management', label: 'Bank & Fund Management', icon: 'bank', path: '/admin/funds' },
-  { id: 'brand-management', label: 'Brand Management', icon: 'brand', path: '/admin/brand' },
   { id: 'binary-settings', label: 'Binary Mode Settings', icon: 'timer', path: '/admin/binary-settings' },
   { id: 'risk-management', label: 'Risk Management', icon: 'shield', path: '/admin/risk-management' },
   { id: 'netting-segment-management', label: 'Netting Segments', icon: 'netting', path: '/admin/netting-segments' },
   { id: 'bonus-management', label: 'Bonus Management', icon: 'gift', path: '/admin/bonus-management' },
   { id: 'zerodha-connect', label: 'Zerodha Connect', icon: 'radio', path: '/admin/zerodha' },
   { id: 'market-control', label: 'Market Control', icon: 'clock', path: '/admin/market-control' },
-  { id: 'prop-trading', label: 'Prop Trading', icon: 'trophy', path: '/admin/prop-trading' },
   { id: 'reports', label: 'Reports & Analytics', icon: 'reports', path: '/admin/reports' },
   { id: 'activity-logs', label: 'Activity Logs', icon: 'activity', path: '/admin/activity-logs' },
   { id: 'notifications', label: 'Notifications', icon: 'bell', path: '/admin/notifications' },
@@ -56,9 +57,6 @@ export const sectionTabs = {
     { id: 'fund-requests', label: 'Fund Requests', path: 'fund-requests' },
     { id: 'subadmin-logs', label: 'Sub-Admin Activity', path: 'subadmin-logs' },
     { id: 'broker-logs', label: 'Broker Activity', path: 'broker-logs' }
-  ],
-  'brand-management': [
-    { id: 'banner-settings', label: 'Banners', path: '' }
   ],
   'netting-segment-management': [
     { id: 'netting-settings', label: 'Segment Settings', path: '' },

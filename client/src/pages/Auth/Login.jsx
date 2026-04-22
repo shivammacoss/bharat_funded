@@ -83,7 +83,7 @@ function Login({ onLogin }) {
       <div className="auth-container tubes-auth">
         <div className="auth-card">
           <div className="auth-header">
-            <img src="/landing/img/logo1.png" alt="Bharat Funded Trader" className="auth-logo-img" />
+            <img src="/landing/img/bharat funded trader landscape.png" alt="Bharat Funded Trader" className="auth-logo-img" />
             <p className="auth-subtitle">Welcome back! Please login to continue.</p>
           </div>
 

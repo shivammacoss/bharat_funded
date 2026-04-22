@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LuEye, LuEyeOff } from 'react-icons/lu';
 import TubesBackground from '../../components/TubesBackground';
@@ -38,19 +38,15 @@ const countries = [
 function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const termsRef = useRef(null);
   const [referralId, setReferralId] = useState('');
   const [referralFromLink, setReferralFromLink] = useState(false);
   const [formData, setFormData] = useState({
     name: '', email: '', countryCode: '+91', phone: '',
-    city: '', state: '', password: '', confirmPassword: ''
+    password: '', confirmPassword: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -75,15 +71,6 @@ function Register() {
   };
 
   const selectedCountry = countries.find(c => c.code === formData.countryCode) || countries[0];
-
-  const handleTermsScroll = (e) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.target;
-    if (scrollTop + clientHeight >= scrollHeight - 50) setHasScrolledToBottom(true);
-  };
-
-  const openTermsModal = (e) => { e.preventDefault(); setShowTermsModal(true); setHasScrolledToBottom(false); };
-  const acceptTerms = () => { setTermsAccepted(true); setShowTermsModal(false); };
-  const declineTerms = () => { setTermsAccepted(false); setShowTermsModal(false); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -120,7 +107,7 @@ function Register() {
         <div className="auth-card" style={{ maxWidth: '440px', padding: '32px 28px' }}>
           {/* Header */}
           <div className="auth-header" style={{ marginBottom: '24px' }}>
-            <img src="/landing/img/logo1.png" alt="Bharat Funded Trader" className="auth-logo-img" />
+            <img src="/landing/img/bharat funded trader landscape.png" alt="Bharat Funded Trader" className="auth-logo-img" />
             <p className="auth-subtitle">Create your account to start trading</p>
           </div>
 
@@ -150,18 +137,6 @@ function Register() {
                 <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="9876543210" autoComplete="tel" className="phone-input" />
               </div>
               <span className="phone-hint">{selectedCountry.flag} {selectedCountry.name}</span>
-            </div>
-
-            {/* City & State */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group" style={{ gap: '5px' }}>
-                <label htmlFor="city">City</label>
-                <input type="text" id="city" name="city" value={formData.city} onChange={handleChange} placeholder="Mumbai" autoComplete="address-level2" />
-              </div>
-              <div className="form-group" style={{ gap: '5px' }}>
-                <label htmlFor="state">State</label>
-                <input type="text" id="state" name="state" value={formData.state} onChange={handleChange} placeholder="Maharashtra" autoComplete="address-level1" />
-              </div>
             </div>
 
             {/* Password */}
@@ -203,19 +178,8 @@ function Register() {
               )}
             </div>
 
-            {/* Terms */}
-            <div className="form-options" style={{ marginTop: '4px' }}>
-              <label className="remember-me">
-                <input type="checkbox" checked={termsAccepted} onChange={() => {}} required />
-                <span>
-                  I agree to the{' '}
-                  <button type="button" className="terms-link" onClick={openTermsModal}>Terms & Conditions</button>
-                </span>
-              </label>
-            </div>
-
             {/* Register Button */}
-            <button type="submit" className="auth-submit-btn" disabled={loading || !termsAccepted} style={{ marginTop: '6px' }}>
+            <button type="submit" className="auth-submit-btn" disabled={loading} style={{ marginTop: '6px' }}>
               {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>

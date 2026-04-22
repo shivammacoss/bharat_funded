@@ -355,12 +355,20 @@ async function verifyUserToken(req, res, next) {
 // GET /api/prop/status - Public: check if challenge mode enabled
 router.get('/status', async (req, res) => {
   try {
-    // Check global settings first, then any admin-level settings
-    let settings = await PropSettings.findOne({ challengeModeEnabled: true });
-    if (!settings) settings = await PropSettings.findOne({});
+    // Check global settings
+    let settings = await PropSettings.findOne({});
+    
+    // If challengeModeEnabled is explicitly true, use that
+    // Otherwise, auto-enable if there are active challenges
+    let isEnabled = settings?.challengeModeEnabled === true;
+    if (!isEnabled) {
+      const activeCount = await Challenge.countDocuments({ isActive: true });
+      isEnabled = activeCount > 0;
+    }
+    
     res.json({
       success: true,
-      enabled: settings?.challengeModeEnabled || false,
+      enabled: isEnabled,
       displayName: settings?.displayName || 'Prop Trading Challenge',
       description: settings?.description || ''
     });
@@ -369,11 +377,14 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// GET /api/prop/challenges - Public: list active challenges
+// GET /api/prop/challenges - Public: list active challenges. The `tiers`
+// array MUST be projected — without it the user sees only the legacy
+// single (fundSize, challengeFee) pair and multi-tier admin pricing is
+// invisible on the evaluation-plans grid.
 router.get('/challenges', async (req, res) => {
   try {
     const challenges = await Challenge.find({ isActive: true })
-      .select('name description stepsCount fundSize challengeFee currency rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays rules.stopLossMandatory rules.maxLeverage fundedSettings.profitSplitPercent sortOrder')
+      .select('name description stepsCount fundSize challengeFee tiers currency rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays rules.stopLossMandatory rules.takeProfitMandatory rules.maxLeverage rules.tradingDaysRequired fundedSettings.profitSplitPercent fundedSettings.withdrawalFrequencyDays sortOrder')
       .sort({ sortOrder: 1, fundSize: 1 });
     res.json({ success: true, challenges });
   } catch (error) {
@@ -384,15 +395,19 @@ router.get('/challenges', async (req, res) => {
 // POST /api/prop/buy - User: buy a challenge
 router.post('/buy', verifyUserToken, async (req, res) => {
   try {
-    const { challengeId } = req.body;
+    const { challengeId, tierIndex } = req.body;
     if (!challengeId) return res.status(400).json({ success: false, message: 'challengeId required' });
 
-    const result = await propTradingEngine.buyChallenge(req.user._id, challengeId);
+    const result = await propTradingEngine.buyChallenge(
+      req.user._id,
+      challengeId,
+      Number.isInteger(tierIndex) ? tierIndex : (tierIndex != null ? Number(tierIndex) : undefined)
+    );
     res.json({
       success: true,
       message: 'Challenge purchased successfully!',
       account: result.account,
-      challenge: { name: result.challenge.name, fundSize: result.challenge.fundSize }
+      challenge: { name: result.challenge.name, fundSize: result.account.initialBalance }
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
