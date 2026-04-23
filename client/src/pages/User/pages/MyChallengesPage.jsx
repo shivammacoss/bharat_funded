@@ -107,7 +107,7 @@ function MyChallengesPage() {
   }
 
   return (
-    <div className="bft-my-challenges-root" style={{ width: '100%' }}>
+    <div className="bft-my-challenges-root" style={{ width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
       <style>{`
         @media (max-width: 768px) {
           .bft-my-challenges-root { background: var(--bg-primary); }

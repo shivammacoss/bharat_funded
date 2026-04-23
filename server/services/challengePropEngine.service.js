@@ -177,7 +177,56 @@ async function refreshEquity(challengeAccountId, livePrices) {
   const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
   if (!account) return null;
 
-  const openPositions = await ChallengePosition.find({ challengeAccountId, status: 'open' });
+  let openPositions = await ChallengePosition.find({ challengeAccountId, status: 'open' });
+
+  // Phase 1 — SL/TP trigger evaluation. Trigger conventions match MT5 / the
+  // netting engine's _checkPerFillSLTP:
+  //   BUY  position marks-to-market at bid. SL hit when bid <= sl, TP when bid >= tp.
+  //   SELL position marks-to-market at ask. SL hit when ask >= sl, TP when ask <= tp.
+  // The position is closed at the SL/TP level itself (not the crossing
+  // price) so realised PnL is deterministic and fair.
+  const triggered = [];
+  for (const pos of openPositions) {
+    const lp = livePrices?.[pos.symbol];
+    if (!lp) continue;
+    const bid = Number(lp.bid);
+    const ask = Number(lp.ask);
+    const sl = pos.stopLoss != null ? Number(pos.stopLoss) : null;
+    const tp = pos.takeProfit != null ? Number(pos.takeProfit) : null;
+    const side = String(pos.side || '').toLowerCase();
+
+    let triggerPrice = null;
+    let reason = null;
+    if (side === 'buy') {
+      if (sl != null && bid > 0 && bid <= sl) { triggerPrice = sl; reason = 'sl'; }
+      else if (tp != null && bid > 0 && bid >= tp) { triggerPrice = tp; reason = 'tp'; }
+    } else if (side === 'sell') {
+      if (sl != null && ask > 0 && ask >= sl) { triggerPrice = sl; reason = 'sl'; }
+      else if (tp != null && ask > 0 && ask <= tp) { triggerPrice = tp; reason = 'tp'; }
+    }
+    if (triggerPrice != null && reason) {
+      triggered.push({ positionId: pos.positionId, symbol: pos.symbol, triggerPrice, reason });
+    }
+  }
+
+  for (const t of triggered) {
+    try {
+      await closePosition(t.positionId, t.triggerPrice, t.reason);
+      console.log(
+        `[Challenge SL/TP] ${t.reason.toUpperCase()} hit on ${t.symbol} (${t.positionId}): closed @ ${t.triggerPrice}`
+      );
+    } catch (err) {
+      console.error('[Challenge SL/TP] close error for', t.positionId, err.message);
+    }
+  }
+
+  // If any positions closed, re-fetch the remaining open list so the
+  // mark-to-market + wallet recompute below reflects the closures.
+  if (triggered.length > 0) {
+    openPositions = await ChallengePosition.find({ challengeAccountId, status: 'open' });
+  }
+
+  // Phase 2 — mark-to-market the still-open positions.
   for (const pos of openPositions) {
     const lp = livePrices?.[pos.symbol];
     if (!lp) continue;
@@ -190,13 +239,21 @@ async function refreshEquity(challengeAccountId, livePrices) {
     await pos.save();
   }
 
-  recomputeWallet(account, openPositions);
-  account.currentBalance = account.walletBalance;
-  account.currentEquity = account.walletEquity;
-  await account.save();
+  // Re-read the account — closePosition() above already mutated
+  // walletBalance/walletEquity/etc. The `account` variable held the
+  // pre-close snapshot.
+  const fresh = triggered.length > 0
+    ? await ChallengeAccount.findById(challengeAccountId).populate('challengeId')
+    : account;
+  if (!fresh) return null;
+
+  recomputeWallet(fresh, openPositions);
+  fresh.currentBalance = fresh.walletBalance;
+  fresh.currentEquity = fresh.walletEquity;
+  await fresh.save();
 
   // Use propTradingEngine's drawdown check (it also handles auto-fail).
-  return await propTradingEngine.updateRealTimeEquity(challengeAccountId, account.walletEquity);
+  return await propTradingEngine.updateRealTimeEquity(challengeAccountId, fresh.walletEquity);
 }
 
 module.exports = {

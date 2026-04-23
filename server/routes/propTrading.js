@@ -522,6 +522,56 @@ router.get('/accounts/:id/positions', verifyUserToken, async (req, res) => {
   }
 });
 
+// PUT /api/prop/positions/:positionId/sltp - modify SL/TP on an open
+// challenge position. Pass `stopLoss` and/or `takeProfit` in the body;
+// set to null/0 to clear. Values are stored as-is and evaluated on the
+// next tick by challengePropEngine.refreshEquity().
+router.put('/positions/:positionId/sltp', verifyUserToken, async (req, res) => {
+  try {
+    const { stopLoss, takeProfit } = req.body;
+    const normalise = (v) => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n <= 0) return null;
+      return n;
+    };
+    const hasSL = Object.prototype.hasOwnProperty.call(req.body, 'stopLoss');
+    const hasTP = Object.prototype.hasOwnProperty.call(req.body, 'takeProfit');
+    if (!hasSL && !hasTP) {
+      return res.status(400).json({ success: false, message: 'Provide stopLoss and/or takeProfit' });
+    }
+
+    const position = await ChallengePosition.findOne({
+      positionId: req.params.positionId,
+      userId: req.user._id,
+      status: 'open'
+    });
+    if (!position) {
+      return res.status(404).json({ success: false, message: 'Position not found or already closed' });
+    }
+
+    if (hasSL) position.stopLoss = normalise(stopLoss);
+    if (hasTP) position.takeProfit = normalise(takeProfit);
+    await position.save();
+
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.to(String(req.user._id)).emit('challengePositionUpdate', {
+          challengeAccountId: position.challengeAccountId,
+          positionId: position.positionId,
+          stopLoss: position.stopLoss,
+          takeProfit: position.takeProfit
+        });
+      }
+    } catch (_) { /* io optional */ }
+
+    res.json({ success: true, position });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // POST /api/prop/positions/:positionId/close - close a challenge position
 router.post('/positions/:positionId/close', verifyUserToken, async (req, res) => {
   try {

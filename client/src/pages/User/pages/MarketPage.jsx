@@ -3652,7 +3652,31 @@ function MarketPage() {
                 {chartTabs.length > 1 && <button className="close-tab" onClick={(e) => removeChartTab(symbol, e)}>×</button>}
               </div>
             ))}
-            <button className="add-tab">+</button>
+            <button
+              type="button"
+              className="add-tab"
+              title="Add instrument to chart"
+              aria-label="Add instrument to chart"
+              onClick={() => {
+                // Expand the instruments panel if it's collapsed, then focus
+                // its search input so the user can start typing immediately.
+                // Clicking any instrument row already calls addChartTab().
+                if (instrumentsPanelCollapsed) {
+                  setInstrumentsPanelCollapsed(false);
+                }
+                setTimeout(() => {
+                  const input = document.querySelector(
+                    '.instruments-panel .search-box input, .instruments-panel .instruments-search-bar input'
+                  );
+                  if (input) {
+                    input.focus();
+                    try { input.select(); } catch (_) {}
+                  }
+                }, 60);
+              }}
+            >
+              +
+            </button>
           </div>
         </div>
         <div className="chart-container" ref={chartContainerRef}>
