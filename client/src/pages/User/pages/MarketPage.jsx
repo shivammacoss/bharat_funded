@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { LuX, LuRepeat, LuChartColumn, LuTimer, LuStar } from 'react-icons/lu';
 import { getOneClickTradeButtonStyle, isOneClickSymbolBusy } from '../../../hooks/useMetaApiPrices';
 import TVChartContainer from '../../../components/TVChart/TVChartContainer';
@@ -307,6 +307,8 @@ function MarketPage() {
     getTVSymbol,
     removeInstrumentFromCategory
   } = useOutletContext();
+
+  const navigate = useNavigate();
 
   const visibleInstrumentsByCategory = visibleInstrumentsByCategoryFromLayout ?? instrumentsByCategory;
 
@@ -1957,9 +1959,19 @@ function MarketPage() {
     if (isPlacingOrder) return;
     if (!lotOrderValidation.canSubmit) return;
 
+    // Prop-only trading: block main-wallet orders. Users must select an
+    // ACTIVE / FUNDED challenge before placing any trade — trades run on the
+    // challenge's isolated virtual sub-wallet, never on User.wallet.
+    const activeChallengeAccountId = localStorage.getItem('bharatfunded-active-challenge') || null;
+    if (!activeChallengeAccountId) {
+      alert('⚠️ No challenge selected\n\nThis is a prop-trading platform — trades can only be placed on an active challenge account, not on your main wallet.\n\nOpen "My Challenges" to pick a challenge, then click "Start Trading".');
+      try { navigate('/app/my-challenges'); } catch (_) {}
+      return;
+    }
+
     try {
       setIsPlacingOrder(true);
-      
+
       const marketStatus = checkMarketHours(selectedSymbol);
       if (!marketStatus.isOpen) {
         alert(`❌ Market Closed\n\n${selectedSymbol} is currently not available for trading.\n\n${marketStatus.reason}`);
@@ -2143,6 +2155,11 @@ function MarketPage() {
           segment: instrumentSegment
         };
       }
+
+      // Always tag the order with the active challenge account. The server
+      // will route it to challengePropEngine (virtual sub-wallet) instead of
+      // the main NettingEngine / HedgingEngine.
+      orderPayload = { ...orderPayload, challengeAccountId: activeChallengeAccountId };
 
       const response = await fetch(`${API_URL}/api/orders`, {
         method: 'POST',

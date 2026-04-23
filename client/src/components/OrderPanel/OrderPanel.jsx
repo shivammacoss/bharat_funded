@@ -82,12 +82,17 @@ const OrderPanel = () => {
       return;
     }
 
+    const challengeAccountId = localStorage.getItem('bharatfunded-active-challenge') || null;
+    if (!challengeAccountId) {
+      alert('⚠️ No challenge selected\n\nThis is a prop-trading platform — trades can only be placed on an active challenge account, not on your main wallet.\n\nOpen "My Challenges" to pick a challenge, then click "Start Trading".');
+      return;
+    }
+
     setOrderLoading(true);
     setOrderResult(null);
 
     try {
       const leverageMultiplierVal = parseInt(leverage.split(':')[1]);
-      const challengeAccountId = localStorage.getItem('bharatfunded-active-challenge') || null;
       const response = await fetch(`${API_URL}/api/trade/open`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

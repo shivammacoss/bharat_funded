@@ -785,6 +785,15 @@ app.post('/api/orders', async (req, res) => {
       return res.json({ success: true, position: propResult.position, account: propResult.account });
     }
 
+    // Prop-only platform: reject main-wallet order placement. Trades must
+    // always be scoped to a challenge account. Closing existing main-wallet
+    // positions is handled by /api/positions/close, not this endpoint.
+    return res.status(403).json({
+      error: 'This is a prop-trading platform. Please select an active challenge account before placing orders.',
+      code: 'CHALLENGE_REQUIRED'
+    });
+
+    // eslint-disable-next-line no-unreachable
     let result;
 
     // Create getCurrentPrice callback for reorder functionality
@@ -6589,6 +6598,14 @@ app.post('/api/trade/open', async (req, res) => {
       });
     }
 
+    // Prop-only platform: reject main-wallet order placement. Users must
+    // trade on a challenge's virtual sub-wallet — not on their real wallet.
+    return res.status(403).json({
+      error: 'This is a prop-trading platform. Please select an active challenge account before placing orders.',
+      code: 'CHALLENGE_REQUIRED'
+    });
+
+    // eslint-disable-next-line no-unreachable
     // Check if this is a Delta Exchange instrument (crypto futures/options)
     const isDeltaInstrument = deltaExchangeStreaming && deltaExchangeStreaming.isDeltaSymbol(symbol);
     
