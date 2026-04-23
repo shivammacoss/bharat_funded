@@ -620,14 +620,17 @@ function OrdersPage() {
     <div className="page-content orders-page">
       <style>{`
         @media (max-width: 768px) {
-          .orders-page .orders-header { padding: 14px 12px !important; gap: 10px !important; }
-          .orders-page .orders-header h2 { font-size: 20px !important; }
-          .orders-page .orders-header .subtitle { font-size: 12px !important; }
-          .orders-page .orders-filters { width: 100%; gap: 6px !important; flex-wrap: wrap; }
-          .orders-page .date-filter { flex: 1 1 44%; min-width: 120px; }
-          .orders-page .date-filter label { font-size: 11px !important; min-width: 32px; }
-          .orders-page .date-filter input[type="date"] { padding: 8px 10px !important; font-size: 12px !important; flex: 1; min-width: 0; border-radius: 8px !important; }
-          .orders-page .orders-filters .filter-btn { padding: 8px 12px !important; font-size: 12px !important; }
+          /* Hide the entire Orders header (title + subtitle + date filters)
+             on mobile — the user asked to remove it on small screens; the
+             chip row below is enough context. */
+          .orders-page .orders-header { display: none !important; }
+          /* Compact the chip row so each challenge card is small and fits
+             2-per-row comfortably on a phone. */
+          .orders-page .acct-chip-row { margin: 12px 0 !important; gap: 8px !important; padding-bottom: 2px !important; }
+          .orders-page .acct-chip-row button { min-width: 140px !important; padding: 8px 10px !important; border-radius: 10px !important; }
+          .orders-page .acct-chip-row button > div:first-child { margin-bottom: 4px !important; gap: 6px !important; }
+          .orders-page .acct-chip-row button > div:first-child > span:last-child { font-size: 11px !important; }
+          .orders-page .acct-chip-row button > div:last-child { gap: 6px !important; font-size: 10px !important; }
           .orders-page .orders-tabs { padding: 10px 12px !important; gap: 6px !important; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
           .orders-page .orders-tab { padding: 8px 12px !important; font-size: 12px !important; white-space: nowrap; flex-shrink: 0; }
           .orders-page .orders-section { padding: 0 12px !important; }
