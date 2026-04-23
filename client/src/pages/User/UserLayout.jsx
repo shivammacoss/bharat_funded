@@ -2447,8 +2447,12 @@ function UserLayout({ user, onLogout }) {
         {/* Nav Items */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
           {sidebarNav.map(item => {
+            // Active highlight matches only the current page's own key.
+            // The legacy fallback that folded my-challenges / challenge*
+            // into Dashboard's active state caused TWO sidebar items to
+            // light up at once on the My Challenges page.
             const isActive = activePage === item.key ||
-              (item.key === 'home' && (activePage === 'home' || activePage === '' || activePage === 'my-challenges' || activePage?.startsWith('challenge')));
+              (item.key === 'home' && (activePage === '' || activePage == null));
             return (
               <button
                 key={item.key}

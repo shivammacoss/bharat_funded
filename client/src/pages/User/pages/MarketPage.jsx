@@ -3658,21 +3658,29 @@ function MarketPage() {
               title="Add instrument to chart"
               aria-label="Add instrument to chart"
               onClick={() => {
-                // Expand the instruments panel if it's collapsed, then focus
-                // its search input so the user can start typing immediately.
-                // Clicking any instrument row already calls addChartTab().
+                // (1) Ensure the Instruments panel is expanded.
                 if (instrumentsPanelCollapsed) {
                   setInstrumentsPanelCollapsed(false);
                 }
+                // (2) If the user is on Favourites, renderDynamicTopSearchArea
+                //     returns null — there's no search input to type into.
+                //     Switch to the first real segment tab (e.g. NSE EQ) so
+                //     a search bar is rendered.
+                if (filterTab === 'FAVOURITES' && Array.isArray(visibleSegmentTabs) && visibleSegmentTabs.length > 0) {
+                  setFilterTab(visibleSegmentTabs[0].key);
+                }
+                // (3) Focus the first text input inside the panel on the
+                //     next frame so it's picked up after the re-render.
                 setTimeout(() => {
                   const input = document.querySelector(
-                    '.instruments-panel .search-box input, .instruments-panel .instruments-search-bar input'
+                    '.instruments-panel input[type="text"]'
                   );
                   if (input) {
                     input.focus();
                     try { input.select(); } catch (_) {}
+                    input.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
                   }
-                }, 60);
+                }, 120);
               }}
             >
               +
