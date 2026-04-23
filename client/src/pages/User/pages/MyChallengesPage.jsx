@@ -107,10 +107,81 @@ function MyChallengesPage() {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
-    <div style={{ padding: '24px 28px 60px' }}>
+    <div className="bft-my-challenges-root" style={{ width: '100%' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .bft-my-challenges-root { background: var(--bg-primary); }
+          .bft-my-challenges-root .bft-mc-inner { padding: 12px 12px 16px !important; }
+
+          /* Header — title + "Buy New Challenge" must stay on one line.
+             Shrink both so the button sits beside the heading instead of
+             wrapping underneath. */
+          .bft-my-challenges-root .bft-mc-header {
+            flex-wrap: nowrap !important;
+            margin-bottom: 10px !important;
+            gap: 8px !important;
+          }
+          .bft-my-challenges-root .bft-mc-header h2 {
+            font-size: 16px !important;
+            white-space: nowrap;
+          }
+          .bft-my-challenges-root .bft-mc-header > button {
+            padding: 6px 12px !important;
+            font-size: 11px !important;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+
+          /* Filter pills — all 5 on one horizontally-scrollable line. */
+          .bft-my-challenges-root .bft-mc-filters {
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: 6px !important;
+            margin-bottom: 12px !important;
+            padding-bottom: 2px;
+          }
+          .bft-my-challenges-root .bft-mc-filters::-webkit-scrollbar {
+            display: none;
+          }
+          .bft-my-challenges-root .bft-mc-filters button {
+            padding: 5px 10px !important;
+            font-size: 11px !important;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+
+          /* Challenge card — tighter padding, smaller stat typography so
+             the whole card takes less vertical space. */
+          .bft-my-challenges-root .bft-mc-list > div {
+            padding: 12px 14px !important;
+            border-radius: 12px !important;
+          }
+          .bft-my-challenges-root .bft-mc-list > div > div:first-child {
+            margin-bottom: 8px !important;
+          }
+          /* Stats grid: pack 2 per row with smaller values. */
+          .bft-my-challenges-root .bft-mc-list > div > div:nth-child(2) {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+            margin-bottom: 10px !important;
+          }
+          .bft-my-challenges-root .bft-mc-list > div > div:nth-child(2) > div > div:first-child {
+            font-size: 10px !important;
+          }
+          .bft-my-challenges-root .bft-mc-list > div > div:nth-child(2) > div > div:last-child {
+            font-size: 13px !important;
+          }
+          .bft-my-challenges-root .bft-mc-list > div button {
+            padding: 8px 16px !important;
+            font-size: 12px !important;
+            margin-top: 6px !important;
+          }
+        }
+      `}</style>
+    <div className="bft-mc-inner" style={{ padding: '24px 28px 60px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+      <div className="bft-mc-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <h2 style={{ color: 'var(--text-primary)', margin: 0, fontSize: '20px', fontWeight: '700' }}>📊 My Challenges</h2>
         <button
           onClick={() => navigate('/app/challenges')}
@@ -124,7 +195,7 @@ function MyChallengesPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+      <div className="bft-mc-filters" style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
         {['ALL', 'ACTIVE', 'FUNDED', 'PASSED', 'FAILED'].map(f => (
           <button
             key={f}
@@ -156,7 +227,7 @@ function MyChallengesPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div className="bft-mc-list" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {filtered.map(acc => {
             const ch = acc.challengeId || {};
             const sc = statusConfig[acc.status] || statusConfig.ACTIVE;

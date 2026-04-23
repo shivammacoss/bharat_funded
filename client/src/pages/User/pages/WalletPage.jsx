@@ -7,6 +7,10 @@ function WalletPage() {
   const { user, walletData, positions = [] } = useOutletContext();
 
   const [activeTab, setActiveTab] = useState('deposit');
+  // On mobile the deposit/withdrawal form is collapsed by default and only
+  // opens when the user taps Deposit or Withdraw in the hero card. Desktop
+  // ignores this flag — CSS only applies the collapsed state at ≤768px.
+  const [mobileFormOpen, setMobileFormOpen] = useState(false);
   const [amount, setAmount] = useState('');
   const currency = 'INR';
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -318,6 +322,7 @@ function WalletPage() {
     setWithdrawCryptoDetails({ network: '', address: '' });
     setSelectedSavedBank('');
     setSelectedSavedUpi('');
+    setMobileFormOpen(false);
     alert(`${activeTab === 'deposit' ? 'Deposit' : 'Withdrawal'} request submitted successfully!`);
   };
 
@@ -393,6 +398,7 @@ function WalletPage() {
               className="mobi-wa-deposit"
               onClick={() => {
                 setActiveTab('deposit');
+                setMobileFormOpen(true);
                 scrollToWalletForm();
               }}
             >
@@ -403,6 +409,7 @@ function WalletPage() {
               className="mobi-wa-withdraw"
               onClick={() => {
                 setActiveTab('withdrawal');
+                setMobileFormOpen(true);
                 scrollToWalletForm();
               }}
             >
@@ -437,8 +444,16 @@ function WalletPage() {
       </div>
 
       <div className="wallet-content">
-        <div className="wallet-form-card">
+        <div className={`wallet-form-card${mobileFormOpen ? ' wallet-form-card--mobile-open' : ''}`}>
           <>
+          <button
+            type="button"
+            className="wallet-form-mobile-close"
+            aria-label="Close form"
+            onClick={() => setMobileFormOpen(false)}
+          >
+            ✕
+          </button>
           <div className="wallet-tabs">
             <button className={`wallet-tab ${activeTab === 'deposit' ? 'active' : ''}`} onClick={() => setActiveTab('deposit')}>Deposit</button>
             <button className={`wallet-tab ${activeTab === 'withdrawal' ? 'active' : ''}`} onClick={() => setActiveTab('withdrawal')}>Withdrawal</button>

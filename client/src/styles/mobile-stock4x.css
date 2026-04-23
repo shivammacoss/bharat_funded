@@ -69,13 +69,28 @@
     padding-bottom: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Actual rendered height of .mobi-fixed-footer (nav only, no status
+       strip) plus breathing room so content is never flush against the
+       nav. All pages read this via var() so there's one source of truth. */
+    --mobi-footer-h: 64px;
   }
 
+  /* Make .main-content the single scroll container on mobile. The inline
+     style on the element sets `overflow: hidden` and `position: fixed` —
+     we override overflow so page content scrolls naturally and the
+     padding-bottom reserves space for the fixed bottom nav. This replaces
+     the previous pattern where every page had its own scroll wrapper and
+     had to remember to leave ~90px at the bottom for the nav. */
   .app.user-layout-shell .main-content {
-    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(var(--mobi-footer-h, 64px) + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Fixed footer: compact status + bottom nav */
+  /* Fixed footer: compact status + bottom nav.
+     Match the page background exactly (no blur, no tint) so there's no
+     visible band above the bottom nav on any page. */
   .mobi-fixed-footer {
     display: flex;
     flex-direction: column;
@@ -84,10 +99,10 @@
     right: 0;
     bottom: 0;
     z-index: 100;
-    background: var(--m-bnav-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid var(--m-border);
+    background: var(--bg-primary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-top: none;
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
@@ -173,12 +188,12 @@
   /* Bottom nav — 5 equal tabs: Home | Challenges | Orders | Wallet | More */
   .mobile-bottom-nav.mobi-bharatfunded-bnav {
     display: flex !important;
-    align-items: flex-end;
+    align-items: center;
     position: relative !important;
     bottom: auto !important;
     left: auto !important;
     right: auto !important;
-    padding: 8px 6px 10px;
+    padding: 2px 4px 4px;
     background: transparent;
     border-top: none;
     gap: 0;
@@ -189,8 +204,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 6px 2px;
+    gap: 2px;
+    padding: 4px 2px;
     background: none;
     border: none;
     cursor: pointer;
@@ -210,13 +225,20 @@
   .mobi-bharatfunded-bnav .mobi-bnav-item .mobi-bnav-icon {
     font-size: 20px;
     line-height: 1;
+    display: inline-flex;
+  }
+  /* Shrink the icon inside the span to 20px so it matches other apps */
+  .mobi-bharatfunded-bnav .mobi-bnav-item .mobi-bnav-icon svg {
+    width: 20px;
+    height: 20px;
   }
 
   .mobi-bharatfunded-bnav .mobi-bnav-item .mobi-bnav-label {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    line-height: 1.1;
   }
 
   .mobi-bharatfunded-bnav .mobi-bnav-item:focus,
@@ -228,12 +250,10 @@
   }
 
   .mobi-bharatfunded-bnav .mobi-bnav-dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--m-t1);
-    margin-bottom: -2px;
+    width: 0;
+    height: 0;
     opacity: 0;
+    display: none;
   }
 
   .mobi-bharatfunded-bnav .mobi-bnav-item.mobi-active .mobi-bnav-dot {
@@ -736,9 +756,83 @@
     font-weight: 500;
   }
 
+  /* !important is needed because a later unscoped `display: none` rule
+     further down this file (outside any @media block) would otherwise win
+     on source order at matching specificity. */
   .mobi-wallet-mobile-hero {
-    display: block;
+    display: block !important;
     margin-bottom: 12px;
+  }
+
+  /* The desktop balance card duplicates the hero above (same numbers,
+     worse layout — 5 items in a 2-col grid leaves Free Margin orphaned
+     on its own row). Hide it on mobile in favour of the purpose-built
+     hero card. */
+  .wallet-page .wallet-balance-card {
+    display: none !important;
+  }
+
+  /* On mobile the form is collapsed by default — only the hero card is
+     shown. Tapping Deposit/Withdraw in the hero adds the
+     `.wallet-form-card--mobile-open` class which reveals the form. */
+  .wallet-page .wallet-form-card {
+    display: none !important;
+  }
+  .wallet-page .wallet-form-card.wallet-form-card--mobile-open {
+    display: block !important;
+    position: relative;
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+  /* Close (✕) button — top-right of the form card on mobile. Hidden on
+     desktop since the form is always open there. */
+  .wallet-form-mobile-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-radius: 50%;
+    color: var(--text-secondary, #9ca3af);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .wallet-page .wallet-tabs {
+    margin-bottom: 12px !important;
+  }
+  .wallet-page .wallet-form .form-group {
+    margin-bottom: 12px !important;
+  }
+  .wallet-page .wallet-form .form-group label {
+    font-size: 12px !important;
+  }
+  .wallet-page .wallet-form .form-group input,
+  .wallet-page .wallet-form .form-group select {
+    padding: 11px 12px !important;
+    font-size: 14px !important;
+    border-radius: 10px !important;
+  }
+  .wallet-page .submit-btn {
+    padding: 13px !important;
+    font-size: 14px !important;
+    border-radius: 12px !important;
+  }
+  /* Transaction history — tighten heading and row spacing. */
+  .wallet-page .transactions-card {
+    padding: 14px !important;
+    border-radius: 14px !important;
+    margin-top: 12px;
+  }
+  .wallet-page .transactions-card h3 {
+    font-size: 15px !important;
+    margin-bottom: 10px !important;
   }
 
   /* Wallet mobile */
@@ -949,6 +1043,11 @@
 }
 
 @media (min-width: 769px) {
+  /* Close button for the mobile-only collapsed form — hide on desktop. */
+  .wallet-form-mobile-close {
+    display: none !important;
+  }
+
   .mobi-chart-ohlc-bar {
     display: none !important;
   }

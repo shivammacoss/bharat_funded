@@ -7180,10 +7180,10 @@ html[data-theme="light"] .payment-details-box {
     bottom: 0;
     left: 0;
     right: 0;
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-color);
-    padding: 8px 0;
-    padding-bottom: env(safe-area-inset-bottom, 8px);
+    background: var(--bg-primary);
+    border-top: none;
+    padding: 4px 0;
+    padding-bottom: env(safe-area-inset-bottom, 4px);
     z-index: 99;
   }
   
@@ -7225,6 +7225,13 @@ html[data-theme="light"] .payment-details-box {
   .wallet-page {
     padding: 12px;
     overflow-x: hidden;
+    background: var(--bg-secondary);
+  }
+  /* Remove the redundant "INR Balance: ₹X" line inside the deposit/
+     withdrawal form — the big balance grid at the top already shows it,
+     and on mobile it created a near-empty band before the amount input. */
+  .wallet-page .wallet-form > .form-group:first-child {
+    display: none;
   }
   
   .wallet-page .wallet-header {
