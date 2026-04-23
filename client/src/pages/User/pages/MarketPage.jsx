@@ -311,6 +311,37 @@ function MarketPage() {
 
   const navigate = useNavigate();
 
+  // Positions / pending / history in the trading terminal are always scoped
+  // to the ACTIVE challenge. Trades from other challenges remain visible in
+  // the Orders page (which shows everything), but the terminal should only
+  // reflect the challenge the user is currently trading on.
+  const scopedPositions = useMemo(() => {
+    const cid = activeChallengeAccountIdFromContext;
+    if (!cid) return [];
+    return (positions || []).filter(p =>
+      p.accountContext === 'challenge' &&
+      String(p.challengeAccountId || '') === String(cid)
+    );
+  }, [positions, activeChallengeAccountIdFromContext]);
+
+  const scopedPendingOrders = useMemo(() => {
+    const cid = activeChallengeAccountIdFromContext;
+    if (!cid) return [];
+    return (pendingOrders || []).filter(p =>
+      p.accountContext === 'challenge' &&
+      String(p.challengeAccountId || '') === String(cid)
+    );
+  }, [pendingOrders, activeChallengeAccountIdFromContext]);
+
+  const scopedTradeHistory = useMemo(() => {
+    const cid = activeChallengeAccountIdFromContext;
+    if (!cid) return [];
+    return (tradeHistory || []).filter(t =>
+      t.accountContext === 'challenge' &&
+      String(t.challengeAccountId || '') === String(cid)
+    );
+  }, [tradeHistory, activeChallengeAccountIdFromContext]);
+
   const visibleInstrumentsByCategory = visibleInstrumentsByCategoryFromLayout ?? instrumentsByCategory;
 
   const getSegmentViewOnlyLabel = useCallback(
@@ -883,29 +914,29 @@ function MarketPage() {
   const [orderBookHistoryPage, setOrderBookHistoryPage] = useState(1);
   const orderBookHistoryPageCount = Math.max(
     1,
-    Math.ceil((tradeHistory?.length || 0) / ORDER_BOOK_HISTORY_PAGE_SIZE)
+    Math.ceil((scopedTradeHistory?.length || 0) / ORDER_BOOK_HISTORY_PAGE_SIZE)
   );
 
   useEffect(() => {
     setOrderBookHistoryPage((p) => Math.min(Math.max(1, p), orderBookHistoryPageCount));
-  }, [orderBookHistoryPageCount, tradeHistory?.length]);
+  }, [orderBookHistoryPageCount, scopedTradeHistory?.length]);
 
   useEffect(() => {
     if (activeTab !== 'history') setOrderBookHistoryPage(1);
   }, [activeTab]);
 
   const paginatedOrderBookHistory = useMemo(() => {
-    const list = tradeHistory || [];
+    const list = scopedTradeHistory || [];
     const start = (orderBookHistoryPage - 1) * ORDER_BOOK_HISTORY_PAGE_SIZE;
     return list.slice(start, start + ORDER_BOOK_HISTORY_PAGE_SIZE);
-  }, [tradeHistory, orderBookHistoryPage]);
+  }, [scopedTradeHistory, orderBookHistoryPage]);
 
   const orderBookHistoryRangeStart =
-    (tradeHistory?.length || 0) === 0 ? 0 : (orderBookHistoryPage - 1) * ORDER_BOOK_HISTORY_PAGE_SIZE + 1;
+    (scopedTradeHistory?.length || 0) === 0 ? 0 : (orderBookHistoryPage - 1) * ORDER_BOOK_HISTORY_PAGE_SIZE + 1;
   const orderBookHistoryRangeEnd =
-    (tradeHistory?.length || 0) === 0
+    (scopedTradeHistory?.length || 0) === 0
       ? 0
-      : Math.min(orderBookHistoryPage * ORDER_BOOK_HISTORY_PAGE_SIZE, tradeHistory?.length || 0);
+      : Math.min(orderBookHistoryPage * ORDER_BOOK_HISTORY_PAGE_SIZE, scopedTradeHistory?.length || 0);
 
   // Delta Exchange state (Crypto Futures & Options)
   const [deltaInstruments, setDeltaInstruments] = useState([]);
@@ -3830,9 +3861,9 @@ function MarketPage() {
           }}
         >
           <div className="order-tabs">
-            <button className={`order-tab ${activeTab === 'positions' ? 'active' : ''}`} onClick={() => setActiveTab('positions')}>Positions({positions.length})</button>
-            <button className={`order-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>Pending({pendingOrders.length})</button>
-            <button className={`order-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History({tradeHistory.length})</button>
+            <button className={`order-tab ${activeTab === 'positions' ? 'active' : ''}`} onClick={() => setActiveTab('positions')}>Positions({scopedPositions.length})</button>
+            <button className={`order-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>Pending({scopedPendingOrders.length})</button>
+            <button className={`order-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History({scopedTradeHistory.length})</button>
             <button className={`order-tab ${activeTab === 'cancelled' ? 'active' : ''}`} onClick={() => setActiveTab('cancelled')}>Cancelled({cancelledOrders.length})</button>
             <div className="order-controls">
               <label className="one-click">
@@ -3849,10 +3880,10 @@ function MarketPage() {
               <table className="positions-table">
                 <thead><tr><th>Time</th><th>Sym</th><th>M</th><th>Side</th><th>Size</th><th>Entry</th><th>Current</th><th>S/L</th><th>T/P</th><th>Comm</th><th>Swap</th><th>P/L</th><th></th></tr></thead>
                 <tbody>
-                  {positions.length === 0 ? (
-                    <tr><td colSpan="11" className="no-data">No open positions</td></tr>
+                  {scopedPositions.length === 0 ? (
+                    <tr><td colSpan="11" className="no-data">No open positions on this challenge</td></tr>
                   ) : (
-                    positions.map((pos) => {
+                    scopedPositions.map((pos) => {
                       const currentPrice = getCurrentPrice(pos);
                       const profit = calculateProfit(pos);
                       const modeLabel = pos.mode === 'hedging' ? 'H' : pos.mode === 'netting' ? 'N' : pos.mode === 'binary' ? 'B' : '-';
@@ -4051,10 +4082,10 @@ function MarketPage() {
               <table className="positions-table">
                 <thead><tr><th>Time</th><th>Sym</th><th>Type</th><th>Size</th><th>Price</th><th>S/L</th><th>T/P</th><th></th></tr></thead>
                 <tbody>
-                  {pendingOrders.length === 0 ? (
-                    <tr><td colSpan="6" className="no-data">No pending orders</td></tr>
+                  {scopedPendingOrders.length === 0 ? (
+                    <tr><td colSpan="6" className="no-data">No pending orders on this challenge</td></tr>
                   ) : (
-                    pendingOrders.map((order) => (
+                    scopedPendingOrders.map((order) => (
                       <tr key={order._id || order.tradeId}>
                         <td>{new Date(order.createdAt).toLocaleTimeString()}</td>
                         <td>{order.symbol}</td>
@@ -4079,8 +4110,8 @@ function MarketPage() {
                   <table className="positions-table">
                     <thead><tr><th>Time</th><th>Sym</th><th>M</th><th>Side</th><th>Size</th><th>Entry</th><th>Close</th><th>Comm</th><th>Swap</th><th>P/L</th><th>Remark</th></tr></thead>
                     <tbody>
-                      {tradeHistory.length === 0 ? (
-                        <tr><td colSpan="11" className="no-data">No trade history</td></tr>
+                      {scopedTradeHistory.length === 0 ? (
+                        <tr><td colSpan="11" className="no-data">No trade history on this challenge</td></tr>
                       ) : (
                         paginatedOrderBookHistory.map((trade) => {
                           const modeLabel = trade.mode === 'hedging' ? 'H' : trade.mode === 'netting' ? 'N' : trade.mode === 'binary' ? 'B' : '-';
@@ -4544,16 +4575,16 @@ function MarketPage() {
       <div className={`market-section history-section ${mobileMarketTab === 'history' ? 'active' : ''}`}>
         <div className="mobile-positions-wrapper">
           <div className="positions-header">
-            <h3>Open Positions ({positions.length})</h3>
+            <h3>Open Positions ({scopedPositions.length})</h3>
             <span className={`total-pnl ${marketHeaderFloatingPnL >= 0 ? 'profit' : 'loss'}`}>
-              {marketHeaderFloatingPnL >= 0 ? '+' : '-'}{displayCurrency === 'INR' ? '₹' : '$'}{Math.abs(marketHeaderFloatingPnL).toFixed(2)}
+              {marketHeaderFloatingPnL >= 0 ? '+' : '-'}₹{Math.abs(marketHeaderFloatingPnL).toFixed(2)}
             </span>
           </div>
-          {positions.length === 0 ? (
-            <div className="no-positions">No open positions</div>
+          {scopedPositions.length === 0 ? (
+            <div className="no-positions">No open positions on this challenge</div>
           ) : (
             <div className="positions-list-mobile">
-              {positions.map(pos => {
+              {scopedPositions.map(pos => {
                 const openPrice = pos.openPrice || pos.entryPrice || pos.avgPrice || 0;
                 const vol = pos.volume || pos.lots || 0;
                 const profit = calculateProfit(pos) || 0;
