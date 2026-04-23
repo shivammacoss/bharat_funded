@@ -2253,9 +2253,9 @@ function UserLayout({ user, onLogout }) {
 
   const sidebarNav = [
     { key: 'home', label: 'Dashboard', icon: <LuHouse size={18} /> },
+    { key: 'my-challenges', label: 'My Challenges', icon: <LuTrophy size={18} /> },
     { key: 'orders', label: 'Orders', icon: <LuClipboardList size={18} /> },
     { key: 'wallet', label: 'Wallet', icon: <LuWallet size={18} /> },
-    { key: 'my-challenges', label: 'My Challenges', icon: <LuTrophy size={18} /> },
     { key: 'billing', label: 'Billing', icon: <LuBriefcase size={18} /> },
     { key: 'contact', label: 'Contact', icon: <LuBell size={18} /> },
     { key: 'settings', label: 'Profile', icon: <LuUser size={18} /> },
