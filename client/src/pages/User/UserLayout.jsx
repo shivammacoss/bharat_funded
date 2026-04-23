@@ -1630,18 +1630,31 @@ function UserLayout({ user, onLogout }) {
 
       const currentPrice = position.side === 'buy' ? livePrice.bid : livePrice.ask;
 
-      const response = await fetch(`${API_URL}/api/positions/close`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: position.mode || tradingMode,
-          userId,
-          positionId: position.oderId || position.tradeId,
-          symbol: position.symbol,
-          volume: volumeToClose || position.volume || position.quantity,
-          currentPrice
-        })
-      });
+      // Challenge (prop) positions live in a separate collection and must be
+      // closed via the challenge engine, not the main netting/hedging close.
+      const isChallengePosition = position.accountContext === 'challenge' || position.mode === 'prop';
+      const authData = JSON.parse(localStorage.getItem('bharatfunded-auth') || '{}');
+      const response = isChallengePosition
+        ? await fetch(`${API_URL}/api/prop/positions/${encodeURIComponent(position.positionId || position.tradeId)}/close`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authData.token || ''}`
+            },
+            body: JSON.stringify({ closePrice: currentPrice })
+          })
+        : await fetch(`${API_URL}/api/positions/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mode: position.mode || tradingMode,
+              userId,
+              positionId: position.oderId || position.tradeId,
+              symbol: position.symbol,
+              volume: volumeToClose || position.volume || position.quantity,
+              currentPrice
+            })
+          });
 
       const result = await response.json();
       if (result.success) {
@@ -1680,8 +1693,8 @@ function UserLayout({ user, onLogout }) {
           tradingSounds.playTradeClosed();
         }
         
-        const profit = result.profit || 0;
-        showNotification(`Position closed! P/L: ${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}`, 'success');
+        const profit = Number(result.profit ?? result.position?.profit ?? 0);
+        showNotification(`Position closed! P/L: ${profit >= 0 ? '+' : ''}₹${profit.toFixed(2)}`, 'success');
         fetchPositions();
         fetchTradeHistory();
         fetchWallet();
