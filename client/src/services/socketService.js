@@ -67,11 +67,28 @@ class SocketService {
       this._attachCoreSocketListeners(this.socket);
     }
 
+    // If we're already connected (e.g. post-login after socket was created
+    // anonymously on app boot), make sure we're in the user's room.
+    if (this.socket.connected) {
+      this._joinUserRoom(this.socket);
+    }
+
     return this.socket;
+  }
+
+  _joinUserRoom(socket) {
+    try {
+      const authData = JSON.parse(localStorage.getItem('bharatfunded-auth') || '{}');
+      const userId = authData?.user?._id || authData?.user?.id || authData?.userId;
+      if (userId) {
+        socket.emit('join', String(userId));
+      }
+    } catch (_) { /* optional */ }
   }
 
   _attachCoreSocketListeners(socket) {
     socket.on('connect', () => {
+      this._joinUserRoom(socket);
       this.notifyConnectionListeners();
     });
 

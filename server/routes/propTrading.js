@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Challenge = require('../models/Challenge');
 const ChallengeAccount = require('../models/ChallengeAccount');
+const ChallengePosition = require('../models/ChallengePosition');
 const PropSettings = require('../models/PropSettings');
 const { resolveAdminFromRequest, getScopedUserIds } = require('../middleware/adminPermission');
 
@@ -419,8 +420,106 @@ router.get('/my-accounts', verifyUserToken, async (req, res) => {
   try {
     const accounts = await ChallengeAccount.find({ userId: req.user._id })
       .populate('challengeId', 'name fundSize stepsCount challengeFee fundedSettings.profitSplitPercent rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, accounts });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Attach live open-position summary + floating P&L so the card can show
+    // real-time values instead of only the stored close-time balance.
+    const ids = accounts.map(a => a._id);
+    const openPositions = await ChallengePosition.find({
+      challengeAccountId: { $in: ids },
+      status: 'open'
+    }).lean();
+    const byAccount = {};
+    for (const pos of openPositions) {
+      const key = String(pos.challengeAccountId);
+      if (!byAccount[key]) byAccount[key] = { positions: [], floatingPnl: 0, openCount: 0 };
+      byAccount[key].positions.push(pos);
+      byAccount[key].floatingPnl += Number(pos.profit) || 0;
+      byAccount[key].openCount += 1;
+    }
+
+    const enriched = accounts.map(a => {
+      const live = byAccount[String(a._id)] || { positions: [], floatingPnl: 0, openCount: 0 };
+      const balance = Number(a.walletBalance || a.currentBalance || 0);
+      const liveEquity = balance + live.floatingPnl;
+      const realisedPnl = balance - Number(a.initialBalance || 0);
+      const totalPnl = realisedPnl + live.floatingPnl;
+      return {
+        ...a,
+        openPositions: live.positions,
+        openCount: live.openCount,
+        floatingPnl: live.floatingPnl,
+        liveEquity,
+        realisedPnl,
+        totalPnl
+      };
+    });
+
+    res.json({ success: true, accounts: enriched });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/prop/accounts/:id/positions - list open + recent closed positions
+router.get('/accounts/:id/positions', verifyUserToken, async (req, res) => {
+  try {
+    const account = await ChallengeAccount.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!account) return res.status(404).json({ success: false, message: 'Account not found' });
+
+    const [open, closed] = await Promise.all([
+      ChallengePosition.find({ challengeAccountId: account._id, status: 'open' }).sort({ openTime: -1 }).lean(),
+      ChallengePosition.find({ challengeAccountId: account._id, status: 'closed' }).sort({ closeTime: -1 }).limit(50).lean()
+    ]);
+
+    res.json({ success: true, open, closed });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/prop/positions/:positionId/close - close a challenge position
+router.post('/positions/:positionId/close', verifyUserToken, async (req, res) => {
+  try {
+    const { closePrice } = req.body;
+    if (!closePrice || Number(closePrice) <= 0) {
+      return res.status(400).json({ success: false, message: 'closePrice required' });
+    }
+
+    const position = await ChallengePosition.findOne({
+      positionId: req.params.positionId,
+      userId: req.user._id,
+      status: 'open'
+    });
+    if (!position) return res.status(404).json({ success: false, message: 'Position not found or already closed' });
+
+    const challengePropEngine = require('../services/challengePropEngine.service');
+    const result = await challengePropEngine.closePosition(req.params.positionId, Number(closePrice), 'user');
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.error });
+    }
+
+    // Broadcast account update so other tabs / pages refresh.
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.to(String(req.user._id)).emit('challengeAccountUpdate', {
+          challengeAccountId: position.challengeAccountId,
+          account: result.account,
+          closedPosition: result.position
+        });
+      }
+    } catch (_) { /* io optional */ }
+
+    res.json({
+      success: true,
+      position: result.position,
+      account: result.account,
+      failed: result.failed,
+      phaseCompleted: result.phaseCompleted,
+      funded: result.funded
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

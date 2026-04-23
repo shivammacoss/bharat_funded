@@ -334,6 +334,39 @@ class MetaApiStreamingService {
         }
       }
     }
+
+    // Refresh floating P&L + equity on challenge (prop) accounts. Open prop
+    // positions live in ChallengePosition; their floating P&L needs to tick
+    // on every price update so Daily-DD and profit-target checks stay live.
+    try {
+      const ChallengePosition = require('../models/ChallengePosition');
+      const challengePropEngine = require('./challengePropEngine.service');
+      const openChallengeIds = await ChallengePosition.distinct('challengeAccountId', { status: 'open' });
+      for (const accId of openChallengeIds) {
+        try {
+          const openPositions = await ChallengePosition.find({ challengeAccountId: accId, status: 'open' });
+          const livePrices = {};
+          for (const pos of openPositions) {
+            const b = priceResolver(pos.symbol);
+            if (b) livePrices[pos.symbol] = { bid: b.bid, ask: b.ask, last: (b.bid + b.ask) / 2 };
+          }
+          if (Object.keys(livePrices).length === 0) continue;
+          const refreshed = await challengePropEngine.refreshEquity(accId, livePrices);
+          if (this.io && refreshed?.account) {
+            this.io.to(String(refreshed.account.userId)).emit('challengeAccountUpdate', {
+              challengeAccountId: accId,
+              account: refreshed.account,
+              breached: refreshed.breached || false,
+              reason: refreshed.reason || null
+            });
+          }
+        } catch (err) {
+          console.error('[Challenge Tick] refresh error for', accId, err.message);
+        }
+      }
+    } catch (err) {
+      console.error('[Challenge Tick] loop error:', err.message);
+    }
   }
 
   /**

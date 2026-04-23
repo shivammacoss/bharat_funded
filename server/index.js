@@ -229,6 +229,9 @@ app.use('/api/metaapi', metaApiProxyRouter);
 const ibRouter = require('./routes/ib');
 const walletRouter = require('./routes/wallet');
 
+// Expose socket.io to routes that need to emit (e.g. prop close-position).
+app.set('io', io);
+
 app.use('/api/ib', ibRouter);
 app.use('/api/wallet', walletRouter);
 app.use('/api/prop', propTradingRouter);
@@ -6525,7 +6528,7 @@ function getPipValueForPL(symbol) {
 // POST /api/trade/open - Open a new position with MT5 margin check
 app.post('/api/trade/open', async (req, res) => {
   try {
-    const { userId, symbol, side, volume, leverage, orderType, stopLoss, takeProfit, session, mode: tradeOpenMode } = req.body;
+    const { userId, symbol, side, volume, leverage, orderType, stopLoss, takeProfit, session, mode: tradeOpenMode, challengeAccountId } = req.body;
 
     if (!userId || !symbol || !side || !volume) {
       return res.status(400).json({ error: 'userId, symbol, side, and volume are required' });
@@ -6535,6 +6538,56 @@ app.post('/api/trade/open', async (req, res) => {
     const user = await User.findOne({ oderId: userId });
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (!user.isActive) return res.status(403).json({ error: 'Account is suspended' });
+
+    // Challenge-account trades are routed to the isolated prop engine so they
+    // debit the virtual sub-wallet on the ChallengeAccount, not User.wallet.
+    if (challengeAccountId) {
+      // Resolve a live entry price (same resolution order as the main flow below).
+      let cEntryPrice = 0;
+      try {
+        const zp = zerodhaService.getPrice(symbol);
+        if (zp && (zp.lastPrice > 0 || zp.last_price > 0)) {
+          cEntryPrice = Number(zp.lastPrice || zp.last_price);
+        } else if (metaApiStreaming) {
+          const cp = metaApiStreaming.getPrice(symbol);
+          if (cp) cEntryPrice = side === 'buy' ? Number(cp.ask) : Number(cp.bid);
+        }
+      } catch (_) { /* ignore */ }
+      if (!cEntryPrice || cEntryPrice <= 0) {
+        return res.status(400).json({ error: 'Could not get valid price for ' + symbol });
+      }
+
+      const challengePropEngine = require('./services/challengePropEngine.service');
+      const propResult = await challengePropEngine.openPosition(challengeAccountId, {
+        symbol,
+        side,
+        volume: parseFloat(volume),
+        quantity: parseFloat(volume),
+        entryPrice: cEntryPrice,
+        leverage: leverage || 100,
+        stopLoss,
+        takeProfit,
+        session: session || 'intraday',
+        orderType: orderType || 'market'
+      });
+      if (!propResult.success) {
+        return res.status(400).json({ error: propResult.error, code: propResult.code });
+      }
+      // Broadcast account update so MyChallenges card + dashboard refresh instantly.
+      try {
+        io.to(String(user._id)).emit('challengeAccountUpdate', {
+          challengeAccountId,
+          account: propResult.account,
+          position: propResult.position
+        });
+      } catch (_) { /* optional */ }
+      return res.json({
+        success: true,
+        position: propResult.position,
+        account: propResult.account,
+        challengeAccountId
+      });
+    }
 
     // Check if this is a Delta Exchange instrument (crypto futures/options)
     const isDeltaInstrument = deltaExchangeStreaming && deltaExchangeStreaming.isDeltaSymbol(symbol);
