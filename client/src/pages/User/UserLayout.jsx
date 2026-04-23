@@ -2845,58 +2845,7 @@ function UserLayout({ user, onLogout }) {
         </div>
       </footer>
 
-      <div className={`mobi-fixed-footer ${mobileStatusOpen ? 'mobi-status-open' : ''}`}>
-        <div className="mobi-status-strip">
-          <span className="m-mono" style={{ fontWeight: 600, color: 'var(--m-blue-l, #4d8eff)' }}>{selectedSymbol}</span>
-          <span>
-            Bal{' '}
-            <span className="m-mono">
-              ₹{Number(walletData.balance || 0).toFixed(2)}
-            </span>
-          </span>
-          <button
-            type="button"
-            className="mobi-status-expand-btn"
-            onClick={() => setMobileStatusOpen((o) => !o)}
-          >
-            {mobileStatusOpen ? '▲ Less' : '▼ More'}
-          </button>
-        </div>
-        <div className="mobi-status-detail">
-          {Number(walletData.credit || 0) > 0 && (
-            <span>
-              Credit: <span style={{ color: '#fbbf24' }}>₹{Number(walletData.credit || 0).toFixed(2)}</span>
-            </span>
-          )}
-          {(() => {
-            const eqRaw = Number(walletData.equity || 0);
-            const isStopOut = eqRaw < 0;
-            const eqShown = isStopOut ? 0 : eqRaw;
-            return (
-              <span>
-                Equity: ₹{eqShown.toFixed(2)}
-                {isStopOut && (
-                  <span style={{ marginLeft: 6, color: '#fff', background: '#7a0e0e', padding: '1px 6px', borderRadius: 4, fontWeight: 700, fontSize: '0.75em' }}>STOP OUT</span>
-                )}
-              </span>
-            );
-          })()}
-          <span>Margin: ₹{Number(walletData.margin || 0).toFixed(2)}</span>
-          {(() => {
-            const fmRaw = Number(walletData.freeMargin || 0);
-            const fmShown = fmRaw < 0 ? 0 : fmRaw;
-            return (
-              <span>
-                Free: ₹{fmShown.toFixed(2)}
-                {fmRaw < 0 && (
-                  <span style={{ marginLeft: 6, color: '#fff', background: '#e02424', padding: '1px 6px', borderRadius: 4, fontWeight: 700, fontSize: '0.75em' }}>MARGIN CALL</span>
-                )}
-              </span>
-            );
-          })()}
-          <span>Positions: {positions.length}</span>
-          <span>{isMetaApiConnected ? '● Live' : '○ Offline'}</span>
-        </div>
+      <div className="mobi-fixed-footer">
         <nav className="mobile-bottom-nav mobi-bharatfunded-bnav" aria-label="Main">
           <button
             type="button"

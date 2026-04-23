@@ -620,13 +620,15 @@ function OrdersPage() {
     <div className="page-content orders-page">
       <style>{`
         @media (max-width: 768px) {
-          /* Hide the entire Orders header (title + subtitle + date filters)
-             on mobile — the user asked to remove it on small screens; the
-             chip row below is enough context. */
-          .orders-page .orders-header { display: none !important; }
+          /* Keep just a small 'Orders' heading on mobile — drop the
+             subtitle + date filters which were eating the viewport. */
+          .orders-page .orders-header { padding: 10px 12px 4px !important; gap: 0 !important; flex-direction: column; align-items: flex-start !important; }
+          .orders-page .orders-header h2 { font-size: 16px !important; font-weight: 700; margin: 0 !important; }
+          .orders-page .orders-header .subtitle { display: none !important; }
+          .orders-page .orders-filters { display: none !important; }
           /* Compact the chip row so each challenge card is small and fits
              2-per-row comfortably on a phone. */
-          .orders-page .acct-chip-row { margin: 12px 0 !important; gap: 8px !important; padding-bottom: 2px !important; }
+          .orders-page .acct-chip-row { margin: 10px 0 !important; gap: 8px !important; padding-bottom: 2px !important; }
           .orders-page .acct-chip-row button { min-width: 140px !important; padding: 8px 10px !important; border-radius: 10px !important; }
           .orders-page .acct-chip-row button > div:first-child { margin-bottom: 4px !important; gap: 6px !important; }
           .orders-page .acct-chip-row button > div:first-child > span:last-child { font-size: 11px !important; }
