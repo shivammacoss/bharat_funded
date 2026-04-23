@@ -205,9 +205,105 @@ function OrdersPage() {
     return pos.entryPrice || pos.avgPrice || 0;
   };
 
+  // ---------- Account groups (accordion) ----------
+  // Trades are grouped by the account they belong to: each challenge is its
+  // own group, and any remaining main-wallet trades sit in a "Main Wallet"
+  // group. Users expand one group at a time to see its Open / Pending /
+  // History / Cancelled inside.
+  const accountGroups = useMemo(() => {
+    const byId = new Map();
+
+    const upsert = (key, meta) => {
+      if (!byId.has(key)) {
+        byId.set(key, {
+          id: key,
+          isChallenge: meta.isChallenge,
+          code: meta.code,
+          name: meta.name,
+          openCount: 0,
+          pendingCount: 0,
+          historyCount: 0,
+          cancelledCount: 0
+        });
+      }
+      return byId.get(key);
+    };
+
+    const groupKeyOf = (item) => {
+      if (item?.accountContext === 'challenge' && item?.challengeAccountId) {
+        return `ch:${item.challengeAccountId}`;
+      }
+      return 'main';
+    };
+
+    const tag = (item) => {
+      const isCh = item?.accountContext === 'challenge' && item?.challengeAccountId;
+      if (isCh) {
+        return {
+          key: `ch:${item.challengeAccountId}`,
+          isChallenge: true,
+          code: item.challengeAccountCode || String(item.challengeAccountId).slice(-6),
+          name: item.challengeName || 'Challenge'
+        };
+      }
+      return { key: 'main', isChallenge: false, code: 'MAIN', name: 'Main Wallet' };
+    };
+
+    for (const p of positions || []) {
+      const t = tag(p);
+      const g = upsert(t.key, t);
+      g.openCount += 1;
+    }
+    for (const p of pendingOrders || []) {
+      const t = tag(p);
+      const g = upsert(t.key, t);
+      g.pendingCount += 1;
+    }
+    for (const p of tradeHistory || []) {
+      const t = tag(p);
+      const g = upsert(t.key, t);
+      g.historyCount += 1;
+    }
+    for (const p of cancelledOrders || []) {
+      const t = tag(p);
+      const g = upsert(t.key, t);
+      g.cancelledCount += 1;
+    }
+
+    // Order: challenges first (newest accountCode last digits), then Main.
+    const list = Array.from(byId.values());
+    list.sort((a, b) => {
+      if (a.isChallenge !== b.isChallenge) return a.isChallenge ? -1 : 1;
+      return String(a.code).localeCompare(String(b.code));
+    });
+    return list;
+  }, [positions, pendingOrders, tradeHistory, cancelledOrders]);
+
+  const [expandedGroupId, setExpandedGroupId] = useState(null);
+
+  // Auto-expand the first group if none is selected yet.
+  useEffect(() => {
+    if (!expandedGroupId && accountGroups.length > 0) {
+      setExpandedGroupId(accountGroups[0].id);
+    }
+    // If current expanded group disappeared (account deleted), collapse.
+    if (expandedGroupId && !accountGroups.some(g => g.id === expandedGroupId)) {
+      setExpandedGroupId(accountGroups[0]?.id || null);
+    }
+  }, [accountGroups, expandedGroupId]);
+
+  const inSelectedGroup = (item) => {
+    if (!expandedGroupId) return false;
+    if (expandedGroupId === 'main') {
+      return item?.accountContext !== 'challenge';
+    }
+    const chId = expandedGroupId.startsWith('ch:') ? expandedGroupId.slice(3) : expandedGroupId;
+    return item?.accountContext === 'challenge' && String(item?.challengeAccountId || '') === String(chId);
+  };
+
   // Calculate positions with live prices - recalculates when prices change
   const positionsWithPrices = useMemo(() => {
-    return positions.map(pos => {
+    return positions.filter(inSelectedGroup).map(pos => {
       const currentPrice = getPositionCurrentPrice(pos);
       const entryPrice = pos.entryPrice || pos.avgPrice || 0;
       const priceDiff = pos.side === 'buy' ? currentPrice - entryPrice : entryPrice - currentPrice;
@@ -228,7 +324,7 @@ function OrdersPage() {
 
       return { ...pos, currentPrice, profit, entryPrice };
     });
-  }, [positions, livePrices, zerodhaTicks, getTickBySymbolAuto, allInstruments, getInstrumentWithLivePrice]);
+  }, [positions, livePrices, zerodhaTicks, getTickBySymbolAuto, allInstruments, getInstrumentWithLivePrice, expandedGroupId]);
 
   const filteredOpenPositions = useMemo(
     () => filterOrdersByDate(positionsWithPrices),
@@ -304,8 +400,18 @@ function OrdersPage() {
   };
 
   const filteredTradeHistory = useMemo(
-    () => filterOrdersByDate(tradeHistory),
-    [tradeHistory, orderDateFrom, orderDateTo, filterOrdersByDate]
+    () => filterOrdersByDate(tradeHistory.filter(inSelectedGroup)),
+    [tradeHistory, orderDateFrom, orderDateTo, filterOrdersByDate, expandedGroupId]
+  );
+
+  const filteredPendingOrders = useMemo(
+    () => filterOrdersByDate(pendingOrders.filter(inSelectedGroup)),
+    [pendingOrders, orderDateFrom, orderDateTo, filterOrdersByDate, expandedGroupId]
+  );
+
+  const filteredCancelledOrders = useMemo(
+    () => filterOrdersByDate(cancelledOrders.filter(inSelectedGroup)),
+    [cancelledOrders, orderDateFrom, orderDateTo, filterOrdersByDate, expandedGroupId]
   );
 
   const effectiveFxRate = (Number(usdInrRate) || 83) + (Number(usdMarkup) || 0);
@@ -558,14 +664,70 @@ function OrdersPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="orders-tabs">
-        <button className={`orders-tab ${ordersActiveTab === 'open' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('open')}>Open ({positions.length})</button>
-        <button className={`orders-tab ${ordersActiveTab === 'pending' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('pending')}>Pending ({pendingOrders.length})</button>
-        <button className={`orders-tab ${ordersActiveTab === 'closed' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('closed')}>History ({tradeHistory.length})</button>
-        <button className={`orders-tab ${ordersActiveTab === 'cancelled' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('cancelled')}>Cancelled ({cancelledOrders.length})</button>
+      {/* Account Groups — accordion. Each challenge is its own row + an
+          optional Main Wallet row. Clicking a row expands it to show that
+          account's Open / Pending / History / Cancelled below. */}
+      <div className="acct-groups" style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '16px 0' }}>
+        {accountGroups.length === 0 && (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+            No trades yet — purchase a challenge and start trading.
+          </div>
+        )}
+        {accountGroups.map(group => {
+          const isExpanded = expandedGroupId === group.id;
+          return (
+            <div key={group.id} style={{ background: 'var(--bg-secondary)', borderRadius: 12, border: `1px solid ${isExpanded ? 'var(--accent-primary, #2962ff)' : 'var(--border-color)'}`, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+              <button
+                onClick={() => setExpandedGroupId(isExpanded ? null : group.id)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 12, padding: '14px 18px', background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: 'var(--text-primary)', fontSize: 14, fontWeight: 600
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  {group.isChallenge ? (
+                    <span style={{ padding: '3px 10px', borderRadius: 10, background: '#f59e0b20', color: '#f59e0b', fontSize: 12, fontWeight: 700 }}>
+                      🏆 {group.code}
+                    </span>
+                  ) : (
+                    <span style={{ padding: '3px 10px', borderRadius: 10, background: '#3b82f620', color: '#3b82f6', fontSize: 12, fontWeight: 700 }}>
+                      💼 MAIN
+                    </span>
+                  )}
+                  <span style={{ fontWeight: 600 }}>{group.name}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  <span>Open <b style={{ color: group.openCount > 0 ? '#10b981' : 'var(--text-primary)' }}>{group.openCount}</b></span>
+                  <span>·</span>
+                  <span>Pending <b style={{ color: 'var(--text-primary)' }}>{group.pendingCount}</b></span>
+                  <span>·</span>
+                  <span>History <b style={{ color: 'var(--text-primary)' }}>{group.historyCount}</b></span>
+                  <span>·</span>
+                  <span>Cancelled <b style={{ color: 'var(--text-primary)' }}>{group.cancelledCount}</b></span>
+                  <span style={{ marginLeft: 6, fontSize: 18, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block', color: 'var(--text-secondary)' }}>›</span>
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div style={{ borderTop: '1px solid var(--border-color)', padding: '12px 18px' }}>
+                  {/* Tabs */}
+                  <div className="orders-tabs">
+                    <button className={`orders-tab ${ordersActiveTab === 'open' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('open')}>Open ({group.openCount})</button>
+                    <button className={`orders-tab ${ordersActiveTab === 'pending' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('pending')}>Pending ({group.pendingCount})</button>
+                    <button className={`orders-tab ${ordersActiveTab === 'closed' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('closed')}>History ({group.historyCount})</button>
+                    <button className={`orders-tab ${ordersActiveTab === 'cancelled' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('cancelled')}>Cancelled ({group.cancelledCount})</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
+      {/* Sections — rendered only while a group is expanded. Each section
+          reads from the scoped-by-group filtered arrays above. */}
+      {expandedGroupId && (<>
       {/* Open Positions */}
       {ordersActiveTab === 'open' && (
         <div className="orders-section">
@@ -690,10 +852,10 @@ function OrdersPage() {
           
           {/* Mobile Card View */}
           <div className="orders-cards-mobile">
-            {pendingOrders.length === 0 ? (
+            {filteredPendingOrders.length === 0 ? (
               <div className="no-data-card">No pending orders</div>
             ) : (
-              filterOrdersByDate(pendingOrders).map((order) => (
+              filteredPendingOrders.map((order) => (
                 <div key={order.tradeId || order._id} className="order-card">
                   <div className="order-card-header">
                     <span className={`order-side ${order.side}`}>{(order.orderType || 'LIMIT').toUpperCase()}</span>
@@ -725,10 +887,10 @@ function OrdersPage() {
                 <tr><th>ID</th><th>Created</th><th>Symbol</th><th>Type</th><th>Volume</th><th>Entry</th><th>Current</th><th>S/L</th><th>T/P</th><th>Actions</th></tr>
               </thead>
               <tbody>
-                {pendingOrders.length === 0 ? (
+                {filteredPendingOrders.length === 0 ? (
                   <tr><td colSpan="10" className="no-data">No pending orders</td></tr>
                 ) : (
-                  filterOrdersByDate(pendingOrders).map((order) => (
+                  filteredPendingOrders.map((order) => (
                     <tr key={order.tradeId || order._id}>
                       <td className="order-id">{(order.tradeId || order._id || '').slice(-6)}</td>
                       <td>{new Date(order.createdAt).toLocaleString()}</td>
@@ -924,10 +1086,10 @@ function OrdersPage() {
                 <tr><th>ID</th><th>Created</th><th>Cancelled</th><th>Symbol</th><th>Type</th><th>Volume</th><th>Entry</th><th>Reason</th></tr>
               </thead>
               <tbody>
-                {cancelledOrders.length === 0 ? (
+                {filteredCancelledOrders.length === 0 ? (
                   <tr><td colSpan="8" className="no-data">No cancelled orders</td></tr>
                 ) : (
-                  filterOrdersByDate(cancelledOrders).map((order) => (
+                  filteredCancelledOrders.map((order) => (
                     <tr key={order.tradeId || order._id}>
                       <td className="order-id">{(order.tradeId || order._id || '').slice(-6)}</td>
                       <td>{new Date(order.createdAt).toLocaleString()}</td>
@@ -945,6 +1107,7 @@ function OrdersPage() {
           </div>
         </div>
       )}
+      </>)}
 
       {/* Edit Modal */}
       {showEditModal && selectedPosition && (
