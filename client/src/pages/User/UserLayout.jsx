@@ -1203,15 +1203,10 @@ function UserLayout({ user, onLogout }) {
   // Fetch positions
   const fetchPositions = async () => {
     try {
-      const userId = user?.oderId || user?.id || 'guest';
-      const response = await fetch(`${API_URL}/api/positions/all/${userId}`);
-      const data = await response.json();
+      // Prop-only platform: we no longer surface main-wallet positions in
+      // the app UI. The legacy main fetch is skipped; only challenge
+      // positions are shown.
       let openPositions = [];
-      if (data.positions) {
-        openPositions = data.positions
-          .filter(p => p.status === 'open' || p.status === 'active' || !p.status)
-          .map(p => ({ ...p, accountContext: 'main' }));
-      }
 
       // Merge in open challenge positions so the Orders page's "Open" tab
       // shows them alongside main trades with an Account column.
@@ -1262,38 +1257,18 @@ function UserLayout({ user, onLogout }) {
 
   // Fetch pending orders
   const fetchPendingOrders = async () => {
-    try {
-      const userId = user?.oderId || user?.id || 'guest';
-      const response = await fetch(`${API_URL}/api/orders/pending/${userId}`);
-      const data = await response.json();
-      if (data.orders) {
-        setPendingOrders(data.orders);
-      }
-    } catch (error) {
-      console.log('Error fetching pending orders');
-    }
+    // Prop-only platform — main-wallet pending orders are not surfaced.
+    // Challenge pending orders are fetched elsewhere (future work). For now
+    // we simply keep the list empty so nothing from main wallet leaks in.
+    setPendingOrders([]);
   };
 
   // Fetch trade history with pagination (fetches all trades)
   const fetchTradeHistory = async () => {
     try {
-      const userId = user?.oderId || user?.id || 'guest';
+      // Prop-only platform — the legacy main-wallet trade history fetch is
+      // skipped. We only surface closed challenge positions below.
       let allTrades = [];
-      let page = 1;
-      let hasMore = true;
-
-      // Fetch all pages of main-wallet trade history
-      while (hasMore) {
-        const response = await fetch(`${API_URL}/api/trades/${userId}?page=${page}&limit=100`);
-        const data = await response.json();
-        if (data.trades && data.trades.length > 0) {
-          allTrades = [...allTrades, ...data.trades.map(t => ({ ...t, accountContext: 'main' }))];
-          hasMore = data.pagination?.hasMore || false;
-          page++;
-        } else {
-          hasMore = false;
-        }
-      }
 
       // Also pull closed challenge (prop) positions and normalise them so the
       // Orders table can show them with an Account column.
@@ -1346,18 +1321,9 @@ function UserLayout({ user, onLogout }) {
     }
   };
 
-  // Fetch cancelled orders
+  // Fetch cancelled orders — prop-only platform skips main-wallet cancelled.
   const fetchCancelledOrders = async () => {
-    try {
-      const userId = user?.oderId || user?.id || 'guest';
-      const response = await fetch(`${API_URL}/api/orders/cancelled/${userId}`);
-      const data = await response.json();
-      if (data.orders) {
-        setCancelledOrders(data.orders);
-      }
-    } catch (error) {
-      console.log('Error fetching cancelled orders');
-    }
+    setCancelledOrders([]);
   };
 
   // Check binary completions

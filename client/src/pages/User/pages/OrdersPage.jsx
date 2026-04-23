@@ -270,12 +270,11 @@ function OrdersPage() {
       g.cancelledCount += 1;
     }
 
-    // Order: challenges first (newest accountCode last digits), then Main.
-    const list = Array.from(byId.values());
-    list.sort((a, b) => {
-      if (a.isChallenge !== b.isChallenge) return a.isChallenge ? -1 : 1;
-      return String(a.code).localeCompare(String(b.code));
-    });
+    // Prop-only platform: only challenge accounts are visible here. Legacy
+    // main-wallet trades are hidden (they're also scheduled for cleanup via
+    // the server/scripts/wipe-main-wallet-trades.js script).
+    const list = Array.from(byId.values()).filter(g => g.isChallenge);
+    list.sort((a, b) => String(a.code).localeCompare(String(b.code)));
     return list;
   }, [positions, pendingOrders, tradeHistory, cancelledOrders]);
 

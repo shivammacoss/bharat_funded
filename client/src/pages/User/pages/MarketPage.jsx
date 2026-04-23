@@ -2821,7 +2821,7 @@ function MarketPage() {
             )
           )}
           {allowedTradeModes?.netting && (
-            <button className={`mode-tab ${tradingMode === 'netting' ? 'active' : ''}`} onClick={() => setTradingMode('netting')} title="Indian Market - Net position per symbol"><LuChartColumn size={14} /> Netting</button>
+            <button className={`mode-tab ${tradingMode === 'netting' ? 'active' : ''}`} onClick={() => setTradingMode('netting')} title="Indian market order"><LuChartColumn size={14} /> Trade</button>
           )}
           {allowedTradeModes?.binary && (
             <button className={`mode-tab ${tradingMode === 'binary' ? 'active' : ''}`} onClick={() => setTradingMode('binary')} title="Time-based UP/DOWN trades"><LuTimer size={14} /> Binary</button>
