@@ -1206,11 +1206,55 @@ function UserLayout({ user, onLogout }) {
       const userId = user?.oderId || user?.id || 'guest';
       const response = await fetch(`${API_URL}/api/positions/all/${userId}`);
       const data = await response.json();
+      let openPositions = [];
       if (data.positions) {
-        const openPositions = data.positions.filter(p => p.status === 'open' || p.status === 'active' || !p.status);
-        setPositions(openPositions);
-        // Don't set totalPnL from stored values - let real-time calculation handle it
+        openPositions = data.positions
+          .filter(p => p.status === 'open' || p.status === 'active' || !p.status)
+          .map(p => ({ ...p, accountContext: 'main' }));
       }
+
+      // Merge in open challenge positions so the Orders page's "Open" tab
+      // shows them alongside main trades with an Account column.
+      try {
+        const authData = JSON.parse(localStorage.getItem('bharatfunded-auth') || '{}');
+        const propRes = await fetch(`${API_URL}/api/prop/my-positions`, {
+          headers: { 'Authorization': `Bearer ${authData.token || ''}` }
+        });
+        const propData = await propRes.json();
+        if (propData?.success && Array.isArray(propData.open)) {
+          const propOpen = propData.open.map(p => ({
+            _id: p._id,
+            positionId: p.positionId,
+            oderId: p.positionId,
+            tradeId: p.positionId,
+            accountContext: 'challenge',
+            challengeAccountId: p.challengeAccountId,
+            challengeAccountCode: p.challengeAccountCode,
+            challengeName: p.challengeName,
+            mode: 'prop',
+            symbol: p.symbol,
+            side: p.side,
+            volume: p.volume,
+            quantity: p.quantity,
+            lotSize: p.lotSize,
+            entryPrice: p.entryPrice,
+            currentPrice: p.currentPrice,
+            stopLoss: p.stopLoss,
+            takeProfit: p.takeProfit,
+            leverage: p.leverage,
+            marginUsed: p.marginUsed,
+            openCommission: p.openCommission || 0,
+            commission: p.commission || 0,
+            swap: p.swap || 0,
+            profit: p.profit || 0,
+            status: 'open',
+            createdAt: p.openTime || p.createdAt
+          }));
+          openPositions = [...openPositions, ...propOpen];
+        }
+      } catch (_) { /* prop module optional */ }
+
+      setPositions(openPositions);
     } catch (error) {
       console.log('Server not running, using local positions');
     }
@@ -1237,20 +1281,65 @@ function UserLayout({ user, onLogout }) {
       let allTrades = [];
       let page = 1;
       let hasMore = true;
-      
-      // Fetch all pages
+
+      // Fetch all pages of main-wallet trade history
       while (hasMore) {
         const response = await fetch(`${API_URL}/api/trades/${userId}?page=${page}&limit=100`);
         const data = await response.json();
         if (data.trades && data.trades.length > 0) {
-          allTrades = [...allTrades, ...data.trades];
+          allTrades = [...allTrades, ...data.trades.map(t => ({ ...t, accountContext: 'main' }))];
           hasMore = data.pagination?.hasMore || false;
           page++;
         } else {
           hasMore = false;
         }
       }
-      
+
+      // Also pull closed challenge (prop) positions and normalise them so the
+      // Orders table can show them with an Account column.
+      try {
+        const authData = JSON.parse(localStorage.getItem('bharatfunded-auth') || '{}');
+        const propRes = await fetch(`${API_URL}/api/prop/my-positions`, {
+          headers: { 'Authorization': `Bearer ${authData.token || ''}` }
+        });
+        const propData = await propRes.json();
+        if (propData?.success && Array.isArray(propData.closed)) {
+          const propTrades = propData.closed.map(p => ({
+            _id: p._id,
+            tradeId: p.positionId,
+            accountContext: 'challenge',
+            challengeAccountId: p.challengeAccountId,
+            challengeAccountCode: p.challengeAccountCode,
+            challengeName: p.challengeName,
+            mode: 'prop',
+            symbol: p.symbol,
+            side: p.side,
+            type: 'close',
+            volume: p.volume,
+            quantity: p.quantity,
+            lotSize: p.lotSize,
+            entryPrice: p.entryPrice,
+            closePrice: p.closePrice,
+            openTime: p.openTime,
+            closeTime: p.closeTime,
+            createdAt: p.createdAt,
+            profit: p.profit,
+            commission: p.commission || 0,
+            swap: p.swap || 0,
+            remark: p.closedBy ? String(p.closedBy).toUpperCase() : '',
+            status: 'closed'
+          }));
+          allTrades = [...allTrades, ...propTrades];
+        }
+      } catch (_) { /* prop module optional */ }
+
+      // Sort merged list by close/open time descending
+      allTrades.sort((a, b) => {
+        const ta = new Date(a.closeTime || a.createdAt || a.openTime || 0).getTime();
+        const tb = new Date(b.closeTime || b.createdAt || b.openTime || 0).getTime();
+        return tb - ta;
+      });
+
       setTradeHistory(allTrades);
     } catch (error) {
       console.log('Error fetching trade history');

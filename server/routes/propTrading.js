@@ -462,6 +462,49 @@ router.get('/my-accounts', verifyUserToken, async (req, res) => {
   }
 });
 
+// GET /api/prop/my-positions - ALL positions for this user across every
+// challenge account, normalised into trade-history shape so OrdersPage
+// can render them alongside main-wallet trades with an Account column.
+router.get('/my-positions', verifyUserToken, async (req, res) => {
+  try {
+    const accounts = await ChallengeAccount.find({ userId: req.user._id })
+      .select('_id accountId challengeId')
+      .populate('challengeId', 'name')
+      .lean();
+    const accMap = {};
+    for (const a of accounts) {
+      accMap[String(a._id)] = {
+        accountId: a.accountId,
+        challengeName: a.challengeId?.name || 'Challenge'
+      };
+    }
+    const ids = accounts.map(a => a._id);
+    if (ids.length === 0) return res.json({ success: true, open: [], closed: [] });
+
+    const [open, closed] = await Promise.all([
+      ChallengePosition.find({ challengeAccountId: { $in: ids }, status: 'open' })
+        .sort({ openTime: -1 }).lean(),
+      ChallengePosition.find({ challengeAccountId: { $in: ids }, status: 'closed' })
+        .sort({ closeTime: -1 }).limit(200).lean()
+    ]);
+
+    const annotate = (p) => {
+      const meta = accMap[String(p.challengeAccountId)] || {};
+      return {
+        ...p,
+        accountContext: 'challenge',
+        challengeAccountId: String(p.challengeAccountId),
+        challengeAccountCode: meta.accountId,
+        challengeName: meta.challengeName
+      };
+    };
+
+    res.json({ success: true, open: open.map(annotate), closed: closed.map(annotate) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/prop/accounts/:id/positions - list open + recent closed positions
 router.get('/accounts/:id/positions', verifyUserToken, async (req, res) => {
   try {

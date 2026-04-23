@@ -592,6 +592,20 @@ function OrdersPage() {
                   </div>
                   <div className="order-card-body">
                     <div className="order-row">
+                      <span className="order-label">Account</span>
+                      <span className="order-value">
+                        {pos.accountContext === 'challenge' ? (
+                          <span style={{ padding: '2px 8px', borderRadius: 10, background: '#f59e0b20', color: '#f59e0b', fontSize: 11, fontWeight: 600 }}>
+                            🏆 {pos.challengeAccountCode || 'Challenge'}
+                          </span>
+                        ) : (
+                          <span style={{ padding: '2px 8px', borderRadius: 10, background: '#3b82f620', color: '#3b82f6', fontSize: 11, fontWeight: 600 }}>
+                            💼 Main
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="order-row">
                       <span className="order-label">Entry</span>
                       <span className="order-value">{formatPrice(pos.entryPrice, pos.symbol, true)}</span>
                     </div>
@@ -625,15 +639,26 @@ function OrdersPage() {
           <div className="orders-table-container desktop-only">
             <table className="orders-table">
               <thead>
-                <tr><th>ID</th><th>Open Time</th><th>Symbol</th><th>Type</th><th>Volume</th><th>Entry</th><th>Current</th><th>S/L</th><th>T/P</th><th>Commission</th><th>Swap</th><th>P/L</th><th>Actions</th></tr>
+                <tr><th>ID</th><th>Account</th><th>Open Time</th><th>Symbol</th><th>Type</th><th>Volume</th><th>Entry</th><th>Current</th><th>S/L</th><th>T/P</th><th>Commission</th><th>Swap</th><th>P/L</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {positionsWithPrices.length === 0 ? (
-                  <tr><td colSpan="13" className="no-data">No open positions</td></tr>
+                  <tr><td colSpan="14" className="no-data">No open positions</td></tr>
                 ) : (
                   filteredOpenPositions.map((pos) => (
                       <tr key={pos.tradeId || pos._id} onClick={() => fetchNettingLegs(pos)} style={{ cursor: pos.mode === 'netting' ? 'pointer' : 'default' }} title={pos.mode === 'netting' ? 'Click to view entry legs' : ''}>
                         <td className="order-id">{(pos.tradeId || pos._id || '').slice(-6)}</td>
+                        <td>
+                          {pos.accountContext === 'challenge' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 10, background: '#f59e0b20', color: '#f59e0b', fontSize: 11, fontWeight: 600 }}>
+                              🏆 {pos.challengeAccountCode || 'Challenge'}
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 10, background: '#3b82f620', color: '#3b82f6', fontSize: 11, fontWeight: 600 }}>
+                              💼 Main
+                            </span>
+                          )}
+                        </td>
                         <td>{new Date(pos.openTime || pos.createdAt).toLocaleString()}</td>
                         <td className="symbol-cell">{pos.symbol}</td>
                         <td className={`side-cell ${pos.side}`}>{pos.side?.toUpperCase()}</td>
@@ -752,6 +777,20 @@ function OrdersPage() {
                   </div>
                   <div className="order-card-body">
                     <div className="order-row">
+                      <span className="order-label">Account</span>
+                      <span className="order-value">
+                        {trade.accountContext === 'challenge' ? (
+                          <span style={{ padding: '2px 8px', borderRadius: 10, background: '#f59e0b20', color: '#f59e0b', fontSize: 11, fontWeight: 600 }}>
+                            🏆 {trade.challengeAccountCode || 'Challenge'}
+                          </span>
+                        ) : (
+                          <span style={{ padding: '2px 8px', borderRadius: 10, background: '#3b82f620', color: '#3b82f6', fontSize: 11, fontWeight: 600 }}>
+                            💼 Main
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="order-row">
                       <span className="order-label">Entry</span>
                       <span className="order-value">{formatPrice(trade.entryPrice, trade.symbol, true)}</span>
                     </div>
@@ -792,15 +831,26 @@ function OrdersPage() {
           <div className="orders-table-container desktop-only">
             <table className="orders-table">
               <thead>
-                <tr><th>ID</th><th>Open Time</th><th>Close Time</th><th>Symbol</th><th title={EXIT_SIDE_HINT}>Exit</th><th>Volume</th><th>Entry</th><th>Close</th><th>Commission</th><th>Swap</th><th>P/L</th><th>Remark</th></tr>
+                <tr><th>ID</th><th>Account</th><th>Open Time</th><th>Close Time</th><th>Symbol</th><th title={EXIT_SIDE_HINT}>Exit</th><th>Volume</th><th>Entry</th><th>Close</th><th>Commission</th><th>Swap</th><th>P/L</th><th>Remark</th></tr>
               </thead>
               <tbody>
                 {filteredTradeHistory.length === 0 ? (
-                  <tr><td colSpan="12" className="no-data">No trade history</td></tr>
+                  <tr><td colSpan="13" className="no-data">No trade history</td></tr>
                 ) : (
                   paginatedTradeHistory.map((trade) => (
                     <tr key={trade.tradeId || trade._id} onClick={() => fetchNettingLegs(trade)} style={{ cursor: trade.mode === 'netting' ? 'pointer' : 'default' }} title={trade.mode === 'netting' ? 'Click to view trade details' : ''}>
                       <td className="order-id">{(trade.tradeId || trade._id || '').slice(-6)}</td>
+                      <td>
+                        {trade.accountContext === 'challenge' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 10, background: '#f59e0b20', color: '#f59e0b', fontSize: 11, fontWeight: 600 }}>
+                            🏆 {trade.challengeAccountCode || 'Challenge'}
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 10, background: '#3b82f620', color: '#3b82f6', fontSize: 11, fontWeight: 600 }}>
+                            💼 Main
+                          </span>
+                        )}
+                      </td>
                       <td>{new Date(trade.openTime || trade.createdAt).toLocaleString()}</td>
                       <td>{trade.closeTime ? new Date(trade.closeTime).toLocaleString() : '-'}</td>
                       <td className="symbol-cell">{trade.symbol}</td>
