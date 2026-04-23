@@ -522,6 +522,263 @@ router.get('/accounts/:id/positions', verifyUserToken, async (req, res) => {
   }
 });
 
+// GET /api/prop/account/:id/insights - rich analytics payload for the
+// detail dashboard: equity curve (reconstructed from realised closed-
+// position PnL), per-day breakdown for the calendar/summary, open +
+// closed positions, and performance metrics (win rate, profit factor,
+// expectancy, avg RRR, Sharpe, avg duration).
+//
+// All series are derived from existing ChallengePosition + ChallengeAccount
+// data — no new schema fields, no background job. The client polls every
+// 10–15s so numbers stay fresh as trades open/close.
+router.get('/account/:id/insights', verifyUserToken, async (req, res) => {
+  try {
+    const account = await ChallengeAccount.findOne({ _id: req.params.id, userId: req.user._id })
+      .populate('challengeId');
+    if (!account) return res.status(404).json({ success: false, message: 'Account not found' });
+
+    const challenge = account.challengeId || {};
+    const rules = challenge.rules || {};
+
+    const [openRaw, closedRaw] = await Promise.all([
+      ChallengePosition.find({ challengeAccountId: account._id, status: 'open' })
+        .sort({ openTime: -1 })
+        .lean(),
+      ChallengePosition.find({ challengeAccountId: account._id, status: 'closed' })
+        .sort({ closeTime: 1 }) // ascending for equity-curve accumulation
+        .lean()
+    ]);
+
+    const initialBalance = Number(account.initialBalance) || 0;
+    const currentBalance = Number(account.currentBalance) || initialBalance;
+    const currentEquity = Number(account.currentEquity) || currentBalance;
+    const unrealizedPnl = Number(
+      openRaw.reduce((sum, p) => sum + (Number(p.profit) || 0), 0)
+    );
+
+    // ── Equity curve: start at initialBalance, apply each closed
+    // position's realised PnL in order. Final point == currentBalance
+    // (sanity check).
+    const equityCurve = [
+      { t: account.createdAt || new Date(), equity: initialBalance }
+    ];
+    let running = initialBalance;
+    for (const p of closedRaw) {
+      running += Number(p.profit) || 0;
+      equityCurve.push({
+        t: p.closeTime || p.updatedAt || new Date(),
+        equity: Number(running.toFixed(2))
+      });
+    }
+    // Tail point: live equity (balance + floating). Only add if distinct
+    // from the last anchor so we don't stutter the line.
+    if (equityCurve[equityCurve.length - 1].equity !== currentEquity) {
+      equityCurve.push({ t: new Date(), equity: Number(currentEquity.toFixed(2)) });
+    }
+
+    // ── Daily breakdown: group closed positions by close-date (ISO
+    // YYYY-MM-DD in UTC for stable keys; the client formats to local).
+    const dailyMap = new Map();
+    for (const p of closedRaw) {
+      if (!p.closeTime) continue;
+      const key = new Date(p.closeTime).toISOString().slice(0, 10);
+      if (!dailyMap.has(key)) {
+        dailyMap.set(key, { date: key, pnl: 0, trades: 0, wins: 0, losses: 0, volume: 0 });
+      }
+      const d = dailyMap.get(key);
+      const profit = Number(p.profit) || 0;
+      d.pnl += profit;
+      d.trades += 1;
+      if (profit > 0) d.wins += 1;
+      else if (profit < 0) d.losses += 1;
+      d.volume += Number(p.volume) || 0;
+    }
+    const dailyBreakdown = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    // ── Today's PnL: today's closed-position realised PnL + current
+    // floating PnL. "Today" is the server-local calendar day.
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const todaysClosedPnl = dailyMap.get(todayKey)?.pnl || 0;
+    const todaysPnl = todaysClosedPnl + unrealizedPnl;
+
+    // ── Performance metrics. Only closed positions feed these (open
+    // positions have floating, not realised, results).
+    const totalClosed = closedRaw.length;
+    const wins = closedRaw.filter(p => (p.profit || 0) > 0);
+    const losses = closedRaw.filter(p => (p.profit || 0) < 0);
+    const grossProfit = wins.reduce((s, p) => s + (p.profit || 0), 0);
+    const grossLoss = Math.abs(losses.reduce((s, p) => s + (p.profit || 0), 0));
+    const avgWin = wins.length ? grossProfit / wins.length : 0;
+    const avgLoss = losses.length ? grossLoss / losses.length : 0;
+    const winRate = totalClosed ? (wins.length / totalClosed) * 100 : 0;
+    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : 0);
+    const expectancy = totalClosed
+      ? (winRate / 100) * avgWin - ((100 - winRate) / 100) * avgLoss
+      : 0;
+
+    // Average trade duration (seconds) over closed positions.
+    let avgDurationSec = 0;
+    if (totalClosed > 0) {
+      let totalMs = 0;
+      let counted = 0;
+      for (const p of closedRaw) {
+        if (p.openTime && p.closeTime) {
+          totalMs += new Date(p.closeTime) - new Date(p.openTime);
+          counted += 1;
+        }
+      }
+      avgDurationSec = counted > 0 ? Math.round(totalMs / counted / 1000) : 0;
+    }
+
+    // Average RRR: for positions that had both SL + TP set at open, the
+    // nominal R:R is |TP-entry| / |entry-SL|. Positions without both are
+    // skipped so the metric isn't skewed by empty fields.
+    let avgRRR = 0;
+    {
+      const rrrs = [];
+      for (const p of closedRaw) {
+        const entry = Number(p.entryPrice);
+        const sl = Number(p.stopLoss);
+        const tp = Number(p.takeProfit);
+        if (entry > 0 && sl > 0 && tp > 0) {
+          const risk = Math.abs(entry - sl);
+          const reward = Math.abs(tp - entry);
+          if (risk > 0) rrrs.push(reward / risk);
+        }
+      }
+      if (rrrs.length) avgRRR = rrrs.reduce((s, x) => s + x, 0) / rrrs.length;
+    }
+
+    // Annualised Sharpe ratio from daily returns vs initial balance.
+    // Needs ≥ 2 distinct trading days to be meaningful.
+    let sharpe = 0;
+    if (dailyBreakdown.length >= 2 && initialBalance > 0) {
+      const dailyReturns = dailyBreakdown.map(d => d.pnl / initialBalance);
+      const mean = dailyReturns.reduce((s, x) => s + x, 0) / dailyReturns.length;
+      const variance =
+        dailyReturns.reduce((s, x) => s + (x - mean) ** 2, 0) / dailyReturns.length;
+      const stdDev = Math.sqrt(variance);
+      if (stdDev > 0) sharpe = (mean / stdDev) * Math.sqrt(252);
+    }
+
+    // ── Consistency score: the biggest single-day profit shouldn't
+    // dominate total profit. Score = 100 × (1 − bestDay/totalProfit),
+    // clamped to [0, 100]. Only defined if totalProfit > 0.
+    let consistencyScore = null;
+    let consistencyDaysTraded = dailyBreakdown.length;
+    {
+      const totalProfit = dailyBreakdown.reduce((s, d) => s + Math.max(0, d.pnl), 0);
+      if (totalProfit > 0) {
+        const best = dailyBreakdown.reduce((m, d) => Math.max(m, d.pnl), 0);
+        const ratio = best / totalProfit;
+        consistencyScore = Math.max(0, Math.min(100, Math.round((1 - ratio) * 100)));
+      }
+    }
+
+    // ── Objectives table: the public, per-challenge gates a user must
+    // clear to pass / avoid failing. Each entry is self-describing so the
+    // UI can render it directly.
+    const dailyMax = Number(rules.maxDailyDrawdownPercent || 5);
+    const overallMax = Number(rules.maxOverallDrawdownPercent || 10);
+    const tradingDaysRequired = Number(rules.tradingDaysRequired || 0);
+    const targetPercent = account.currentPhase === 1
+      ? Number(rules.profitTargetPhase1Percent || 8)
+      : Number(rules.profitTargetPhase2Percent || 5);
+    const dailyUsed = Number(account.currentDailyDrawdownPercent || 0);
+    const overallUsed = Number(account.currentOverallDrawdownPercent || 0);
+    const profitPercent = Number(account.currentProfitPercent || 0);
+
+    const pctAmount = (pct) => Number(((pct / 100) * initialBalance).toFixed(2));
+
+    const objectives = [];
+    if (tradingDaysRequired > 0) {
+      objectives.push({
+        key: 'trading-days',
+        label: `Minimum ${tradingDaysRequired} Trading Day${tradingDaysRequired === 1 ? '' : 's'}`,
+        target: tradingDaysRequired,
+        actual: Number(account.tradingDaysCount || 0),
+        unit: 'days',
+        passed: Number(account.tradingDaysCount || 0) >= tradingDaysRequired
+      });
+    }
+    objectives.push({
+      key: 'max-daily-loss',
+      label: `Max Daily Loss −₹${pctAmount(dailyMax).toLocaleString('en-IN')}`,
+      target: dailyMax,
+      actual: dailyUsed,
+      unit: '%',
+      passed: dailyUsed < dailyMax
+    });
+    objectives.push({
+      key: 'max-loss',
+      label: `Max Loss −₹${pctAmount(overallMax).toLocaleString('en-IN')}`,
+      target: overallMax,
+      actual: overallUsed,
+      unit: '%',
+      passed: overallUsed < overallMax
+    });
+    if (account.accountType !== 'FUNDED' && targetPercent > 0) {
+      objectives.push({
+        key: 'profit-target',
+        label: `Profit Target ₹${pctAmount(targetPercent).toLocaleString('en-IN')}`,
+        target: targetPercent,
+        actual: profitPercent,
+        unit: '%',
+        passed: profitPercent >= targetPercent
+      });
+    }
+
+    res.json({
+      success: true,
+      overview: {
+        balance: Number(currentBalance.toFixed(2)),
+        equity: Number(currentEquity.toFixed(2)),
+        unrealizedPnl: Number(unrealizedPnl.toFixed(2)),
+        todaysPnl: Number(todaysPnl.toFixed(2)),
+        initialBalance: Number(initialBalance.toFixed(2)),
+        totalPnl: Number((currentEquity - initialBalance).toFixed(2)),
+        totalPnlPercent: initialBalance > 0
+          ? Number((((currentEquity - initialBalance) / initialBalance) * 100).toFixed(2))
+          : 0
+      },
+      objectives,
+      stats: {
+        winRate: Number(winRate.toFixed(2)),
+        avgProfit: Number(avgWin.toFixed(2)),
+        avgLoss: Number(avgLoss.toFixed(2)),
+        numTrades: totalClosed,
+        avgDurationSec,
+        sharpe: Number(sharpe.toFixed(2)),
+        avgRRR: Number(avgRRR.toFixed(2)),
+        profitFactor: Number.isFinite(profitFactor) ? Number(profitFactor.toFixed(2)) : 999,
+        expectancy: Number(expectancy.toFixed(2))
+      },
+      consistency: {
+        score: consistencyScore,
+        daysTraded: consistencyDaysTraded
+      },
+      equityCurve,
+      dailyBreakdown,
+      openTrades: openRaw,
+      closedTrades: closedRaw.slice(-100).reverse(), // latest 100, newest first
+      meta: {
+        challengeName: challenge.name || 'Challenge',
+        fundSize: Number(challenge.fundSize) || initialBalance,
+        stepsCount: challenge.stepsCount || account.totalPhases || 2,
+        currency: challenge.currency || 'INR',
+        status: account.status,
+        phase: account.currentPhase,
+        totalPhases: account.totalPhases,
+        createdAt: account.createdAt,
+        expiresAt: account.expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('[/account/:id/insights] error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // PUT /api/prop/positions/:positionId/sltp - modify SL/TP on an open
 // challenge position. Pass `stopLoss` and/or `takeProfit` in the body;
 // set to null/0 to clear. Values are stored as-is and evaluated on the
