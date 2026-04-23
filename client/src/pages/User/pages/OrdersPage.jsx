@@ -664,66 +664,71 @@ function OrdersPage() {
         </div>
       </div>
 
-      {/* Account Groups — accordion. Each challenge is its own row + an
-          optional Main Wallet row. Clicking a row expands it to show that
-          account's Open / Pending / History / Cancelled below. */}
-      <div className="acct-groups" style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '16px 0' }}>
-        {accountGroups.length === 0 && (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
-            No trades yet — purchase a challenge and start trading.
-          </div>
-        )}
-        {accountGroups.map(group => {
-          const isExpanded = expandedGroupId === group.id;
-          return (
-            <div key={group.id} style={{ background: 'var(--bg-secondary)', borderRadius: 12, border: `1px solid ${isExpanded ? 'var(--accent-primary, #2962ff)' : 'var(--border-color)'}`, overflow: 'hidden', transition: 'border-color 0.2s' }}>
+      {/* Account chips — one chip per challenge + a Main Wallet chip.
+          Click a chip to switch; only that account's trades render below. */}
+      {accountGroups.length === 0 ? (
+        <div style={{ padding: 20, margin: '16px 0', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
+          No trades yet — purchase a challenge and start trading.
+        </div>
+      ) : (
+        <div className="acct-chip-row" style={{ display: 'flex', gap: 10, margin: '16px 0', overflowX: 'auto', paddingBottom: 4 }}>
+          {accountGroups.map((group, idx) => {
+            const isActive = expandedGroupId === group.id;
+            const totalCount = group.openCount + group.pendingCount + group.historyCount + group.cancelledCount;
+            const accentColor = group.isChallenge ? '#f59e0b' : '#3b82f6';
+            return (
               <button
-                onClick={() => setExpandedGroupId(isExpanded ? null : group.id)}
+                key={group.id}
+                onClick={() => setExpandedGroupId(group.id)}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: 12, padding: '14px 18px', background: 'transparent', border: 'none', cursor: 'pointer',
-                  color: 'var(--text-primary)', fontSize: 14, fontWeight: 600
+                  flex: '0 0 auto', minWidth: 180, cursor: 'pointer',
+                  padding: '12px 16px', borderRadius: 12,
+                  border: `1.5px solid ${isActive ? accentColor : 'var(--border-color)'}`,
+                  background: isActive ? `${accentColor}14` : 'var(--bg-secondary)',
+                  color: 'var(--text-primary)', textAlign: 'left',
+                  transition: 'all 0.2s', boxShadow: isActive ? `0 0 0 2px ${accentColor}22` : 'none'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   {group.isChallenge ? (
-                    <span style={{ padding: '3px 10px', borderRadius: 10, background: '#f59e0b20', color: '#f59e0b', fontSize: 12, fontWeight: 700 }}>
+                    <span style={{ padding: '2px 8px', borderRadius: 8, background: '#f59e0b20', color: '#f59e0b', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
                       🏆 {group.code}
                     </span>
                   ) : (
-                    <span style={{ padding: '3px 10px', borderRadius: 10, background: '#3b82f620', color: '#3b82f6', fontSize: 12, fontWeight: 700 }}>
+                    <span style={{ padding: '2px 8px', borderRadius: 8, background: '#3b82f620', color: '#3b82f6', fontSize: 11, fontWeight: 700 }}>
                       💼 MAIN
                     </span>
                   )}
-                  <span style={{ fontWeight: 600 }}>{group.name}</span>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>
+                    {group.isChallenge ? (group.name?.length > 12 ? `Challenge ${idx + 1}` : group.name) : 'Main Wallet'}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
                   <span>Open <b style={{ color: group.openCount > 0 ? '#10b981' : 'var(--text-primary)' }}>{group.openCount}</b></span>
-                  <span>·</span>
                   <span>Pending <b style={{ color: 'var(--text-primary)' }}>{group.pendingCount}</b></span>
-                  <span>·</span>
                   <span>History <b style={{ color: 'var(--text-primary)' }}>{group.historyCount}</b></span>
-                  <span>·</span>
-                  <span>Cancelled <b style={{ color: 'var(--text-primary)' }}>{group.cancelledCount}</b></span>
-                  <span style={{ marginLeft: 6, fontSize: 18, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block', color: 'var(--text-secondary)' }}>›</span>
+                  {totalCount === 0 && <span style={{ color: 'var(--text-muted)' }}>· empty</span>}
                 </div>
               </button>
+            );
+          })}
+        </div>
+      )}
 
-              {isExpanded && (
-                <div style={{ borderTop: '1px solid var(--border-color)', padding: '12px 18px' }}>
-                  {/* Tabs */}
-                  <div className="orders-tabs">
-                    <button className={`orders-tab ${ordersActiveTab === 'open' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('open')}>Open ({group.openCount})</button>
-                    <button className={`orders-tab ${ordersActiveTab === 'pending' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('pending')}>Pending ({group.pendingCount})</button>
-                    <button className={`orders-tab ${ordersActiveTab === 'closed' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('closed')}>History ({group.historyCount})</button>
-                    <button className={`orders-tab ${ordersActiveTab === 'cancelled' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('cancelled')}>Cancelled ({group.cancelledCount})</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Inner tab bar (Open / Pending / History / Cancelled) for the
+          currently selected account chip. */}
+      {expandedGroupId && (() => {
+        const g = accountGroups.find(x => x.id === expandedGroupId);
+        if (!g) return null;
+        return (
+          <div className="orders-tabs">
+            <button className={`orders-tab ${ordersActiveTab === 'open' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('open')}>Open ({g.openCount})</button>
+            <button className={`orders-tab ${ordersActiveTab === 'pending' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('pending')}>Pending ({g.pendingCount})</button>
+            <button className={`orders-tab ${ordersActiveTab === 'closed' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('closed')}>History ({g.historyCount})</button>
+            <button className={`orders-tab ${ordersActiveTab === 'cancelled' ? 'active' : ''}`} onClick={() => setOrdersActiveTab('cancelled')}>Cancelled ({g.cancelledCount})</button>
+          </div>
+        );
+      })()}
 
       {/* Sections — rendered only while a group is expanded. Each section
           reads from the scoped-by-group filtered arrays above. */}
