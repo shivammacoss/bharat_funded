@@ -305,7 +305,8 @@ function MarketPage() {
     closeVolume,
     setCloseVolume,
     getTVSymbol,
-    removeInstrumentFromCategory
+    removeInstrumentFromCategory,
+    activeChallengeAccountId: activeChallengeAccountIdFromContext
   } = useOutletContext();
 
   const navigate = useNavigate();
@@ -1961,13 +1962,22 @@ function MarketPage() {
 
     // Prop-only trading: block main-wallet orders. Users must select an
     // ACTIVE / FUNDED challenge before placing any trade — trades run on the
-    // challenge's isolated virtual sub-wallet, never on User.wallet.
-    const activeChallengeAccountId = localStorage.getItem('bharatfunded-active-challenge') || null;
+    // challenge's isolated virtual sub-wallet, never on User.wallet. Read
+    // from React context first (authoritative, matches header chip) and
+    // fall back to localStorage for legacy tabs where the context prop isn't
+    // propagated yet.
+    const activeChallengeAccountId =
+      activeChallengeAccountIdFromContext ||
+      localStorage.getItem('bharatfunded-active-challenge') ||
+      null;
     if (!activeChallengeAccountId) {
       alert('⚠️ No challenge selected\n\nThis is a prop-trading platform — trades can only be placed on an active challenge account, not on your main wallet.\n\nOpen "My Challenges" to pick a challenge, then click "Start Trading".');
       try { navigate('/app/my-challenges'); } catch (_) {}
       return;
     }
+    // Re-sync in case context had the value but localStorage was out of sync
+    // (different browser tab, refresh edge case, etc.).
+    try { localStorage.setItem('bharatfunded-active-challenge', activeChallengeAccountId); } catch (_) {}
 
     try {
       setIsPlacingOrder(true);
