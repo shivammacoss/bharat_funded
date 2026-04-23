@@ -69,7 +69,7 @@ const PropTrading = () => {
         maxLotSize: 100,
         maxTradesPerDay: null,
         maxConcurrentTrades: null,
-        stopLossMandatory: true,
+        stopLossMandatory: false,
         takeProfitMandatory: false,
         minTradeHoldTimeSeconds: 0,
         allowWeekendHolding: false,

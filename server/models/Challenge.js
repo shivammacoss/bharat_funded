@@ -110,10 +110,10 @@ const challengeSchema = new mongoose.Schema({
       default: null
     },
 
-    // Trade Behavior Rules
+    // Trade Behavior Rules (optional — validator no longer enforces these)
     stopLossMandatory: {
       type: Boolean,
-      default: true
+      default: false
     },
     takeProfitMandatory: {
       type: Boolean,

@@ -160,15 +160,9 @@ class PropTradingEngine {
     const challenge = account.challengeId;
     const rules = challenge.rules || {};
 
-    // Stop loss mandatory
-    if (rules.stopLossMandatory && !tradeParams.sl && !tradeParams.stopLoss) {
-      return { valid: false, error: 'Stop Loss is mandatory for this challenge', code: ERROR_CODES.STOP_LOSS_REQUIRED };
-    }
-
-    // Take profit mandatory
-    if (rules.takeProfitMandatory && !tradeParams.tp && !tradeParams.takeProfit) {
-      return { valid: false, error: 'Take Profit is mandatory for this challenge', code: ERROR_CODES.TAKE_PROFIT_REQUIRED };
-    }
+    // SL / TP are optional on all challenges — users can trade without them.
+    // (The schema keeps stopLossMandatory / takeProfitMandatory for historical
+    // data compatibility but the validator no longer enforces them.)
 
     // Max leverage
     if (rules.maxLeverage && tradeParams.leverage && Number(tradeParams.leverage) > Number(rules.maxLeverage)) {
