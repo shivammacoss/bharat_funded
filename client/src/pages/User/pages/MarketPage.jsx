@@ -3649,17 +3649,6 @@ function MarketPage() {
               />
             )}
           </div>
-          {/* Custom Currency Toggle Overlay */}
-          <div className="chart-currency-overlay">
-            <select
-              value={displayCurrency}
-              onChange={(e) => handleCurrencyChange(e.target.value)}
-              className="chart-currency-select"
-            >
-              <option value="USD">USD</option>
-              <option value="INR">INR</option>
-            </select>
-          </div>
         </div>
         {/* Mobile Buy/Sell quick-action bar at bottom of chart */}
         <div className="mobi-chart-action-bar">
@@ -3846,20 +3835,12 @@ function MarketPage() {
             <button className={`order-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History({tradeHistory.length})</button>
             <button className={`order-tab ${activeTab === 'cancelled' ? 'active' : ''}`} onClick={() => setActiveTab('cancelled')}>Cancelled({cancelledOrders.length})</button>
             <div className="order-controls">
-              <div className="currency-toggle">
-                {(allowedCurrencyDisplay === 'BOTH' || allowedCurrencyDisplay === 'USD') && (
-                  <button className={`curr-btn ${displayCurrency === 'USD' ? 'active' : ''}`} onClick={() => handleCurrencyChange('USD')}>$ USD</button>
-                )}
-                {(allowedCurrencyDisplay === 'BOTH' || allowedCurrencyDisplay === 'INR') && (
-                  <button className={`curr-btn ${displayCurrency === 'INR' ? 'active' : ''}`} onClick={() => handleCurrencyChange('INR')}>₹ INR</button>
-                )}
-              </div>
               <label className="one-click">
                 One Click
                 <input type="checkbox" checked={oneClickMode} onChange={(e) => setOneClickMode(e.target.checked)} />
               </label>
               <span className={`pnl ${marketHeaderFloatingPnL >= 0 ? 'profit' : 'loss'}`}>
-                P/L: {marketHeaderFloatingPnL >= 0 ? '+' : '-'}{displayCurrency === 'INR' ? '₹' : '$'}{Math.abs(marketHeaderFloatingPnL).toFixed(2)}
+                P/L: {marketHeaderFloatingPnL >= 0 ? '+' : '-'}₹{Math.abs(marketHeaderFloatingPnL).toFixed(2)}
               </span>
             </div>
           </div>
