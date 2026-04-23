@@ -2623,7 +2623,22 @@ app.get('/api/zerodha/login-url', async (req, res) => {
 
 // Zerodha OAuth callback
 app.get('/api/zerodha/callback', async (req, res) => {
-  const frontendUrl = process.env.CORS_ORIGIN || 'http://localhost:5173';
+  // CORS_ORIGIN may contain multiple comma-separated origins. Pick a sensible
+  // single origin for the admin redirect: explicit env var wins, else the
+  // first "admin.*" origin from CORS_ORIGIN, else the first origin.
+  const pickAdminOrigin = () => {
+    if (process.env.ADMIN_URL) return process.env.ADMIN_URL;
+    if (process.env.ZERODHA_SUCCESS_REDIRECT) return process.env.ZERODHA_SUCCESS_REDIRECT;
+    const origins = (process.env.CORS_ORIGIN || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    const adminOrigin = origins.find(o => /\/\/admin\./i.test(o));
+    if (adminOrigin) return adminOrigin;
+    if (origins.length > 0) return origins[0];
+    return 'http://localhost:5173';
+  };
+  const frontendUrl = pickAdminOrigin().replace(/\/$/, '');
   try {
     const { request_token, status } = req.query;
 
