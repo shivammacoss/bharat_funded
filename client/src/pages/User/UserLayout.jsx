@@ -8,6 +8,7 @@ import {
   LuTrophy
 } from 'react-icons/lu';
 import logoLight from '../../assets/bharatfunded-logo.svg';
+import logoDark from '../../assets/bharatfunded-logo-dark.svg';
 import { useMetaApiPrices } from '../../hooks/useMetaApiPrices';
 import { useZerodhaTicks } from '../../hooks/useZerodhaTicks';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -2321,7 +2322,7 @@ function UserLayout({ user, onLogout }) {
             className="bft-header-logo-btn"
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
           >
-            <img src={logoLight} alt="BharatFunded" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
+            <img src={isDark ? logoLight : logoDark} alt="BharatFunded" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

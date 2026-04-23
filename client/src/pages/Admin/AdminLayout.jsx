@@ -219,9 +219,9 @@ function AdminLayout() {
       <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           {sidebarCollapsed ? (
-            <img src="/landing/img/bharatfunded-logo.svg" alt="BharatFunded" className="sidebar-logo-img" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+            <img src={adminTheme === 'light' ? "/landing/img/bharatfunded-logo-dark.svg" : "/landing/img/bharatfunded-logo.svg"} alt="BharatFunded" className="sidebar-logo-img" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
           ) : (
-            <img src="/landing/img/bharatfunded-logo.svg" alt="BharatFunded" className="sidebar-logo-img" style={{ height: '32px', width: 'auto', maxWidth: '160px', objectFit: 'contain' }} />
+            <img src={adminTheme === 'light' ? "/landing/img/bharatfunded-logo-dark.svg" : "/landing/img/bharatfunded-logo.svg"} alt="BharatFunded" className="sidebar-logo-img" style={{ height: '32px', width: 'auto', maxWidth: '160px', objectFit: 'contain' }} />
           )}
           <button
             className="sidebar-toggle"
