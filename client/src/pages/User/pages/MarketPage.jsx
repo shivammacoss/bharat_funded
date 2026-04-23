@@ -2462,7 +2462,7 @@ function MarketPage() {
   const renderSegmentTabsGroup = () => (
     <div className="segment-tabs-scroll" style={{
       display: 'flex', gap: '8px', overflowX: 'auto', padding: '8px 12px',
-      borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap',
+      borderBottom: '1px solid var(--border-color)', whiteSpace: 'nowrap',
       scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch'
     }}>
       <button 
@@ -2551,7 +2551,7 @@ function MarketPage() {
             }
 
             return (
-              <div key={symbol} className={`${rowClass} ${selectedSymbol === inst.symbol ? 'selected' : ''}`} onClick={() => addChartTab(inst.symbol)} style={{ borderLeft: '3px solid var(--border)', marginBottom: 2 }}>
+              <div key={symbol} className={`${rowClass} ${selectedSymbol === inst.symbol ? 'selected' : ''}`} onClick={() => addChartTab(inst.symbol)} style={{ borderLeft: '3px solid var(--border-color)', marginBottom: 2 }}>
                 <div className="inst-top-row">
                   <div className="inst-left">
                     <span className="inst-symbol">{inst.symbol}</span>
@@ -2632,7 +2632,7 @@ function MarketPage() {
               <div className="price-col ask"><span className="price-value">{ask > 0 ? formatPrice(ask, inst.symbol) : '-'}</span></div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <button onClick={(e) => { e.stopPropagation(); toggleWatchlist(inst.symbol, e); }} style={{ background: 'transparent', border: 'none', color: isFav ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 16, cursor: 'pointer' }}>{isFav ? '★' : '☆'}</button>
+              <button onClick={(e) => { e.stopPropagation(); toggleWatchlist(inst.symbol, e); }} style={{ background: 'transparent', border: 'none', color: isFav ? 'var(--accent-primary)' : 'var(--text-secondary)', fontSize: 16, cursor: 'pointer' }}>{isFav ? '★' : '☆'}</button>
               {showRemoveFromSegment && (
                 <button className="remove-fav-btn" onClick={(e) => { e.stopPropagation(); removeInstrumentFromCategory(inst.symbol, actTab.label); }} style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: 14, cursor: 'pointer', padding: '0 4px', marginLeft: '4px' }}>✕</button>
               )}
@@ -2655,13 +2655,13 @@ function MarketPage() {
             {inlineIndianResults.map(inst => {
               const isAlreadyAdded = (visibleInstrumentsByCategory[actTab.label] || visibleInstrumentsByCategory[actTab.key] || []).some(i => i.symbol === inst.symbol);
               return (
-              <div key={inst.token} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+              <div key={inst.token} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--border-color)' }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{inst.symbol}</div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{inst.name} {inst.expiry && `• Exp: ${inst.expiry}`}</div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button disabled={isAlreadyAdded} onClick={() => { addZerodhaInstrument(inst, actTab.label); isMobile ? openMobileChartPanelBelow(inst.symbol) : addChartTab(inst.symbol); }} style={{ padding: '4px 8px', background: isAlreadyAdded ? 'var(--bg-secondary)' : 'var(--accent)', color: isAlreadyAdded ? 'var(--text-secondary)' : 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: isAlreadyAdded ? 'default' : 'pointer' }}>{isAlreadyAdded ? 'Added' : '+ Add'}</button>
+                  <button disabled={isAlreadyAdded} onClick={() => { addZerodhaInstrument(inst, actTab.label); isMobile ? openMobileChartPanelBelow(inst.symbol) : addChartTab(inst.symbol); }} style={{ padding: '5px 12px', background: isAlreadyAdded ? 'var(--bg-secondary)' : 'var(--accent-primary, #2962ff)', color: isAlreadyAdded ? 'var(--text-secondary)' : '#ffffff', border: isAlreadyAdded ? '1px solid var(--border-color)' : 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: isAlreadyAdded ? 'default' : 'pointer', boxShadow: isAlreadyAdded ? 'none' : '0 1px 2px rgba(41,98,255,0.25)' }}>{isAlreadyAdded ? 'Added' : '+ Add'}</button>
                 </div>
               </div>
             )})}
@@ -2687,13 +2687,13 @@ function MarketPage() {
                  {inlineDeltaResults.slice(0, 50).map((inst, idx) => {
                     const isAlreadyAdded = (visibleInstrumentsByCategory[actTab.label] || visibleInstrumentsByCategory[actTab.key] || []).some(i => i.symbol === inst.symbol);
                     return (
-                    <div key={inst.symbol + idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+                    <div key={inst.symbol + idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid var(--border-color)' }}>
                       <div>
                         <div style={{ fontWeight: 600 }}>{inst.symbol}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{inst.name}</div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button disabled={isAlreadyAdded} onClick={() => { addDeltaInstrumentToWatchlist(inst, actTab.label); isMobile ? openMobileChartPanelBelow(inst.symbol) : addChartTab(inst.symbol); }} style={{ padding: '4px 8px', background: isAlreadyAdded ? 'var(--bg-secondary)' : 'var(--accent)', color: isAlreadyAdded ? 'var(--text-secondary)' : 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: isAlreadyAdded ? 'default' : 'pointer' }}>{isAlreadyAdded ? 'Added' : '+ Add'}</button>
+                        <button disabled={isAlreadyAdded} onClick={() => { addDeltaInstrumentToWatchlist(inst, actTab.label); isMobile ? openMobileChartPanelBelow(inst.symbol) : addChartTab(inst.symbol); }} style={{ padding: '5px 12px', background: isAlreadyAdded ? 'var(--bg-secondary)' : 'var(--accent-primary, #2962ff)', color: isAlreadyAdded ? 'var(--text-secondary)' : '#ffffff', border: isAlreadyAdded ? '1px solid var(--border-color)' : 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: isAlreadyAdded ? 'default' : 'pointer', boxShadow: isAlreadyAdded ? 'none' : '0 1px 2px rgba(41,98,255,0.25)' }}>{isAlreadyAdded ? 'Added' : '+ Add'}</button>
                       </div>
                     </div>
                  )})}
@@ -2712,14 +2712,14 @@ function MarketPage() {
     if (!actTab) return null;
 
     const baseStyle = isMobile 
-      ? { display: 'flex', gap: '8px', margin: '10px 12px', padding: '0px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)' }
-      : { display: 'flex', gap: '8px', padding: '10px 12px', borderBottom: '1px solid var(--border)' };
+      ? { display: 'flex', gap: '8px', margin: '10px 12px', padding: '0px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }
+      : { display: 'flex', gap: '8px', padding: '10px 12px', borderBottom: '1px solid var(--border-color)' };
 
     if (actTab.type === 'indian') {
       return (
         <div style={baseStyle}>
-          <input type="text" placeholder={`Search ${actTab.label} (e.g. RELIANCE)...`} value={inlineIndianQuery} onChange={e => setInlineIndianQuery(e.target.value)} onKeyPress={e => e.key === 'Enter' && performInlineIndianSearch(inlineIndianQuery, actTab.key)} style={{ flex: 1, padding: '8px 12px', border: isMobile ? 'none' : '1px solid var(--border)', borderRadius: '4px', background: isMobile ? 'transparent' : 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none' }} />
-          <button onClick={() => performInlineIndianSearch(inlineIndianQuery, actTab.key)} disabled={inlineIndianSearching || inlineIndianQuery.length < 2} style={{ padding: '8px 12px', background: 'var(--accent)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', margin: isMobile ? '4px' : '0' }}>{inlineIndianSearching ? '...' : 'Search'}</button>
+          <input type="text" placeholder={`Search ${actTab.label} (e.g. RELIANCE)...`} value={inlineIndianQuery} onChange={e => setInlineIndianQuery(e.target.value)} onKeyPress={e => e.key === 'Enter' && performInlineIndianSearch(inlineIndianQuery, actTab.key)} style={{ flex: 1, padding: '8px 12px', border: isMobile ? 'none' : '1px solid var(--border-color)', borderRadius: '4px', background: isMobile ? 'transparent' : 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none' }} />
+          <button onClick={() => performInlineIndianSearch(inlineIndianQuery, actTab.key)} disabled={inlineIndianSearching || inlineIndianQuery.length < 2} style={{ padding: '8px 12px', background: 'var(--accent-primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', margin: isMobile ? '4px' : '0' }}>{inlineIndianSearching ? '...' : 'Search'}</button>
         </div>
       );
     }
@@ -2727,7 +2727,7 @@ function MarketPage() {
     if (actTab.type === 'delta') {
       return (
         <div style={baseStyle}>
-          <input type="text" placeholder={`Search ${actTab.label}...`} value={inlineDeltaQuery} onChange={e => { setInlineDeltaQuery(e.target.value); performInlineDeltaSearch(e.target.value, actTab.key); }} style={{ width: '100%', padding: '8px 12px', border: isMobile ? 'none' : '1px solid var(--border)', borderRadius: '4px', background: isMobile ? 'transparent' : 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none' }} />
+          <input type="text" placeholder={`Search ${actTab.label}...`} value={inlineDeltaQuery} onChange={e => { setInlineDeltaQuery(e.target.value); performInlineDeltaSearch(e.target.value, actTab.key); }} style={{ width: '100%', padding: '8px 12px', border: isMobile ? 'none' : '1px solid var(--border-color)', borderRadius: '4px', background: isMobile ? 'transparent' : 'var(--bg-primary)', color: 'var(--text-primary)', outline: 'none' }} />
         </div>
       );
     }
@@ -3210,9 +3210,9 @@ function MarketPage() {
                             style={{
                               flex: '1 1 45%',
                               padding: '8px 4px',
-                              background: leverage === mp ? 'var(--accent)' : 'var(--bg-secondary)',
+                              background: leverage === mp ? 'var(--accent-primary)' : 'var(--bg-secondary)',
                               color: leverage === mp ? 'white' : 'var(--text-primary)',
-                              border: '1px solid var(--border)',
+                              border: '1px solid var(--border-color)',
                               borderRadius: '6px',
                               fontSize: '13px',
                               cursor: 'pointer'
