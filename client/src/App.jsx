@@ -4534,6 +4534,7 @@ function AppRouter() {
             <Route path="market-control" element={<MarketControl />} />
             <Route path="zerodha" element={<ZerodhaConnect />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="reports/:tab" element={<Reports />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
             <Route path="prop-trading" element={<PropTrading />} />

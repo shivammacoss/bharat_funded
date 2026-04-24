@@ -3,6 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { LuX, LuRepeat, LuChartColumn, LuTimer, LuStar } from 'react-icons/lu';
 import { getOneClickTradeButtonStyle, isOneClickSymbolBusy } from '../../../hooks/useMetaApiPrices';
 import TVChartContainer from '../../../components/TVChart/TVChartContainer';
+import InstrumentPickerModal from './InstrumentPickerModal';
 import tradingSounds from '../../../utils/sounds';
 import { isIndianCashEquitySegmentCode } from '../../../constants/indianSegmentLabels';
 import {
@@ -555,6 +556,10 @@ function MarketPage() {
   const [legBeingEdited, setLegBeingEdited] = useState(null);
   const [legEditSL, setLegEditSL] = useState('');
   const [legEditTP, setLegEditTP] = useState('');
+  // Instrument picker modal state — opens from the chart tabs "+" button.
+  // Shows an option chain (CE | STRIKE | PE), equity/commodity lists, and
+  // a global search; picking an instrument calls addChartTab(symbol).
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [legEditParentPos, setLegEditParentPos] = useState(null);
 
   // Per-leg close confirm modal (Fix 19b). Replaces the ugly window.confirm
@@ -3659,31 +3664,7 @@ function MarketPage() {
               className="add-tab"
               title="Add instrument to chart"
               aria-label="Add instrument to chart"
-              onClick={() => {
-                // (1) Ensure the Instruments panel is expanded.
-                if (instrumentsPanelCollapsed) {
-                  setInstrumentsPanelCollapsed(false);
-                }
-                // (2) If the user is on Favourites, renderDynamicTopSearchArea
-                //     returns null — there's no search input to type into.
-                //     Switch to the first real segment tab (e.g. NSE EQ) so
-                //     a search bar is rendered.
-                if (filterTab === 'FAVOURITES' && Array.isArray(visibleSegmentTabs) && visibleSegmentTabs.length > 0) {
-                  setFilterTab(visibleSegmentTabs[0].key);
-                }
-                // (3) Focus the first text input inside the panel on the
-                //     next frame so it's picked up after the re-render.
-                setTimeout(() => {
-                  const input = document.querySelector(
-                    '.instruments-panel input[type="text"]'
-                  );
-                  if (input) {
-                    input.focus();
-                    try { input.select(); } catch (_) {}
-                    input.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
-                  }
-                }, 120);
-              }}
+              onClick={() => setPickerOpen(true)}
             >
               +
             </button>
@@ -4650,6 +4631,13 @@ function MarketPage() {
         </div>
       </div>
 
+      <InstrumentPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(symbol) => addChartTab(symbol)}
+        allInstruments={allInstruments}
+        getInstrumentWithLivePrice={getInstrumentWithLivePrice}
+      />
 
     </div>
   );
