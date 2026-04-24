@@ -258,24 +258,46 @@ export default function InstrumentPickerModal({
     return Array.from(byStrike.values()).sort((a, b) => a.strike - b.strike);
   }, [scopedInstruments, effectiveExpiry, activeCategory]);
 
-  // ATM = strike whose CE ≈ PE LTP (i.e. closest to the underlying spot).
-  // Prefers that symmetry when we have live quotes; falls back to the
-  // list midpoint if nothing's streaming yet.
-  const atmStrike = useMemo(() => {
-    if (chainRows.length === 0) return null;
+  // ATM detection + live underlying spot, both derived from option LTPs
+  // via put-call parity: for any strike with both CE & PE quoted,
+  //   spot ≈ strike + (CE_LTP − PE_LTP)
+  // We pick the strike whose CE ≈ PE as the ATM row (tightest spread =
+  // nearest to spot), then average the parity estimate across the handful
+  // of strikes closest to that one so the spot number is stable and ticks
+  // live as LTPs change. Falls back to the chain midpoint / null if
+  // nothing's streaming yet.
+  const { atmStrike, atmSpot } = useMemo(() => {
+    if (chainRows.length === 0) return { atmStrike: null, atmSpot: null };
+
+    // 1. Find the strike where CE and PE are closest (ATM proxy).
     let best = null;
     let bestSpread = Infinity;
+    const parityEstimates = [];
     for (const r of chainRows) {
       const ce = pickLtp(r.ce, livePriceOf);
       const pe = pickLtp(r.pe, livePriceOf);
       if (ce > 0 && pe > 0) {
+        parityEstimates.push({ strike: r.strike, spot: r.strike + (ce - pe) });
         const spread = Math.abs(ce - pe);
         if (spread < bestSpread) { bestSpread = spread; best = r; }
       }
     }
-    if (best) return best.strike;
-    const mid = Math.floor(chainRows.length / 2);
-    return chainRows[mid]?.strike ?? null;
+
+    const strike = best
+      ? best.strike
+      : (chainRows[Math.floor(chainRows.length / 2)]?.strike ?? null);
+
+    if (parityEstimates.length === 0) return { atmStrike: strike, atmSpot: null };
+
+    // 2. Average the parity estimate across the 5 strikes nearest the ATM.
+    //    Distant deep-ITM / deep-OTM strikes are noisier (wide bid-ask),
+    //    so we only trust the cluster around the money.
+    const near = [...parityEstimates]
+      .sort((a, b) => Math.abs(a.strike - strike) - Math.abs(b.strike - strike))
+      .slice(0, 5);
+    const spot = near.reduce((s, x) => s + x.spot, 0) / near.length;
+
+    return { atmStrike: strike, atmSpot: Number.isFinite(spot) ? spot : null };
   }, [chainRows, livePriceOf]);
 
   // Scroll ATM into view when the chain (re)loads.
@@ -454,6 +476,7 @@ export default function InstrumentPickerModal({
               rows={chainRows}
               expiry={effectiveExpiry}
               atmStrike={atmStrike}
+              atmSpot={atmSpot}
               atmRowRef={atmRowRef}
               query={query}
               livePriceOf={livePriceOf}
@@ -511,8 +534,11 @@ export default function InstrumentPickerModal({
 /* ────────────────────────────────────────────────────────────────────── */
 /* Option chain                                                          */
 /* ────────────────────────────────────────────────────────────────────── */
-function OptionChain({ rows, expiry, atmStrike, atmRowRef, query, livePriceOf, onPick }) {
+function OptionChain({ rows, expiry, atmStrike, atmSpot, atmRowRef, query, livePriceOf, onPick }) {
   const expiryLabel = formatExpiryDate(expiry);
+  const atmLabel = Number.isFinite(atmSpot)
+    ? `ATM ${Number(atmSpot).toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}`
+    : 'ATM';
 
   const filteredRows = useMemo(() => {
     const q = query.trim();
@@ -555,11 +581,12 @@ function OptionChain({ rows, expiry, atmStrike, atmRowRef, query, livePriceOf, o
                 position: 'absolute',
                 top: -1, left: '50%', transform: 'translate(-50%, -100%)',
                 background: '#f59e0b', color: '#fff',
-                padding: '2px 10px', borderRadius: '6px 6px 0 0',
-                fontSize: 10, fontWeight: 700, letterSpacing: 0.4,
-                pointerEvents: 'none'
+                padding: '3px 12px', borderRadius: '8px 8px 0 0',
+                fontSize: 11, fontWeight: 700, letterSpacing: 0.4,
+                pointerEvents: 'none', whiteSpace: 'nowrap',
+                boxShadow: '0 -2px 8px rgba(245, 158, 11, 0.3)'
               }}>
-                ATM
+                {atmLabel}
               </div>
             )}
 
