@@ -233,11 +233,18 @@ export default function InstrumentPickerModal({
   const livePriceOf = useMemo(() => {
     return (inst) => {
       if (!inst) return null;
-      // 1. Zerodha ticks by instrument token (WebSocket stream).
+      // 1. Zerodha ticks by numeric instrument token (WS stream).
       if (zerodhaTicks && inst.token && zerodhaTicks[inst.token]) {
         return zerodhaTicks[inst.token];
       }
-      // 2. Outlet helper merges static + live, already in use by MarketPage.
+      // 2. The useZerodhaTicks hook also stores ticks under
+      //    `sym_<tradingsymbol>` so some symbols (rarely) only resolve
+      //    via this fallback. Try both plausible symbol fields.
+      if (zerodhaTicks) {
+        const sym = inst.tradingsymbol || inst.symbol;
+        if (sym && zerodhaTicks[`sym_${sym}`]) return zerodhaTicks[`sym_${sym}`];
+      }
+      // 3. Outlet helper merges static + live, used elsewhere in MarketPage.
       if (getInstrumentWithLivePrice) {
         try { return getInstrumentWithLivePrice(inst); } catch { /* ignore */ }
       }
@@ -306,14 +313,21 @@ export default function InstrumentPickerModal({
     if (fresh.length === 0) return;
 
     // Fire-and-forget — the server deduplicates against its own stored
-    // set and opens the WS subscription when connected.
+    // set and opens the WS subscription when connected. Chain an
+    // /api/zerodha/ltp call right after so the server HTTP-fetches
+    // current prices for every subscribed instrument (including the
+    // ones we just added) and broadcasts them over socket.io. Without
+    // this, LTPs for new subscriptions only arrive on the next 30-sec
+    // poll — the user sees "LTP 0" for up to half a minute per tab.
     const ctrl = new AbortController();
     fetch(`${apiUrl}/api/zerodha/instruments/subscribe-bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ instruments: fresh }),
       signal: ctrl.signal
-    }).catch(() => { /* non-fatal — ticks just won't stream */ });
+    })
+      .then(() => fetch(`${apiUrl}/api/zerodha/ltp`, { signal: ctrl.signal }))
+      .catch(() => { /* non-fatal — next 30-sec poll will recover */ });
     return () => ctrl.abort();
   }, [open, chainRows, category, activeCategory, cache, apiUrl]);
 
