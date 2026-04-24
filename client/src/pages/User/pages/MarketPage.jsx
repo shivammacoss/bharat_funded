@@ -4635,8 +4635,9 @@ function MarketPage() {
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onSelect={(symbol) => addChartTab(symbol)}
-        allInstruments={allInstruments}
+        apiUrl={API_URL}
         getInstrumentWithLivePrice={getInstrumentWithLivePrice}
+        zerodhaTicks={zerodhaTicks}
       />
 
     </div>
