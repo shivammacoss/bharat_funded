@@ -343,6 +343,15 @@ function MarketPage() {
     );
   }, [tradeHistory, activeChallengeAccountIdFromContext]);
 
+  const scopedCancelledOrders = useMemo(() => {
+    const cid = activeChallengeAccountIdFromContext;
+    if (!cid) return [];
+    return (cancelledOrders || []).filter(o =>
+      o.accountContext === 'challenge' &&
+      String(o.challengeAccountId || '') === String(cid)
+    );
+  }, [cancelledOrders, activeChallengeAccountIdFromContext]);
+
   const visibleInstrumentsByCategory = visibleInstrumentsByCategoryFromLayout ?? instrumentsByCategory;
 
   const getSegmentViewOnlyLabel = useCallback(
@@ -3678,7 +3687,7 @@ function MarketPage() {
                 dataSource={chartDataSource}
                 theme={isDark ? 'Dark' : 'Light'}
                 livePriceObj={selectedInstrument}
-                positions={positions}
+                positions={scopedPositions}
                 orderSide={orderSide}
                 isMobile={mobileMarketTab === 'chart'}
                 volume={volume}
@@ -3879,7 +3888,7 @@ function MarketPage() {
             <button className={`order-tab ${activeTab === 'positions' ? 'active' : ''}`} onClick={() => setActiveTab('positions')}>Positions({scopedPositions.length})</button>
             <button className={`order-tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>Pending({scopedPendingOrders.length})</button>
             <button className={`order-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')}>History({scopedTradeHistory.length})</button>
-            <button className={`order-tab ${activeTab === 'cancelled' ? 'active' : ''}`} onClick={() => setActiveTab('cancelled')}>Cancelled({cancelledOrders.length})</button>
+            <button className={`order-tab ${activeTab === 'cancelled' ? 'active' : ''}`} onClick={() => setActiveTab('cancelled')}>Cancelled({scopedCancelledOrders.length})</button>
             <div className="order-controls">
               <label className="one-click">
                 One Click
@@ -4306,10 +4315,10 @@ function MarketPage() {
               <table className="positions-table">
                 <thead><tr><th>Time</th><th>Sym</th><th>Type</th><th>Size</th><th>Price</th><th>Reason</th></tr></thead>
                 <tbody>
-                  {cancelledOrders.length === 0 ? (
-                    <tr><td colSpan="6" className="no-data">No cancelled orders</td></tr>
+                  {scopedCancelledOrders.length === 0 ? (
+                    <tr><td colSpan="6" className="no-data">No cancelled orders on this challenge</td></tr>
                   ) : (
-                    cancelledOrders.map((order) => (
+                    scopedCancelledOrders.map((order) => (
                       <tr key={order._id || order.tradeId}>
                         <td>{new Date(order.cancelledAt || order.createdAt).toLocaleTimeString()}</td>
                         <td>{order.symbol}</td>
@@ -4634,7 +4643,33 @@ function MarketPage() {
       <InstrumentPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        onSelect={(symbol) => addChartTab(symbol)}
+        onSelect={(symbol, inst) => {
+          // When available, register the instrument in the user's local
+          // categories AND explicitly subscribe it on the server. Without
+          // this, chart tabs open for option symbols that aren't in
+          // allInstruments yet, so the chart can't find metadata (lotSize,
+          // tickSize, etc.) and renders blank. addZerodhaInstrument
+          // handles both: server subscribe + local category push +
+          // addChartTab.
+          if (inst && inst.token) {
+            try {
+              // Map Zerodha segment → addInstrumentToCategory key.
+              const t = String(inst.instrumentType || '').toUpperCase();
+              const exch = String(inst.exchange || '').toUpperCase();
+              let segKey = 'nseEq';
+              if (exch === 'NFO') segKey = (t === 'FUT') ? 'nseFut' : 'nseOpt';
+              else if (exch === 'BFO') segKey = (t === 'FUT') ? 'bseFut' : 'bseOpt';
+              else if (exch === 'MCX') segKey = (t === 'FUT') ? 'mcxFut' : 'mcxOpt';
+              else if (exch === 'BSE') segKey = 'bseEq';
+              else if (exch === 'NSE') segKey = 'nseEq';
+              addZerodhaInstrument(inst, segKey);
+              return;
+            } catch (_) {
+              // Fall through to plain addChartTab on any unexpected shape.
+            }
+          }
+          addChartTab(symbol);
+        }}
         apiUrl={API_URL}
         getInstrumentWithLivePrice={getInstrumentWithLivePrice}
         zerodhaTicks={zerodhaTicks}

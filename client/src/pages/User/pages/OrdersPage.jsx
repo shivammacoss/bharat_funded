@@ -699,7 +699,25 @@ function OrdersPage() {
           No trades yet — purchase a challenge and start trading.
         </div>
       ) : (
-        <div className="acct-chip-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '16px 0' }}>
+        <div
+          className="acct-chip-row"
+          style={{
+            display: 'flex',
+            // Single-line horizontal scroll on narrow screens (mobile);
+            // wraps naturally on wider viewports thanks to the @media
+            // override below. Hides the scrollbar so the chips look like
+            // a clean strip, mirrors the mobile-app behaviour.
+            flexWrap: 'nowrap',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            gap: 8,
+            margin: '16px 0',
+            paddingBottom: 4,
+          }}
+        >
           {accountGroups.map(group => {
             const isActive = expandedGroupId === group.id;
             const total = group.openCount + group.pendingCount + group.historyCount + group.cancelledCount;

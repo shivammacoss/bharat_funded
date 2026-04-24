@@ -553,7 +553,7 @@ export default function InstrumentPickerModal({
               atmRowRef={atmRowRef}
               query={query}
               livePriceOf={livePriceOf}
-              onPick={(sym) => { onSelect?.(sym); onClose?.(); }}
+              onPick={(sym, inst) => { onSelect?.(sym, inst); onClose?.(); }}
             />
           )}
 
@@ -562,7 +562,7 @@ export default function InstrumentPickerModal({
             <FlatList
               rows={flatRows}
               livePriceOf={livePriceOf}
-              onPick={(sym) => { onSelect?.(sym); onClose?.(); }}
+              onPick={(sym, inst) => { onSelect?.(sym, inst); onClose?.(); }}
             />
           )}
 
@@ -609,9 +609,15 @@ export default function InstrumentPickerModal({
 /* ────────────────────────────────────────────────────────────────────── */
 function OptionChain({ rows, expiry, atmStrike, atmSpot, atmRowRef, query, livePriceOf, onPick }) {
   const expiryLabel = formatExpiryDate(expiry);
+  // Prefer the live parity-derived spot; fall back to the ATM strike
+  // itself so the pill always shows a number (never a bare "ATM"). Once
+  // option LTPs start streaming and parity resolves, the label switches
+  // from "ATM 56,800" (strike) to "ATM 56,823.75" (live spot) seamlessly.
   const atmLabel = Number.isFinite(atmSpot)
     ? `ATM ${Number(atmSpot).toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 2 })}`
-    : 'ATM';
+    : Number.isFinite(atmStrike)
+      ? `ATM ${Number(atmStrike).toLocaleString('en-IN')}`
+      : 'ATM';
 
   const filteredRows = useMemo(() => {
     const q = query.trim();
@@ -691,7 +697,7 @@ function ChainCell({ inst, ltp, expiryLabel, align, onPick }) {
   return (
     <button
       type="button"
-      onClick={() => onPick?.(sym)}
+      onClick={() => onPick?.(sym, inst)}
       style={{
         padding: '14px 18px', textAlign: align,
         background: 'transparent', border: 'none', cursor: 'pointer',
@@ -723,7 +729,7 @@ function FlatList({ rows, livePriceOf, onPick }) {
           <button
             key={`${sym}-${idx}`}
             type="button"
-            onClick={() => onPick?.(sym)}
+            onClick={() => onPick?.(sym, inst)}
             style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
               width: '100%', padding: '12px 20px',
