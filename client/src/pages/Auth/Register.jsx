@@ -35,7 +35,7 @@ const countries = [
   { code: '+977', name: 'Nepal', flag: '🇳🇵' },
 ];
 
-function Register() {
+function Register({ onLogin }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [referralId, setReferralId] = useState('');
@@ -94,9 +94,27 @@ function Register() {
       });
       const data = await response.json();
       if (!response.ok) { setError(data.error || 'Registration failed'); setLoading(false); return; }
-      setSuccess(`Registration successful! Your User ID is: ${data.user.oderId}`);
-      setTimeout(() => navigate('/login'), 3000);
-    } catch (err) {
+
+      // Auto-login: the /auth/register response already includes a signed
+      // token + user payload, so persist it exactly as Login.jsx does and
+      // hand it to the App-level login handler — the user lands straight
+      // on /app instead of the login screen.
+      if (data.token && data.user) {
+        const authData = { isAuthenticated: true, token: data.token, user: data.user };
+        localStorage.setItem('bharatfunded-auth', JSON.stringify(authData));
+        localStorage.setItem('bharatfunded-token', data.token);
+        setSuccess(`Account created! Welcome, ${data.user.name || 'trader'} · ID ${data.user.oderId}`);
+        if (typeof onLogin === 'function') onLogin(authData);
+        navigate('/app', { replace: true });
+        return;
+      }
+
+      // Fallback for any server path that doesn't return a token (shouldn't
+      // happen under the current /auth/register handler, but keeps the flow
+      // safe if a deployment is mid-upgrade): show the ID and go to /login.
+      setSuccess(`Registration successful! Your User ID is: ${data.user.oderId}. Redirecting to login…`);
+      setTimeout(() => navigate('/login'), 2000);
+    } catch {
       setError('Server error. Please try again.');
     } finally { setLoading(false); }
   };

@@ -275,17 +275,36 @@ function OrdersPage() {
     // the server/scripts/wipe-main-wallet-trades.js script).
     const list = Array.from(byId.values()).filter(g => g.isChallenge);
     list.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+
+    // Synthetic "All" entry at the head — aggregates every challenge so
+    // users can see their whole trading activity on one screen. Selected
+    // by default; inSelectedGroup() special-cases this id.
+    if (list.length > 0) {
+      const agg = {
+        id: 'all',
+        isChallenge: true,
+        isAggregate: true,
+        code: 'ALL',
+        name: 'All Challenges',
+        openCount: list.reduce((s, g) => s + g.openCount, 0),
+        pendingCount: list.reduce((s, g) => s + g.pendingCount, 0),
+        historyCount: list.reduce((s, g) => s + g.historyCount, 0),
+        cancelledCount: list.reduce((s, g) => s + g.cancelledCount, 0)
+      };
+      return [agg, ...list];
+    }
     return list;
   }, [positions, pendingOrders, tradeHistory, cancelledOrders]);
 
   const [expandedGroupId, setExpandedGroupId] = useState(null);
 
-  // Auto-expand the first group if none is selected yet.
+  // Auto-select the first group ("All" when present) if none is selected
+  // yet. If the currently-selected group disappeared (account deleted),
+  // fall back to the first available one.
   useEffect(() => {
     if (!expandedGroupId && accountGroups.length > 0) {
       setExpandedGroupId(accountGroups[0].id);
     }
-    // If current expanded group disappeared (account deleted), collapse.
     if (expandedGroupId && !accountGroups.some(g => g.id === expandedGroupId)) {
       setExpandedGroupId(accountGroups[0]?.id || null);
     }
@@ -293,6 +312,10 @@ function OrdersPage() {
 
   const inSelectedGroup = (item) => {
     if (!expandedGroupId) return false;
+    // "All" — every challenge trade, aggregated across accounts.
+    if (expandedGroupId === 'all') {
+      return item?.accountContext === 'challenge';
+    }
     if (expandedGroupId === 'main') {
       return item?.accountContext !== 'challenge';
     }
@@ -668,51 +691,42 @@ function OrdersPage() {
         </div>
       </div>
 
-      {/* Account chips — one chip per challenge + a Main Wallet chip.
-          Click a chip to switch; only that account's trades render below. */}
+      {/* Account filter pills — one pill per challenge, plus "All" first.
+          Click a pill to filter the table below. Text-only (no per-chip
+          count card) so all challenges fit on one line on most screens. */}
       {accountGroups.length === 0 ? (
         <div style={{ padding: 20, margin: '16px 0', textAlign: 'center', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', borderRadius: 12, border: '1px solid var(--border-color)' }}>
           No trades yet — purchase a challenge and start trading.
         </div>
       ) : (
-        <div className="acct-chip-row" style={{ display: 'flex', gap: 10, margin: '16px 0', overflowX: 'auto', paddingBottom: 4 }}>
-          {accountGroups.map((group, idx) => {
+        <div className="acct-chip-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '16px 0' }}>
+          {accountGroups.map(group => {
             const isActive = expandedGroupId === group.id;
-            const totalCount = group.openCount + group.pendingCount + group.historyCount + group.cancelledCount;
-            const accentColor = group.isChallenge ? '#f59e0b' : '#3b82f6';
+            const total = group.openCount + group.pendingCount + group.historyCount + group.cancelledCount;
+            const label = group.isAggregate
+              ? 'All'
+              : (group.code && group.code !== 'MAIN' ? group.code : (group.name || 'Challenge'));
             return (
               <button
                 key={group.id}
+                type="button"
                 onClick={() => setExpandedGroupId(group.id)}
                 style={{
-                  flex: '0 0 auto', minWidth: 180, cursor: 'pointer',
-                  padding: '12px 16px', borderRadius: 12,
-                  border: `1.5px solid ${isActive ? accentColor : 'var(--border-color)'}`,
-                  background: isActive ? `${accentColor}14` : 'var(--bg-secondary)',
-                  color: 'var(--text-primary)', textAlign: 'left',
-                  transition: 'all 0.2s', boxShadow: isActive ? `0 0 0 2px ${accentColor}22` : 'none'
+                  padding: '7px 16px',
+                  borderRadius: 999,
+                  border: `1px solid ${isActive ? '#3b82f6' : 'var(--border-color)'}`,
+                  background: isActive ? '#3b82f6' : 'var(--bg-secondary)',
+                  color: isActive ? '#fff' : 'var(--text-primary)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: group.isAggregate ? 'inherit' : 'monospace',
+                  letterSpacing: group.isAggregate ? 0 : 0.3,
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  {group.isChallenge ? (
-                    <span style={{ padding: '2px 8px', borderRadius: 8, background: '#f59e0b20', color: '#f59e0b', fontSize: 11, fontWeight: 700, fontFamily: 'monospace' }}>
-                      🏆 {group.code}
-                    </span>
-                  ) : (
-                    <span style={{ padding: '2px 8px', borderRadius: 8, background: '#3b82f620', color: '#3b82f6', fontSize: 11, fontWeight: 700 }}>
-                      💼 MAIN
-                    </span>
-                  )}
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>
-                    {group.isChallenge ? (group.name?.length > 12 ? `Challenge ${idx + 1}` : group.name) : 'Main Wallet'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                  <span>Open <b style={{ color: group.openCount > 0 ? '#10b981' : 'var(--text-primary)' }}>{group.openCount}</b></span>
-                  <span>Pending <b style={{ color: 'var(--text-primary)' }}>{group.pendingCount}</b></span>
-                  <span>History <b style={{ color: 'var(--text-primary)' }}>{group.historyCount}</b></span>
-                  {totalCount === 0 && <span style={{ color: 'var(--text-muted)' }}>· empty</span>}
-                </div>
+                {label} ({total})
               </button>
             );
           })}

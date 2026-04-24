@@ -24,6 +24,33 @@ function genPositionId() {
 }
 
 /**
+ * Effective contract units for a position, i.e. the number we must
+ * multiply the per-unit price diff by to get INR P&L.
+ *
+ * Priority:
+ *   1. `quantity` if it's already been computed and stored
+ *      (full contract count = lots × lotSize).
+ *   2. `volume × lotSize` when both are present.
+ *   3. `volume` as a last resort (equivalent to the legacy 1:1 behaviour
+ *      that existed before this helper — keeps main-wallet-style symbols
+ *      with a 1:1 contract size working).
+ *
+ * Used by openPosition (margin math), closePosition (realised PnL) and
+ * refreshEquity (floating PnL) so every code path agrees on the same
+ * multiplier. Previously each path used only `volume`, which meant F&O
+ * positions booked PnL of only the price diff × lots — missing the
+ * lot-size multiplier entirely (e.g. NIFTY options 1 lot = 65 units).
+ */
+function pnlUnits(pos) {
+  const qty = Number(pos?.quantity);
+  if (Number.isFinite(qty) && qty > 0) return qty;
+  const vol = Number(pos?.volume) || 0;
+  const lot = Number(pos?.lotSize);
+  if (Number.isFinite(lot) && lot > 0) return vol * lot;
+  return vol;
+}
+
+/**
  * Recompute wallet aggregates from balance + open positions.
  */
 function recomputeWallet(account, openPositions) {
@@ -76,10 +103,16 @@ async function openPosition(challengeAccountId, orderData) {
   const volume = Number(orderData.volume || orderData.quantity) || 0;
   const entryPrice = Number(orderData.entryPrice || orderData.price) || 0;
   const leverage = Number(orderData.leverage) || 100;
+  const lotSize = Number(orderData.lotSize) > 0 ? Number(orderData.lotSize) : 1;
+  // Effective contract count for margin + PnL — mirrors the same formula
+  // used below in closePosition / refreshEquity so margin reserved and
+  // PnL booked always agree on "units traded".
+  const effectiveQty =
+    Number(orderData.quantity) > 0 ? Number(orderData.quantity) : volume * lotSize;
   if (!volume || !entryPrice) {
     return { success: false, error: 'Missing volume or entry price' };
   }
-  const marginRequired = (entryPrice * volume) / leverage;
+  const marginRequired = (entryPrice * effectiveQty) / leverage;
 
   if (account.walletFreeMargin < marginRequired) {
     return {
@@ -95,8 +128,8 @@ async function openPosition(challengeAccountId, orderData) {
     symbol: orderData.symbol,
     side: orderData.side,
     volume,
-    quantity: orderData.quantity || volume,
-    lotSize: orderData.lotSize || 1,
+    quantity: effectiveQty,
+    lotSize,
     entryPrice,
     currentPrice: entryPrice,
     stopLoss: orderData.stopLoss || null,
@@ -129,11 +162,14 @@ async function closePosition(positionId, closePrice, reason = 'user') {
   const account = await ChallengeAccount.findById(position.challengeAccountId);
   if (!account) return { success: false, error: 'Challenge account not found' };
 
-  // Realised P&L in INR (Indian instruments use 1:1 contract size).
+  // Realised P&L in INR = per-unit price diff × total contract count.
+  // Contract count respects lotSize (e.g. NIFTY options 1 lot = 65 units)
+  // via the pnlUnits() helper so F&O P&L matches the "₹X per point × N
+  // units per lot × M lots" formula users expect.
   const priceDiff = position.side === 'buy'
     ? Number(closePrice) - Number(position.entryPrice)
     : Number(position.entryPrice) - Number(closePrice);
-  const realisedPnl = priceDiff * Number(position.volume);
+  const realisedPnl = priceDiff * pnlUnits(position);
 
   position.status = 'closed';
   position.closePrice = Number(closePrice);
@@ -226,7 +262,9 @@ async function refreshEquity(challengeAccountId, livePrices) {
     openPositions = await ChallengePosition.find({ challengeAccountId, status: 'open' });
   }
 
-  // Phase 2 — mark-to-market the still-open positions.
+  // Phase 2 — mark-to-market the still-open positions. Floating P&L
+  // uses the same pnlUnits() helper as realised P&L so the number the
+  // user sees before/after close never jumps.
   for (const pos of openPositions) {
     const lp = livePrices?.[pos.symbol];
     if (!lp) continue;
@@ -235,7 +273,7 @@ async function refreshEquity(challengeAccountId, livePrices) {
     const priceDiff = pos.side === 'buy'
       ? Number(currentPrice) - Number(pos.entryPrice)
       : Number(pos.entryPrice) - Number(currentPrice);
-    pos.profit = priceDiff * Number(pos.volume);
+    pos.profit = priceDiff * pnlUnits(pos);
     await pos.save();
   }
 

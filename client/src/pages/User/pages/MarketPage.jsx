@@ -2149,7 +2149,8 @@ function MarketPage() {
           isMarketOpen: true,
           exchange: instrumentExchange,
           segment: instrumentSegment,
-          lotSize: selectedInstrument?.lotSize || null,
+          lotSize: selectedInstrument?.lotSize || getContractSize(selectedSymbol) || 1,
+          quantity: (nettingVolumeIsShares ? vol : vol * (selectedInstrument?.lotSize || getContractSize(selectedSymbol) || 1)),
           marketData: { bid: currentBid, ask: currentAsk },
           spreadPreApplied: orderType === 'market'
         };
@@ -2174,7 +2175,8 @@ function MarketPage() {
           isMarketOpen: true,
           exchange: instrumentExchange,
           segment: instrumentSegment,
-          lotSize: selectedInstrument?.lotSize || null,
+          lotSize: selectedInstrument?.lotSize || getContractSize(selectedSymbol) || 1,
+          quantity: (nettingVolumeIsShares ? vol : vol * (selectedInstrument?.lotSize || getContractSize(selectedSymbol) || 1)),
           marketData: { bid: currentBid, ask: currentAsk },
           spreadPreApplied: orderType === 'market'
         };

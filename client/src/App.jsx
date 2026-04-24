@@ -4563,7 +4563,7 @@ function AppRouter() {
           auth.isAuthenticated ? <Navigate to="/app" replace /> : <Login onLogin={handleLogin} />
         } />
         <Route path="/register" element={
-          auth.isAuthenticated ? <Navigate to="/app" replace /> : <Register />
+          auth.isAuthenticated ? <Navigate to="/app" replace /> : <Register onLogin={handleLogin} />
         } />
         <Route path="/forgot-password" element={
           auth.isAuthenticated ? <Navigate to="/app" replace /> : <ForgotPassword />
