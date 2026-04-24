@@ -75,6 +75,9 @@ export default function InstrumentPickerModal({
   const atmRowRef = useRef(null);
   const fetchAbortRef = useRef(null);
   const searchAbortRef = useRef(null);
+  // Track tokens we've already asked the server to subscribe to this
+  // session so we don't spam /subscribe-bulk on every re-render.
+  const subscribedTokensRef = useRef(new Set());
 
   const activeCategory = useMemo(
     () => CATEGORIES.find(c => c.key === category) || CATEGORIES[1],
@@ -257,6 +260,62 @@ export default function InstrumentPickerModal({
     }
     return Array.from(byStrike.values()).sort((a, b) => a.strike - b.strike);
   }, [scopedInstruments, effectiveExpiry, activeCategory]);
+
+  /* ── Auto-subscribe every visible instrument to the Zerodha tick
+     stream. Without this, only symbols already in the server's
+     subscribedInstruments list (typically just NIFTY + a few favourites)
+     receive live prices — so the BankNifty / FinNifty / MidcapNifty /
+     Sensex / Equity / Commodity chains would sit at 0. We batch the
+     POST and cache tokens in a ref so switching between cached
+     categories doesn't hit the network again. ───────────────────── */
+  useEffect(() => {
+    if (!open) return;
+    // Collect every instrument currently rendered: the chain rows' CE +
+    // PE, plus the flat-list rows (Equity / Commodity / search).
+    const visible = [];
+    for (const r of chainRows) {
+      if (r.ce) visible.push(r.ce);
+      if (r.pe) visible.push(r.pe);
+    }
+    // If showing a search / flat view, also grab those so they tick live.
+    const flat = cache[category] || [];
+    if (activeCategory.kind === 'flat') {
+      for (const i of flat.slice(0, 200)) visible.push(i);
+    }
+
+    // De-duplicate by token and keep only those we haven't subscribed to
+    // yet in this session.
+    const seen = subscribedTokensRef.current;
+    const fresh = [];
+    for (const inst of visible) {
+      const tok = Number(inst?.token);
+      if (!Number.isFinite(tok) || tok <= 0) continue;
+      if (seen.has(tok)) continue;
+      seen.add(tok);
+      fresh.push({
+        token: tok,
+        symbol: inst.tradingsymbol || inst.symbol,
+        name: inst.name,
+        exchange: inst.exchange,
+        segment: inst.segment,
+        lotSize: inst.lotSize || 1,
+        tickSize: inst.tickSize || 0.05,
+        instrumentType: inst.instrumentType || ''
+      });
+    }
+    if (fresh.length === 0) return;
+
+    // Fire-and-forget — the server deduplicates against its own stored
+    // set and opens the WS subscription when connected.
+    const ctrl = new AbortController();
+    fetch(`${apiUrl}/api/zerodha/instruments/subscribe-bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instruments: fresh }),
+      signal: ctrl.signal
+    }).catch(() => { /* non-fatal — ticks just won't stream */ });
+    return () => ctrl.abort();
+  }, [open, chainRows, category, activeCategory, cache, apiUrl]);
 
   // ATM detection + live underlying spot, both derived from option LTPs
   // via put-call parity: for any strike with both CE & PE quoted,

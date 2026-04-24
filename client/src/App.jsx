@@ -4462,6 +4462,27 @@ const isAdminSubdomain = () => {
 function AppRouter() {
 
   const [auth, setAuth] = useState(() => {
+    // Admin-initiated impersonation: the admin panel opens the user app
+    // with ?impersonate=<base64-json> because admin.<domain> and <domain>
+    // are separate origins and can't share localStorage. Decode it once,
+    // persist like a normal login, and strip the query param so reloads
+    // don't re-trigger this block.
+    try {
+      const impersonateRaw = new URLSearchParams(window.location.search).get('impersonate');
+      if (impersonateRaw) {
+        const data = JSON.parse(atob(decodeURIComponent(impersonateRaw)));
+        if (data?.token && data?.user) {
+          const authData = { isAuthenticated: true, token: data.token, user: data.user };
+          localStorage.setItem('bharatfunded-auth', JSON.stringify(authData));
+          localStorage.setItem('bharatfunded-token', data.token);
+          const url = new URL(window.location.href);
+          url.searchParams.delete('impersonate');
+          window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+          return authData;
+        }
+      }
+    } catch { /* bad payload — fall through to normal auth path */ }
+
     const saved = localStorage.getItem('bharatfunded-auth');
     if (saved) {
       try {

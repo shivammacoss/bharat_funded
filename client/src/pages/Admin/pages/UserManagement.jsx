@@ -531,30 +531,39 @@ function UserManagement() {
 
   const loginAsUser = async (user) => {
     try {
+      // Admin token is required — the /api/admin/* middleware enforces
+      // the `admin.impersonateUser` permission and returns 401 without it.
+      const adminToken = localStorage.getItem('bharatfunded-admin-token');
+      if (!adminToken) {
+        alert('Admin session expired. Please log in to the admin panel again.');
+        return;
+      }
       const res = await fetch(`${API_URL}/api/admin/users/${user._id}/login-as`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        }
       });
       const data = await res.json();
-      if (data.success) {
-        // Store auth data with isAuthenticated flag for proper routing
-        localStorage.setItem('bharatfunded-auth', JSON.stringify({
-          isAuthenticated: true,
-          token: data.token,
-          user: data.user
-        }));
-        // Also store token separately for API calls that use bharatfunded-token
-        localStorage.setItem('bharatfunded-token', data.token);
-        // Open user app in new tab - use main domain for user app
-        const mainDomain = window.location.hostname.replace(/^admin\./, '');
-        const userAppUrl = `${window.location.protocol}//${mainDomain}/app`;
-        window.open(userAppUrl, '_blank');
-      } else {
+      if (!data.success) {
         alert(data.error || 'Failed to login as user');
+        return;
       }
+
+      // Admin panel runs on admin.<domain>; the user app runs on <domain>.
+      // Those are separate origins, so localStorage set here is invisible
+      // to the user app. Instead, pass the credentials through the URL as
+      // a base64-encoded blob — AppRouter on the user side decodes it,
+      // stores it in localStorage (on the main origin), and strips the
+      // query param before routing.
+      const payload = btoa(JSON.stringify({ token: data.token, user: data.user }));
+      const mainDomain = window.location.hostname.replace(/^admin\./, '');
+      const userAppUrl = `${window.location.protocol}//${mainDomain}/app?impersonate=${encodeURIComponent(payload)}`;
+      window.open(userAppUrl, '_blank');
     } catch (error) {
       console.error('Error logging in as user:', error);
-      alert('Failed to login as user');
+      alert('Failed to login as user: ' + (error?.message || 'network error'));
     }
   };
 

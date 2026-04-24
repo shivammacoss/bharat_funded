@@ -460,34 +460,38 @@ function Admin() {
   // Login as user (impersonate)
   const loginAsUser = async (user) => {
     if (!window.confirm(`Login as ${user.name}? You will be redirected to the main app.`)) return;
-    
+
     try {
+      // Admin token required — /api/admin/* middleware 401s without it.
+      const adminToken = localStorage.getItem('bharatfunded-admin-token');
+      if (!adminToken) {
+        alert('Admin session expired. Please log in to the admin panel again.');
+        return;
+      }
       const res = await fetch(`${API_URL}/api/admin/users/${user._id}/login-as`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`
+        }
       });
       const data = await res.json();
-      
-      if (data.success) {
-        // Store the user auth data in localStorage with isAuthenticated flag
-        localStorage.setItem('bharatfunded-auth', JSON.stringify({
-          isAuthenticated: true,
-          token: data.token,
-          user: data.user
-        }));
-        // Also store token separately for API calls that use bharatfunded-token
-        localStorage.setItem('bharatfunded-token', data.token);
-        
-        // Close the user detail panel
-        setUserDetailPanel({ open: false, user: null, view: 'info', positions: [], positionsLoading: false, wallet: null });
-        
-        // Redirect to user app on main domain (not admin subdomain)
-        const mainDomain = window.location.hostname.replace(/^admin\./, '');
-        const userAppUrl = `${window.location.protocol}//${mainDomain}/app`;
-        window.location.href = userAppUrl;
-      } else {
+
+      if (!data.success) {
         alert(data.error || 'Failed to login as user');
+        return;
       }
+
+      setUserDetailPanel({ open: false, user: null, view: 'info', positions: [], positionsLoading: false, wallet: null });
+
+      // Cross-origin: admin.<domain> and <domain> don't share localStorage.
+      // Pass the session through the URL as a base64 blob; AppRouter on
+      // the user side picks it up, writes it to its own localStorage, and
+      // strips the query param.
+      const payload = btoa(JSON.stringify({ token: data.token, user: data.user }));
+      const mainDomain = window.location.hostname.replace(/^admin\./, '');
+      const userAppUrl = `${window.location.protocol}//${mainDomain}/app?impersonate=${encodeURIComponent(payload)}`;
+      window.location.href = userAppUrl;
     } catch (err) {
       alert('Error: ' + err.message);
     }
