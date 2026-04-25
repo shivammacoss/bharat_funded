@@ -1298,7 +1298,7 @@
     display: flex !important;
     align-items: stretch;
     gap: 8px;
-    padding: 4px 12px 10px;
+    padding: 2px 10px 6px;
     background: var(--m-bg1, #0f1117);
     border-top: 1px solid var(--m-border, rgba(255, 255, 255, 0.08));
     position: relative;
@@ -1631,10 +1631,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    padding: 12px 10px;
+    gap: 1px;
+    padding: 7px 8px;
     border: none;
-    border-radius: 12px;
+    border-radius: 10px;
     font-family: 'DM Sans', sans-serif;
     font-weight: 700;
     color: #fff;
@@ -1659,12 +1659,12 @@
   }
 
   .mobi-chart-action-label {
-    font-size: 13px;
-    letter-spacing: 0.5px;
+    font-size: 12px;
+    letter-spacing: 0.4px;
   }
 
   .mobi-chart-action-price {
-    font-size: 12px;
+    font-size: 10.5px;
     font-weight: 600;
     opacity: 0.92;
   }

@@ -2063,13 +2063,29 @@ html[data-theme="light"] .payment-details-box {
   border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
 }
 
 .chart-tabs-bar .chart-tabs {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.chart-tabs-bar .chart-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.chart-tabs-bar > .add-tab {
+  flex-shrink: 0;
 }
 
 
@@ -2086,6 +2102,8 @@ html[data-theme="light"] .payment-details-box {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .chart-tabs-bar .chart-tab:hover {

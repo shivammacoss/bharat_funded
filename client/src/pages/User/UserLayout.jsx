@@ -35,7 +35,7 @@ function readMarketStateFromLS() {
   } catch (_) {
     /* ignore */
   }
-  return { selectedSymbol: 'XAUUSD', chartTabs: ['XAUUSD'] };
+  return { selectedSymbol: 'TCS', chartTabs: ['TCS'] };
 }
 
 const FNO_CATEGORIES_FOR_EXPIRY = new Set([
@@ -193,7 +193,7 @@ function UserLayout({ user, onLogout }) {
     let nextTabs = tabs.length ? [...new Set(tabs.map(String))].slice(0, 20) : [];
     const sym = s && String(s).trim();
     if (sym && !nextTabs.includes(sym)) nextTabs = [...nextTabs, sym];
-    if (nextTabs.length === 0) nextTabs = ['XAUUSD'];
+    if (nextTabs.length === 0) nextTabs = ['TCS'];
     const sel = sym && nextTabs.includes(sym) ? sym : nextTabs[nextTabs.length - 1];
     setChartTabs(nextTabs);
     setSelectedSymbol(sel);
