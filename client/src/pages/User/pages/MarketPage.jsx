@@ -246,6 +246,9 @@ function MarketPage() {
     setOrderType,
     volume,
     setVolume,
+    challengeMinLot,
+    challengeMaxLot,
+    challengeAllowFractional,
     marginPercent: leverage,
     setMarginPercent: setLeverage,
     limitPrice,
@@ -1824,9 +1827,21 @@ function MarketPage() {
 
   const pipValue = getPipValue(selectedSymbol);
   const entryPrice = orderSide === 'buy' ? (selectedInstrument.ask || 0) : (selectedInstrument.bid || 0);
+  // Effective lot floor / ceiling / step come from the active challenge's
+  // admin-configured tradeRules. Fall back to 0.01 (forex default) on main
+  // wallet or before the prefs fetch resolves. The step matches the floor so
+  // a minLot of 1 increments by 1 (Indian-stock style) instead of 0.01.
+  const wholeLotsOnly = challengeAllowFractional === false;
+  const rawMinLot = (Number.isFinite(challengeMinLot) && challengeMinLot > 0) ? challengeMinLot : 0.01;
+  // When fractional lots are disabled, the floor must be at least 1 lot —
+  // a minLot of 0.5 would otherwise let users place 0.5-lot orders.
+  const effectiveMinLot = wholeLotsOnly ? Math.max(1, Math.ceil(rawMinLot)) : rawMinLot;
+  const effectiveMaxLot = (Number.isFinite(challengeMaxLot) && challengeMaxLot > 0) ? challengeMaxLot : 100;
+  const lotStep = wholeLotsOnly ? Math.max(1, Math.round(effectiveMinLot)) : effectiveMinLot;
+  const lotDecimals = wholeLotsOnly ? 0 : (lotStep >= 1 ? 0 : (lotStep >= 0.1 ? 1 : (lotStep >= 0.01 ? 2 : 4)));
   const volumeNum = nettingVolumeIsShares
     ? Math.max(1, Math.round(parseFloat(volume) || 1))
-    : parseFloat(volume) || 0.01;
+    : parseFloat(volume) || effectiveMinLot;
 
   // Contract size calculation
   const getContractSize = (symbol) => {
@@ -2879,11 +2894,11 @@ function MarketPage() {
             <div className="order-input-group">
               <label>Volume (Lots)</label>
               <div className="volume-control">
-                <button type="button" onClick={() => setVolume(prev => Math.max(0.01, parseFloat(((parseFloat(prev) || 0.01) - 0.01).toFixed(6))).toString())}>−</button>
-                <input type="text" inputMode="decimal" value={volume} onChange={(e) => { const val = e.target.value; if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) setVolume(val); }} onBlur={(e) => { const val = parseFloat(e.target.value); if (e.target.value !== '' && !Number.isNaN(val)) setVolume(String(parseFloat(val.toFixed(6)))); }} />
-                <button type="button" onClick={() => setVolume(prev => parseFloat(((parseFloat(prev) || 0.01) + 0.01).toFixed(6)).toString())}>+</button>
+                <button type="button" onClick={() => setVolume(prev => Math.max(effectiveMinLot, parseFloat(((parseFloat(prev) || effectiveMinLot) - lotStep).toFixed(6))).toString())}>−</button>
+                <input type="text" inputMode="decimal" value={volume} onChange={(e) => { const val = e.target.value; if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) setVolume(val); }} onBlur={(e) => { const val = parseFloat(e.target.value); if (e.target.value !== '' && !Number.isNaN(val)) { const clamped = Math.min(effectiveMaxLot, Math.max(effectiveMinLot, val)); const snapped = wholeLotsOnly ? Math.round(clamped) : clamped; setVolume(String(parseFloat(snapped.toFixed(6)))); } }} />
+                <button type="button" onClick={() => setVolume(prev => Math.min(effectiveMaxLot, parseFloat(((parseFloat(prev) || effectiveMinLot) + lotStep).toFixed(6))).toString())}>+</button>
               </div>
-              <span className="volume-hint" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{(parseFloat(volume) || 0.01).toFixed(4)} lots</span>
+              <span className="volume-hint" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{(parseFloat(volume) || effectiveMinLot).toFixed(lotDecimals)} lots</span>
             </div>
             <div className="order-input-group">
               <label>Leverage</label>
@@ -3025,11 +3040,11 @@ function MarketPage() {
                   type="button"
                   onClick={() =>
                     setVolume((prev) => {
-                      const cur = parseFloat(prev) || (nettingVolumeIsShares ? 1 : 0.01);
+                      const cur = parseFloat(prev) || (nettingVolumeIsShares ? 1 : effectiveMinLot);
                       if (nettingVolumeIsShares) {
                         return String(Math.max(1, Math.round(cur) - 1));
                       }
-                      return Math.max(0.01, parseFloat((cur - 0.01).toFixed(6))).toFixed(6);
+                      return Math.max(effectiveMinLot, parseFloat((cur - lotStep).toFixed(6))).toFixed(6);
                     })
                   }
                 >
@@ -3054,18 +3069,20 @@ function MarketPage() {
                       setVolume(String(Math.max(1, Math.round(val))));
                       return;
                     }
-                    setVolume(String(parseFloat(val.toFixed(6))));
+                    const clamped = Math.min(effectiveMaxLot, Math.max(effectiveMinLot, val));
+                    const snapped = wholeLotsOnly ? Math.round(clamped) : clamped;
+                    setVolume(String(parseFloat(snapped.toFixed(6))));
                   }}
                 />
                 <button
                   type="button"
                   onClick={() =>
                     setVolume((prev) => {
-                      const cur = parseFloat(prev) || (nettingVolumeIsShares ? 1 : 0.01);
+                      const cur = parseFloat(prev) || (nettingVolumeIsShares ? 1 : effectiveMinLot);
                       if (nettingVolumeIsShares) {
                         return String(Math.round(cur) + 1);
                       }
-                      return parseFloat((cur + 0.01).toFixed(6)).toFixed(6);
+                      return Math.min(effectiveMaxLot, parseFloat((cur + lotStep).toFixed(6))).toFixed(6);
                     })
                   }
                 >
@@ -3075,7 +3092,7 @@ function MarketPage() {
               <span className="volume-hint">
                 {nettingVolumeIsShares
                   ? `${Math.round(parseFloat(volume) || 1)} ${volumeUnitPlural}`
-                  : `${(parseFloat(volume) || 0.01).toFixed(4)} ${volumeUnitPlural}`}
+                  : `${(parseFloat(volume) || effectiveMinLot).toFixed(lotDecimals)} ${volumeUnitPlural}`}
               </span>
               {/* F&O / indices: show exchange contract size (lots mode). Cash equity: lot size = shares per lot when applicable */}
               {Number(selectedInstrument?.lotSize) > 1 && (
@@ -3758,7 +3775,11 @@ function MarketPage() {
               }}
               onBlur={(e) => {
                 const parsed = parseFloat(e.target.value);
-                if (e.target.value !== '' && !Number.isNaN(parsed)) setVolume(String(parsed));
+                if (e.target.value !== '' && !Number.isNaN(parsed)) {
+                  const clamped = Math.min(effectiveMaxLot, Math.max(effectiveMinLot, parsed));
+                  const snapped = wholeLotsOnly ? Math.round(clamped) : clamped;
+                  setVolume(String(snapped));
+                }
               }}
             />
           </div>

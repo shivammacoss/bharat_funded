@@ -91,6 +91,13 @@ const challengeSchema = new mongoose.Schema({
       type: Number,
       default: 100
     },
+    // When false, only whole-number lots are accepted (1, 2, 3 …) and orders
+    // like 1.5 / 2.5 / 3.5 are rejected. Default true to preserve forex-style
+    // fractional lots for legacy challenges.
+    allowFractionalLots: {
+      type: Boolean,
+      default: true
+    },
 
     // Trade Count Rules
     minTradesRequired: {

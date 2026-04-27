@@ -192,6 +192,14 @@ class PropTradingEngine {
     if (rules.maxLotSize && qty > rules.maxLotSize) {
       return { valid: false, error: `Maximum lot size is ${rules.maxLotSize}`, code: ERROR_CODES.LOT_SIZE_VIOLATION };
     }
+    // Whole-lots-only enforcement: when admin disables fractional lots,
+    // values like 1.5 / 2.5 / 3.5 are rejected. Tolerance handles float drift.
+    if (rules.allowFractionalLots === false) {
+      const rounded = Math.round(qty);
+      if (Math.abs(qty - rounded) > 1e-9) {
+        return { valid: false, error: 'Fractional lots are not allowed on this challenge — use whole numbers (1, 2, 3 …)', code: ERROR_CODES.LOT_SIZE_VIOLATION };
+      }
+    }
 
     // Allowed symbols
     if (rules.allowedSymbols && rules.allowedSymbols.length > 0) {

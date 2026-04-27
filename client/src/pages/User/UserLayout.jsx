@@ -231,6 +231,61 @@ function UserLayout({ user, onLogout }) {
     return () => clearTimeout(t);
   }, [selectedSymbol, chartTabs, user?.oderId, user?.id, preferencesSynced, updatePreferences]);
 
+  // When the active challenge account changes, fetch its admin-configured
+  // tradeRules.minLotSize / maxLotSize. Snap the volume up to minLot if the
+  // user is currently below it (e.g. legacy 0.01 carried over from a forex
+  // challenge into a 1-lot Indian-stock challenge).
+  useEffect(() => {
+    if (!activeChallengeAccountId) {
+      setChallengeMinLot(null);
+      setChallengeMaxLot(null);
+      setChallengeAllowFractional(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const authData = JSON.parse(localStorage.getItem('bharatfunded-auth') || '{}');
+        const res = await fetch(`${API_URL}/api/prop/my-accounts`, {
+          headers: { 'Authorization': `Bearer ${authData.token || ''}` }
+        });
+        const data = await res.json();
+        if (!data?.success || !Array.isArray(data.accounts)) return;
+        const acc = data.accounts.find(a => String(a._id) === String(activeChallengeAccountId));
+        const rules = acc?.challengeId?.rules;
+        if (cancelled) return;
+        const minLot = Number(rules?.minLotSize);
+        const maxLot = Number(rules?.maxLotSize);
+        const allowFrac = rules?.allowFractionalLots !== false;
+        setChallengeAllowFractional(allowFrac);
+        if (Number.isFinite(minLot) && minLot > 0) {
+          setChallengeMinLot(minLot);
+          setVolume(prev => {
+            const cur = parseFloat(prev);
+            if (!Number.isFinite(cur) || cur < minLot) return String(minLot);
+            // Snap fractional values up to next whole when fractional is disabled
+            if (!allowFrac && Math.abs(cur - Math.round(cur)) > 1e-9) {
+              return String(Math.max(minLot, Math.ceil(cur)));
+            }
+            return prev;
+          });
+        } else {
+          setChallengeMinLot(null);
+          if (!allowFrac) {
+            setVolume(prev => {
+              const cur = parseFloat(prev);
+              if (!Number.isFinite(cur)) return prev;
+              if (Math.abs(cur - Math.round(cur)) > 1e-9) return String(Math.max(1, Math.ceil(cur)));
+              return prev;
+            });
+          }
+        }
+        setChallengeMaxLot(Number.isFinite(maxLot) && maxLot > 0 ? maxLot : null);
+      } catch (_) { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [activeChallengeAccountId]);
+
   // Instruments state - loaded from database for persistence across devices
   const [instrumentsByCategory, setInstrumentsByCategory] = useState(defaultInstrumentsByCategory);
   const [instrumentsLoaded, setInstrumentsLoaded] = useState(false);
@@ -726,6 +781,12 @@ function UserLayout({ user, onLogout }) {
   const [orderSide, setOrderSide] = useState('buy');
   const [orderType, setOrderType] = useState('market');
   const [volume, setVolume] = useState(0.01);
+  // Lot-size limits inherited from the active challenge's admin-configured
+  // tradeRules (rules.minLotSize / rules.maxLotSize). Null on main wallet.
+  const [challengeMinLot, setChallengeMinLot] = useState(null);
+  const [challengeMaxLot, setChallengeMaxLot] = useState(null);
+  // false = whole-lots-only (block 1.5/2.5/3.5). null = unknown / main wallet.
+  const [challengeAllowFractional, setChallengeAllowFractional] = useState(null);
   const [marginPercent, setMarginPercent] = useState(25);
   const [limitPrice, setLimitPrice] = useState('');
   const [stopPrice, setStopPrice] = useState('');
@@ -2167,6 +2228,9 @@ function UserLayout({ user, onLogout }) {
     setOrderType,
     volume,
     setVolume,
+    challengeMinLot,
+    challengeMaxLot,
+    challengeAllowFractional,
     marginPercent,
     setMarginPercent,
     limitPrice,

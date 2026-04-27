@@ -67,6 +67,7 @@ const PropTrading = () => {
         profitTargetPhase2Percent: 5,
         minLotSize: 0.01,
         maxLotSize: 100,
+        allowFractionalLots: true,
         maxTradesPerDay: null,
         maxConcurrentTrades: null,
         stopLossMandatory: false,
@@ -1087,6 +1088,16 @@ const PropTrading = () => {
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
                   <input type="checkbox" checked={challengeForm.rules.allowNewsTrading} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowNewsTrading: e.target.checked } }))} /> News Trading
+                </label>
+                <label
+                  title="OFF = block fractional lots like 1.5 / 2.5 / 3.5 (whole lots only). ON = allow fractional lots (forex-style 0.01, 0.5, 1.5)."
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={challengeForm.rules.allowFractionalLots !== false}
+                    onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowFractionalLots: e.target.checked } }))}
+                  /> Allow Fractional Lots
                 </label>
               </div>
             </div>

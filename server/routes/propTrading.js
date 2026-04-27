@@ -419,7 +419,7 @@ router.post('/buy', verifyUserToken, async (req, res) => {
 router.get('/my-accounts', verifyUserToken, async (req, res) => {
   try {
     const accounts = await ChallengeAccount.find({ userId: req.user._id })
-      .populate('challengeId', 'name fundSize stepsCount challengeFee fundedSettings.profitSplitPercent rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays')
+      .populate('challengeId', 'name fundSize stepsCount challengeFee fundedSettings.profitSplitPercent rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays rules.minLotSize rules.maxLotSize rules.allowFractionalLots')
       .sort({ createdAt: -1 })
       .lean();
 
