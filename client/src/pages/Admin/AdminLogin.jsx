@@ -62,7 +62,7 @@ function AdminLogin({ onLogin, adminTheme = 'dark', onToggleTheme }) {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h1 className="auth-logo">Bharat Funded Trader</h1>
+          <h1 className="auth-logo">Bharath Funded Trader</h1>
           <p className="auth-subtitle">Admin Panel Login</p>
         </div>
 

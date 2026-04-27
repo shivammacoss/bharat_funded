@@ -67,7 +67,7 @@ export default function VideoSection() {
           </div>
 
           <h2 className="text-3xl md:text-5xl font-bold text-white font-manrope tracking-tight mb-4">
-            See Bharat Funded Trader{' '}
+            See Bharath Funded Trader{' '}
             <span className="text-[#3B5BFF]">in Action</span>
           </h2>
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto leading-relaxed">

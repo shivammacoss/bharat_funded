@@ -4,12 +4,12 @@ import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const faqs = [
   {
-    q: 'What is Bharat Funded Trader?',
-    a: 'Bharat Funded Trader is a simulated prop firm evaluation platform built for Indian intraday traders. You trade with virtual capital under defined rules and earn rewards upon successful completion.',
+    q: 'What is Bharath Funded Trader?',
+    a: 'Bharath Funded Trader is a simulated prop firm evaluation platform built for Indian intraday traders. You trade with virtual capital under defined rules and earn rewards upon successful completion.',
   },
   {
     q: 'Is this legal in India?',
-    a: 'Yes. Bharat Funded Trader operates as a simulated evaluation platform. It is not a broker or SEBI-registered intermediary. Simulated trading is legal in India.',
+    a: 'Yes. Bharath Funded Trader operates as a simulated evaluation platform. It is not a broker or SEBI-registered intermediary. Simulated trading is legal in India.',
   },
   {
     q: 'Which instruments can I trade?',

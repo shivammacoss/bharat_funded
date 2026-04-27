@@ -1,14 +1,40 @@
 import { useState } from 'react';
-import { Send, Phone, Mail, MapPin } from 'lucide-react';
+import { Send, Mail, MapPin, MessageCircle, Send as TelegramIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import TopBanner from '../components/TopBanner';
 import '../landing.css';
 
 const contactInfo = [
-  { icon: Phone, label: 'Phone', value: '+91 1800-123-4567', sub: 'Mon–Sat, 9AM–6PM IST' },
-  { icon: Mail, label: 'Email', value: 'support@bharatfundedtrader.in', sub: 'Response within 2 hours' },
-  { icon: MapPin, label: 'Office', value: 'Mumbai, Maharashtra', sub: 'India' },
+  {
+    icon: MessageCircle,
+    label: 'WhatsApp',
+    value: '+91 83670 45119',
+    sub: 'Fastest way to reach us',
+    href: 'https://wa.me/918367045119',
+  },
+  {
+    icon: Mail,
+    label: 'Email',
+    value: 'bharathfundedtradersupport@gmail.com',
+    sub: 'We reply within a few hours',
+    href: 'mailto:bharathfundedtradersupport@gmail.com',
+  },
+  {
+    icon: TelegramIcon,
+    label: 'Telegram',
+    value: '@Bharathfundedtrader',
+    sub: 'Join our channel',
+    href: 'https://t.me/Bharathfundedtrader',
+  },
+  {
+    icon: MapPin,
+    label: 'Office',
+    value: 'Bharath Funded Trader Edutech Services',
+    sub: 'Oval House, 03/302, British Hotel Lane, Mumbai, Maharashtra, 400001',
+    href: 'https://maps.google.com/?q=Oval+House+British+Hotel+Lane+Mumbai',
+  },
 ];
 
 export default function ContactPage() {
@@ -23,6 +49,7 @@ export default function ContactPage() {
 
   return (
     <div className="landing-page min-h-screen bg-white">
+      <TopBanner />
       <Navbar />
 
       {/* Hero */}
@@ -46,19 +73,26 @@ export default function ContactPage() {
           {/* Left — Contact Info */}
           <div className="lg:col-span-2">
             <h2 className="text-xl font-bold text-[#0D0F1A] mb-6">Reach us directly</h2>
-            <div className="space-y-6">
+            <div className="space-y-5">
               {contactInfo.map((c) => {
                 const Icon = c.icon;
                 return (
-                  <div key={c.label} className="flex items-start gap-4">
+                  <a
+                    key={c.label}
+                    href={c.href}
+                    target={c.href.startsWith('http') ? '_blank' : undefined}
+                    rel={c.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    className="flex items-start gap-4 p-3 -mx-3 rounded-xl hover:bg-[#FAFBFD] transition-colors"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-[rgba(43,78,255,0.08)] border border-[rgba(43,78,255,0.15)] flex items-center justify-center shrink-0">
                       <Icon size={18} className="text-[#2B4EFF]" />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#0D0F1A]">{c.value}</p>
-                      <p className="text-xs text-[#6B7080] mt-0.5">{c.sub}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-[#2B4EFF] uppercase tracking-wider mb-0.5">{c.label}</p>
+                      <p className="text-sm font-bold text-[#0D0F1A] break-words">{c.value}</p>
+                      <p className="text-xs text-[#6B7080] mt-0.5 leading-relaxed">{c.sub}</p>
                     </div>
-                  </div>
+                  </a>
                 );
               })}
             </div>

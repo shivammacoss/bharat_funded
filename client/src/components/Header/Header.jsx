@@ -23,7 +23,7 @@ const Header = () => {
     <header className="header" style={{ minHeight: '40px' }}>
       <div className="header-left">
         <div className="header-logo">
-          <span className="logo-text">Bharat Funded Trader</span>
+          <span className="logo-text">Bharath Funded Trader</span>
         </div>
         <div className="header-tabs">
           <div className="header-tab active">

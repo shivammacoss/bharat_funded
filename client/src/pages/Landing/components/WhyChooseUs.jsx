@@ -36,7 +36,7 @@ export default function WhyChooseUs() {
             }}
           >
             Why Traders Choose{' '}
-            <span className="text-[#2B4EFF]">Bharat Funded Trader</span>
+            <span className="text-[#2B4EFF]">Bharath Funded Trader</span>
           </h2>
           <p className="text-base sm:text-lg text-[#9AA0B4]" style={{ lineHeight: 1.7 }}>
             Everything you need to prove your trading skills — built into one powerful platform.

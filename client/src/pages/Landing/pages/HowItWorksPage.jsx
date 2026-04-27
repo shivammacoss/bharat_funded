@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import TopBanner from '../components/TopBanner';
 import '../landing.css';
 
 const steps = [
@@ -39,6 +40,7 @@ const rules = [
 export default function HowItWorksPage() {
   return (
     <div className="landing-page min-h-screen bg-white">
+      <TopBanner />
       <Navbar />
 
       {/* Hero */}

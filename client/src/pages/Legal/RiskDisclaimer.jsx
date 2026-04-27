@@ -21,7 +21,7 @@ export default function RiskDisclaimer() {
       <section className="terms-section">
         <h2>1. No investment advice</h2>
         <p>
-          Nothing on the Platform constitutes financial, investment, tax, or legal advice. Bharat Funded Trader provides execution and
+          Nothing on the Platform constitutes financial, investment, tax, or legal advice. Bharath Funded Trader provides execution and
           technology services. All decisions are yours alone.
         </p>
       </section>
@@ -64,7 +64,7 @@ export default function RiskDisclaimer() {
       <section className="terms-section disclaimer-section">
         <h2>Acknowledgement</h2>
         <p>
-          By using Bharat Funded Trader, you acknowledge that you understand these risks and that you trade at your own risk. If you
+          By using Bharath Funded Trader, you acknowledge that you understand these risks and that you trade at your own risk. If you
           do not agree, do not use the Platform.
         </p>
         <p>

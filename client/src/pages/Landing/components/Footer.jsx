@@ -6,12 +6,11 @@ import TradingViewLegalNotice from './TradingViewLegalNotice';
 const footerLinks = {
   'Platform': [
     { label: 'How it works', href: '/how-it-works' },
+    { label: 'Challenges', href: '/challenges' },
     { label: 'Instruments', href: '/instruments' },
     { label: 'Pricing', href: '/pricing' },
-    { label: 'Results', href: '/results' },
   ],
   'Resources': [
-    { label: 'Blog', href: '/blog' },
     { label: 'FAQ', href: '/faqs' },
     { label: 'About', href: '/about' },
     { label: 'Contact', href: '/contact-us' },
@@ -47,7 +46,7 @@ export default function Footer() {
             <a href="#home" className="flex items-center gap-2 mb-4 group">
               <img
                 src="/landing/img/bharat funded trader landscape.png"
-                alt="Bharat Funded Trader"
+                alt="Bharath Funded Trader"
                 className="h-7 w-auto"
               />
             </a>
@@ -104,7 +103,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-[rgba(255,255,255,0.08)] pt-8 mt-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-[#9AA0B4]">© 2024 Bharat Funded Trader. All rights reserved.</p>
+            <p className="text-sm text-[#9AA0B4]">© 2025 Bharath Funded Trader Edutech Services Pvt. Ltd. All rights reserved.</p>
             <div className="flex flex-wrap gap-4 justify-center">
               <Link to="/terms" className="text-sm text-[#9AA0B4] hover:text-white transition-colors">Terms & Conditions</Link>
               <Link to="/privacy-policy" className="text-sm text-[#9AA0B4] hover:text-white transition-colors">Privacy Policy</Link>
@@ -113,7 +112,7 @@ export default function Footer() {
             </div>
           </div>
           <p className="text-xs text-[#9AA0B4] mt-4 leading-relaxed text-center md:text-left">
-            Bharat Funded Trader is not a broker and does not execute live trades on NSE or BSE.
+            Bharath Funded Trader is not a broker and does not execute live trades on NSE or BSE.
             The platform provides simulated evaluations and performance-based reward programs.
             Trading involves risk. Please read all terms before participating.
           </p>
