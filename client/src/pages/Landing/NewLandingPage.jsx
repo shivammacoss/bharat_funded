@@ -8,9 +8,9 @@ import Hero from './components/Hero';
 import WhatsAppFloat from './components/WhatsAppFloat';
 
 // Below-the-fold: lazy load to keep initial bundle small and page responsive
+const HomePricing = lazy(() => import('./components/HomePricing'));
 const MarketAccess = lazy(() => import('./components/MarketAccess'));
 const WhyChooseUs = lazy(() => import('./components/WhyChooseUs'));
-const PayoutCertificates = lazy(() => import('./components/PayoutCertificates'));
 const TradingPlatform = lazy(() => import('./components/TradingPlatform'));
 const Testimonials = lazy(() => import('./components/Testimonials'));
 const FAQ = lazy(() => import('./components/FAQ'));
@@ -33,7 +33,7 @@ export default function NewLandingPage() {
       <Suspense fallback={<SectionFallback />}>
         <MarketAccess />
         <WhyChooseUs />
-        <PayoutCertificates />
+        <HomePricing />
         <TradingPlatform />
         <Testimonials />
         <FAQ />
