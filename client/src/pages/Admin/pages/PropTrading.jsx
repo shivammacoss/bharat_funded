@@ -1089,17 +1089,69 @@ const PropTrading = () => {
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
                   <input type="checkbox" checked={challengeForm.rules.allowNewsTrading} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowNewsTrading: e.target.checked } }))} /> News Trading
                 </label>
-                <label
-                  title="OFF = block fractional lots like 1.5 / 2.5 / 3.5 (whole lots only). ON = allow fractional lots (forex-style 0.01, 0.5, 1.5)."
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={challengeForm.rules.allowFractionalLots !== false}
-                    onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowFractionalLots: e.target.checked } }))}
-                  /> Allow Fractional Lots
-                </label>
               </div>
+
+              {/* Fractional-Lot toggle — visually prominent so admins notice it.
+                  ON state ("Whole Lots Only") blocks 1.5 / 2.5 / 3.5 etc.
+                  Stored as `allowFractionalLots` (inverse) for backward compat. */}
+              {(() => {
+                const wholeOnly = challengeForm.rules.allowFractionalLots === false;
+                return (
+                  <div style={{
+                    marginTop: '14px',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    border: `1px solid ${wholeOnly ? '#3b82f6' : 'var(--border-color)'}`,
+                    background: wholeOnly ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>
+                        Whole Lots Only
+                      </span>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                        ON → block fractional lot orders like 1.5 / 2.5 / 3.5 (only 1, 2, 3 … allowed).
+                        OFF → allow fractional lots (forex-style 0.01, 0.5, 1.5).
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={wholeOnly}
+                      onClick={() => setChallengeForm(p => ({
+                        ...p,
+                        rules: { ...p.rules, allowFractionalLots: !wholeOnly ? false : true }
+                      }))}
+                      style={{
+                        position: 'relative',
+                        width: '52px',
+                        height: '28px',
+                        borderRadius: '14px',
+                        border: 'none',
+                        background: wholeOnly ? '#3b82f6' : 'var(--bg-tertiary)',
+                        cursor: 'pointer',
+                        transition: 'background 0.18s ease',
+                        flexShrink: 0
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute',
+                        top: '3px',
+                        left: wholeOnly ? '27px' : '3px',
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        background: '#fff',
+                        transition: 'left 0.18s ease',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
+                      }} />
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Time & Expiry */}
