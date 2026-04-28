@@ -1678,6 +1678,14 @@ function MarketPage() {
         messages.push('Minimum lot size is 0.01.');
         canSubmit = false;
       }
+
+      // Whole-lots-only enforcement (challenge rule)
+      const _wholeLots = challengeAllowFractional === false ||
+        (challengeAllowFractional !== true && Number.isFinite(challengeMinLot) && challengeMinLot >= 1 && challengeMinLot % 1 === 0);
+      if (_wholeLots && Math.abs(vol - Math.round(vol)) > 1e-9) {
+        messages.push('Fractional lots not allowed — use whole numbers (1, 2, 3 …).');
+        canSubmit = false;
+      }
     }
 
     // Options strike vs underlying (netting): |strike − underlying| ≤ max, max = points or underlying×%/100 — matches NettingEngine
@@ -1800,7 +1808,9 @@ function MarketPage() {
     binaryExpiry,
     binarySettings,
     displayCurrency,
-    binaryStakeMeta
+    binaryStakeMeta,
+    challengeAllowFractional,
+    challengeMinLot
   ]);
 
   // Auto-round volume for shares mode

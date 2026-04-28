@@ -256,7 +256,10 @@ function UserLayout({ user, onLogout }) {
         if (cancelled) return;
         const minLot = Number(rules?.minLotSize);
         const maxLot = Number(rules?.maxLotSize);
-        const allowFrac = rules?.allowFractionalLots !== false;
+        // Block fractions unless explicitly allowed. Also block when minLotSize >= 1 (whole number).
+        const minLotVal = Number(rules?.minLotSize);
+        const allowFrac = rules?.allowFractionalLots === true &&
+          !(Number.isFinite(minLotVal) && minLotVal >= 1 && minLotVal % 1 === 0);
         setChallengeAllowFractional(allowFrac);
         if (Number.isFinite(minLot) && minLot > 0) {
           setChallengeMinLot(minLot);
