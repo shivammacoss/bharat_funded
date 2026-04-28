@@ -38,10 +38,13 @@
     <!-- ── Theme color for browser chrome ──────────────────────────────── -->
     <meta name="theme-color" content="#2B4EFF" />
 
-    <!-- ── Fonts ───────────────────────────────────────────────────────── -->
+    <!-- ── Fonts — trimmed weights, swap for instant text ──────────────── -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- DM Sans / Mono — lazy-loaded (not render-blocking, only used in dashboard) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" media="print" onload="this.media='all'" />
 
     <!-- ── Schema.org structured data: Organization ───────────────────── -->
     <script type="application/ld+json">
@@ -127,7 +130,7 @@
       html, body { background-color: #000000; }
       html[data-theme="light"], html[data-theme="light"] body { background-color: #ffffff; }
     </style>
-    <script src="/charting_library/charting_library.standalone.js"></script>
+    <script async src="/charting_library/charting_library.standalone.js"></script>
   </head>
   <body>
     <div id="root"></div>

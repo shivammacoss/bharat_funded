@@ -50,7 +50,6 @@ export default function InfiniteGrid() {
           backgroundImage:
             'linear-gradient(to right, rgba(43,78,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(43,78,255,0.08) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
-          willChange: 'transform',
           animation: 'grid-drift 30s linear infinite',
         }}
       />
@@ -69,18 +68,16 @@ export default function InfiniteGrid() {
         }}
       />
 
-      {/* Static gradient orbs — single layer, lighter blur */}
+      {/* Static gradient orbs — pre-blurred via radial-gradient (no GPU blur filter) */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute"
           style={{
             right: '-15%',
             top: '-20%',
-            width: '60%',
-            height: '60%',
-            borderRadius: '50%',
-            background: 'rgba(255, 140, 50, 0.12)',
-            filter: 'blur(60px)',
+            width: '70%',
+            height: '70%',
+            background: 'radial-gradient(circle, rgba(255,140,50,0.10) 0%, transparent 65%)',
             transform: 'translateZ(0)',
           }}
         />
@@ -89,11 +86,9 @@ export default function InfiniteGrid() {
           style={{
             left: '-10%',
             bottom: '-15%',
-            width: '55%',
-            height: '55%',
-            borderRadius: '50%',
-            background: 'rgba(43, 78, 255, 0.12)',
-            filter: 'blur(60px)',
+            width: '65%',
+            height: '65%',
+            background: 'radial-gradient(circle, rgba(43,78,255,0.10) 0%, transparent 65%)',
             transform: 'translateZ(0)',
           }}
         />

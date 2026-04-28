@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BlurFade } from './BlurFade';
 import InfiniteGrid from './InfiniteGrid';
 
-/* ── Initial ticker data ──────────────────────────────────────────────────── */
+/* ── Initial ticker data ────────────────────────────────────────────────────────────── */
 const initialTickers = [
   { symbol: 'NIFTY 50',    base: 22456.80 },
   { symbol: 'BANKNIFTY',   base: 48320.50 },
@@ -29,27 +29,24 @@ function generateTick(ticker) {
   };
 }
 
-export default function Hero() {
+/* ── Isolated ticker so updates don't re-render the entire Hero ──────── */
+const LiveTicker = memo(function LiveTicker() {
   const tickerRef = useRef(null);
   const duplicated = useRef(false);
   const [tickers, setTickers] = useState(() => initialTickers.map(generateTick));
 
-  // Simulate live price updates every 2 seconds
   const updatePrices = useCallback(() => {
     setTickers(initialTickers.map((t) => {
-      // Gradually shift the base to simulate drift
       t.base += (Math.random() - 0.48) * t.base * 0.0003;
       return generateTick(t);
     }));
   }, []);
 
   useEffect(() => {
-    // Slower update to reduce render churn
     const interval = setInterval(updatePrices, 4000);
     return () => clearInterval(interval);
   }, [updatePrices]);
 
-  // Duplicate ticker content for seamless loop
   useEffect(() => {
     const el = tickerRef.current;
     if (!el || duplicated.current) return;
@@ -58,6 +55,30 @@ export default function Hero() {
     el.innerHTML = clone + clone;
   }, []);
 
+  return (
+    <div className="border-y border-[#E8EAF0] bg-[#FAFBFD] overflow-hidden py-3">
+      <div
+        ref={tickerRef}
+        className="flex gap-8 whitespace-nowrap w-max"
+        style={{ animation: 'marquee-smooth 60s linear infinite' }}
+      >
+        {tickers.map((t, i) => (
+          <div key={i} className="flex items-center gap-2.5 shrink-0">
+            <span className="text-xs font-bold text-[#0D0F1A]">{t.symbol}</span>
+            <span className="text-xs text-[#6B7080] tabular-nums transition-all duration-500">{t.price}</span>
+            <span className={`flex items-center gap-0.5 text-xs font-semibold tabular-nums transition-colors duration-500 ${t.up ? 'text-emerald-500' : 'text-red-500'}`}>
+              {t.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+              {t.change}
+            </span>
+            <span className="text-[#E8EAF0] ml-2">|</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+export default function Hero() {
   return (
     <section id="home" className="relative overflow-hidden bg-white">
 
@@ -112,28 +133,8 @@ export default function Hero() {
 
       </div>
 
-      {/* ── Live Ticker Strip ─────────────────────────────────────────────── */}
-      <div className="border-y border-[#E8EAF0] bg-[#FAFBFD] overflow-hidden py-3">
-        <div
-          ref={tickerRef}
-          className="flex gap-8 whitespace-nowrap w-max"
-          style={{
-            animation: 'marquee-smooth 60s linear infinite',
-          }}
-        >
-          {tickers.map((t, i) => (
-            <div key={i} className="flex items-center gap-2.5 shrink-0">
-              <span className="text-xs font-bold text-[#0D0F1A]">{t.symbol}</span>
-              <span className="text-xs text-[#6B7080] tabular-nums transition-all duration-500">{t.price}</span>
-              <span className={`flex items-center gap-0.5 text-xs font-semibold tabular-nums transition-colors duration-500 ${t.up ? 'text-emerald-500' : 'text-red-500'}`}>
-                {t.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                {t.change}
-              </span>
-              <span className="text-[#E8EAF0] ml-2">|</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ── Live Ticker Strip (isolated to avoid Hero re-renders) ────── */}
+      <LiveTicker />
 
       <style>{`
         @keyframes marquee-smooth {
