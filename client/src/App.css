@@ -8532,20 +8532,33 @@ html[data-theme="light"] .payment-details-box {
     display: none !important;
   }
   
-  /* Chart section - full height */
+  /* Chart section - full height; flex column so chart fills space and Buy/Sell action bar
+     stays pinned visible at bottom without requiring scroll */
   .market-section.chart-section {
     height: calc(100vh - 180px);
+    overflow: hidden !important;
   }
-  
+
+  .market-section.chart-section .chart-tabs-bar {
+    flex-shrink: 0;
+  }
+
   .market-section.chart-section .chart-container {
-    flex: 1;
-    height: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
   }
-  
+
   .market-section.chart-section .chart-area {
-    flex: 1;
-    height: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
     max-height: none;
+  }
+
+  /* Buy/Sell action bar must always be visible — never shrink below content size */
+  .market-section.chart-section .mobi-chart-action-bar {
+    flex-shrink: 0;
   }
   
   /* Trade section */
