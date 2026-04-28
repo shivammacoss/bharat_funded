@@ -71,7 +71,7 @@ const PropTrading = () => {
         consistencyRulePercent: null,
         minLotSize: 0.01,
         maxLotSize: 100,
-        allowFractionalLots: true,
+        allowFractionalLots: false,
         maxTradesPerDay: null,
         maxConcurrentTrades: null,
         stopLossMandatory: false,

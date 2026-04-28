@@ -217,7 +217,7 @@ function DashboardPage() {
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '10px' }}>
                           <span>ID: {acc.accountId}</span>
-                          <span>Fund: ${(ch.fundSize || acc.initialBalance || 0).toLocaleString()}</span>
+                          <span>Fund: ₹{(ch.fundSize || acc.initialBalance || 0).toLocaleString('en-IN')}</span>
                           {acc.totalPhases > 0 && <span>Phase {acc.currentPhase}/{acc.totalPhases}</span>}
                         </div>
                       </div>
@@ -230,7 +230,7 @@ function DashboardPage() {
                         {acc.status}
                       </span>
                       <div style={{ fontSize: '14px', fontWeight: '700', color: pnl >= 0 ? '#10b981' : '#ef4444', marginTop: '4px' }}>
-                        {pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}
+                        {pnl >= 0 ? '+' : ''}₹{pnl.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
                   </div>

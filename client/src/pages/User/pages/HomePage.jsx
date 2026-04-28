@@ -324,7 +324,7 @@ function QuickWalletActions({ user, displayCurrency, usdInrRate, usdMarkup }) {
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label>Amount ($)</label>
+                <label>Amount (₹)</label>
                 <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter amount" min="0" />
               </div>
               <div className="form-group">

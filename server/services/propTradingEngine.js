@@ -203,7 +203,10 @@ class PropTradingEngine {
     }
     // Whole-lots-only enforcement: when admin disables fractional lots,
     // values like 1.5 / 2.5 / 3.5 are rejected. Tolerance handles float drift.
-    if (rules.allowFractionalLots === false) {
+    // Also enforce when minLotSize >= 1 (whole number) unless fractional is explicitly allowed.
+    const wholeLotEnforced = rules.allowFractionalLots === false ||
+      (rules.allowFractionalLots !== true && rules.minLotSize >= 1 && rules.minLotSize % 1 === 0);
+    if (wholeLotEnforced) {
       const rounded = Math.round(qty);
       if (Math.abs(qty - rounded) > 1e-9) {
         return { valid: false, error: 'Fractional lots are not allowed on this challenge — use whole numbers (1, 2, 3 …)', code: ERROR_CODES.LOT_SIZE_VIOLATION };
