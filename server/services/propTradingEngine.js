@@ -711,8 +711,8 @@ class PropTradingEngine {
       },
       balance: {
         initial: account.initialBalance,
-        current: account.currentBalance,
-        equity: account.currentEquity,
+        current: account.walletBalance ?? account.currentBalance,
+        equity: account.walletEquity ?? account.currentEquity,
         profitLoss: account.totalProfitLoss
       },
       drawdown: {

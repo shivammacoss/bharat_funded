@@ -551,11 +551,15 @@ router.get('/account/:id/insights', verifyUserToken, async (req, res) => {
     ]);
 
     const initialBalance = Number(account.initialBalance) || 0;
-    const currentBalance = Number(account.currentBalance) || initialBalance;
-    const currentEquity = Number(account.currentEquity) || currentBalance;
+    // Use walletBalance (live sub-wallet, same source as my-accounts card)
+    // and fall back to currentBalance for legacy accounts.
+    const currentBalance = Number(account.walletBalance || account.currentBalance) || initialBalance;
+    // Recalculate equity from balance + open-position floating PnL so it
+    // always matches the card view (which does the same arithmetic).
     const unrealizedPnl = Number(
       openRaw.reduce((sum, p) => sum + (Number(p.profit) || 0), 0)
     );
+    const currentEquity = currentBalance + unrealizedPnl;
 
     // ── Equity curve: start at initialBalance, apply each closed
     // position's realised PnL in order. Final point == currentBalance
