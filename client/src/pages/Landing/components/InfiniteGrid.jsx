@@ -1,118 +1,110 @@
-import React, { useRef } from "react";
-import {
-  motion,
-  useMotionValue,
-  useMotionTemplate,
-  useAnimationFrame,
-} from "framer-motion";
+import { useRef, useEffect } from 'react';
 
-function GridPattern({ offsetX, offsetY, id }) {
-  return (
-    <svg className="w-full h-full">
-      <defs>
-        <motion.pattern
-          id={id}
-          width="40"
-          height="40"
-          patternUnits="userSpaceOnUse"
-          x={offsetX}
-          y={offsetY}
-        >
-          <path
-            d="M 40 0 L 0 0 0 40"
-            fill="none"
-            stroke="#2B4EFF"
-            strokeWidth="1"
-          />
-        </motion.pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={`url(#${id})`} />
-    </svg>
-  );
-}
-
+/**
+ * Lightweight grid background — pure CSS, no framer-motion, no per-frame updates.
+ * Mouse spotlight handled via CSS variables (rAF-throttled) instead of React state.
+ */
 export default function InfiniteGrid() {
-  const containerRef = useRef(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const gridOffsetX = useMotionValue(0);
-  const gridOffsetY = useMotionValue(0);
+  const ref = useRef(null);
 
-  const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
-  };
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
 
-  useAnimationFrame(() => {
-    gridOffsetX.set((gridOffsetX.get() + 0.3) % 40);
-    gridOffsetY.set((gridOffsetY.get() + 0.3) % 40);
-  });
+    let raf = 0;
+    let pendingX = 0;
+    let pendingY = 0;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile) return; // disable mouse-tracking on mobile to save CPU
 
-  const maskImage = useMotionTemplate`radial-gradient(400px circle at ${mouseX}px ${mouseY}px, black, transparent)`;
+    const onMove = (e) => {
+      const rect = el.getBoundingClientRect();
+      pendingX = e.clientX - rect.left;
+      pendingY = e.clientY - rect.top;
+      if (!raf) {
+        raf = requestAnimationFrame(() => {
+          el.style.setProperty('--mx', `${pendingX}px`);
+          el.style.setProperty('--my', `${pendingY}px`);
+          raf = 0;
+        });
+      }
+    };
+
+    el.addEventListener('mousemove', onMove, { passive: true });
+    return () => {
+      el.removeEventListener('mousemove', onMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   return (
     <div
-      ref={containerRef}
-      onMouseMove={handleMouseMove}
-      className="absolute inset-0 z-0 overflow-hidden"
-      style={{ pointerEvents: 'auto' }}
+      ref={ref}
+      className="absolute inset-0 z-0 overflow-hidden pointer-events-auto"
+      style={{ '--mx': '50%', '--my': '50%' }}
     >
-      {/* Static visible grid */}
-      <div className="absolute inset-0" style={{ opacity: 0.12 }}>
-        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} id="grid-static" />
-      </div>
-
-      {/* Mouse-reveal bright grid */}
-      <motion.div
+      {/* Base grid — pure CSS, GPU-friendly */}
+      <div
         className="absolute inset-0"
-        style={{ opacity: 0.45, maskImage, WebkitMaskImage: maskImage }}
-      >
-        <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} id="grid-hover" />
-      </motion.div>
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(43,78,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(43,78,255,0.08) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+          willChange: 'transform',
+          animation: 'grid-drift 30s linear infinite',
+        }}
+      />
 
-      {/* Gradient glow orbs — like original reference */}
+      {/* Mouse spotlight — brighter grid revealed where cursor is */}
+      <div
+        className="absolute inset-0 hidden md:block"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(43,78,255,0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(43,78,255,0.35) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+          WebkitMaskImage:
+            'radial-gradient(380px circle at var(--mx) var(--my), black 0%, transparent 70%)',
+          maskImage:
+            'radial-gradient(380px circle at var(--mx) var(--my), black 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Static gradient orbs — single layer, lighter blur */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Top-right orange/warm glow */}
         <div
           className="absolute"
           style={{
             right: '-15%',
-            top: '-25%',
-            width: '70%',
-            height: '70%',
+            top: '-20%',
+            width: '60%',
+            height: '60%',
             borderRadius: '50%',
-            background: 'rgba(255, 140, 50, 0.15)',
-            filter: 'blur(100px)',
+            background: 'rgba(255, 140, 50, 0.12)',
+            filter: 'blur(60px)',
+            transform: 'translateZ(0)',
           }}
         />
-        {/* Top-right blue accent */}
-        <div
-          className="absolute"
-          style={{
-            right: '0%',
-            top: '-10%',
-            width: '50%',
-            height: '50%',
-            borderRadius: '50%',
-            background: 'rgba(43, 78, 255, 0.12)',
-            filter: 'blur(90px)',
-          }}
-        />
-        {/* Bottom-left blue glow */}
         <div
           className="absolute"
           style={{
             left: '-10%',
-            bottom: '-20%',
-            width: '50%',
-            height: '50%',
+            bottom: '-15%',
+            width: '55%',
+            height: '55%',
             borderRadius: '50%',
-            background: 'rgba(43, 78, 255, 0.15)',
-            filter: 'blur(80px)',
+            background: 'rgba(43, 78, 255, 0.12)',
+            filter: 'blur(60px)',
+            transform: 'translateZ(0)',
           }}
         />
       </div>
+
+      <style>{`
+        @keyframes grid-drift {
+          from { background-position: 0 0, 0 0; }
+          to { background-position: 40px 40px, 40px 40px; }
+        }
+      `}</style>
     </div>
   );
 }

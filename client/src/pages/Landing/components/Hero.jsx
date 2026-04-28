@@ -44,7 +44,8 @@ export default function Hero() {
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(updatePrices, 2000);
+    // Slower update to reduce render churn
+    const interval = setInterval(updatePrices, 4000);
     return () => clearInterval(interval);
   }, [updatePrices]);
 
