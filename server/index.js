@@ -4568,11 +4568,43 @@ app.get('/api/admin/trades/active', async (req, res) => {
   try {
     const { search, symbol, mode } = req.query;
     const { HedgingPosition, NettingPosition, BinaryTrade } = require('./models/Position');
+    const ChallengePosition = require('./models/ChallengePosition');
+    const ChallengeAccount = require('./models/ChallengeAccount');
 
     // Get list of demo user IDs to exclude
     const demoUserIds = [];
 
     let allPositions = [];
+
+    // Fetch challenge positions (prop-trading — primary source on this platform)
+    if (!mode || mode === 'netting' || mode === 'challenge' || mode === 'all') {
+      const challengeQuery = { status: 'open' };
+      if (symbol) challengeQuery.symbol = { $regex: symbol, $options: 'i' };
+      if (search) challengeQuery.userId = { $regex: search, $options: 'i' };
+      const challengeRows = await ChallengePosition.find(challengeQuery).sort({ openTime: -1 }).limit(500).lean();
+      // Enrich with challenge account ID for display
+      const accIds = [...new Set(challengeRows.map(p => String(p.challengeAccountId)))];
+      const accMap = {};
+      if (accIds.length) {
+        const accs = await ChallengeAccount.find({ _id: { $in: accIds } }).select('accountId').lean();
+        for (const a of accs) accMap[String(a._id)] = a.accountId;
+      }
+      // Enrich with userName from User collection
+      const userOderIds = [...new Set(challengeRows.map(p => p.userId).filter(Boolean))];
+      const userNameMap = {};
+      if (userOderIds.length) {
+        const users = await User.find({ oderId: { $in: userOderIds } }).select('oderId name email').lean();
+        for (const u of users) userNameMap[u.oderId] = u.name || u.email || u.oderId;
+      }
+      allPositions.push(...challengeRows.map(p => ({
+        ...p,
+        mode: 'netting',
+        positionType: 'ChallengePosition',
+        challengeAccountCode: accMap[String(p.challengeAccountId)] || '',
+        userName: userNameMap[p.userId] || p.userId,
+        holdTime: p.openTime ? Math.round((Date.now() - new Date(p.openTime).getTime()) / 1000) : 0
+      })));
+    }
 
     // Fetch hedging positions (exclude demo users)
     if (!mode || mode === 'hedging' || mode === 'all') {
@@ -4603,16 +4635,19 @@ app.get('/api/admin/trades/active', async (req, res) => {
 
     // Calculate summary
     const totalUnrealizedPnL = allPositions.reduce((sum, p) => sum + (p.profit || 0), 0);
+    const totalVolume = allPositions.reduce((sum, p) => sum + (Number(p.volume) || 0), 0);
 
     res.json({
       success: true,
       positions: allPositions,
       summary: {
         total: allPositions.length,
-        hedging: allPositions.filter(p => p.mode === 'hedging').length,
-        netting: allPositions.filter(p => p.mode === 'netting').length,
-        binary: allPositions.filter(p => p.mode === 'binary').length,
-        totalUnrealizedPnL
+        challenge: allPositions.filter(p => p.positionType === 'ChallengePosition').length,
+        hedging: allPositions.filter(p => p.positionType === 'HedgingPosition').length,
+        netting: allPositions.filter(p => p.positionType === 'NettingPosition').length,
+        binary: allPositions.filter(p => p.positionType === 'BinaryTrade').length,
+        totalUnrealizedPnL,
+        totalVolume
       }
     });
   } catch (error) {
@@ -4691,22 +4726,20 @@ app.get('/api/admin/trades/composed', async (req, res) => {
       }
     };
 
-    // Fetch hedging positions - check all statuses first for debugging
-    if (!mode || mode === 'hedging' || mode === 'all') {
-      // Debug: Check what statuses exist
-      const allHedging = await HedgingPosition.find({});
-      const statusCounts = {};
-      allHedging.forEach(p => {
-        statusCounts[p.status] = (statusCounts[p.status] || 0) + 1;
+    // Fetch challenge positions (prop-trading — primary on this platform)
+    if (!mode || mode === 'netting' || mode === 'challenge' || mode === 'all') {
+      const ChallengePosition = require('./models/ChallengePosition');
+      const challengeRows = await ChallengePosition.find({ status: 'open' }).lean();
+      challengeRows.forEach(p => {
+        addToComposed(p.symbol, p.side, p.volume || 1, p.entryPrice || 0, p.profit || 0, p.userId, 'netting');
       });
-      console.log(`Composed: Hedging status counts:`, statusCounts);
-      
+    }
+
+    // Fetch hedging positions
+    if (!mode || mode === 'hedging' || mode === 'all') {
       const hedgingQuery = { status: 'open' };
-      if (demoUserIds.length > 0) {
-        hedgingQuery.userId = { $nin: demoUserIds };
-      }
-      const hedging = await HedgingPosition.find(hedgingQuery);
-      console.log(`Composed: Found ${hedging.length} hedging positions with status 'open'`);
+      if (demoUserIds.length > 0) hedgingQuery.userId = { $nin: demoUserIds };
+      const hedging = await HedgingPosition.find(hedgingQuery).lean();
       hedging.forEach(p => {
         addToComposed(p.symbol, p.side, p.volume || 0.01, p.entryPrice || 0, p.profit || 0, p.userId, 'hedging');
       });
@@ -4714,20 +4747,9 @@ app.get('/api/admin/trades/composed', async (req, res) => {
 
     // Fetch netting positions
     if (!mode || mode === 'netting' || mode === 'all') {
-      // Debug: Check what statuses exist
-      const allNetting = await NettingPosition.find({});
-      const statusCounts = {};
-      allNetting.forEach(p => {
-        statusCounts[p.status] = (statusCounts[p.status] || 0) + 1;
-      });
-      console.log(`Composed: Netting status counts:`, statusCounts);
-      
       const nettingQuery = { status: 'open' };
-      if (demoUserIds.length > 0) {
-        nettingQuery.userId = { $nin: demoUserIds };
-      }
-      const netting = await NettingPosition.find(nettingQuery);
-      console.log(`Composed: Found ${netting.length} netting positions with status 'open'`);
+      if (demoUserIds.length > 0) nettingQuery.userId = { $nin: demoUserIds };
+      const netting = await NettingPosition.find(nettingQuery).lean();
       netting.forEach(p => {
         addToComposed(p.symbol, p.side, p.volume || p.quantity || 1, p.avgPrice || 0, p.profit || 0, p.userId, 'netting');
       });
@@ -4736,11 +4758,8 @@ app.get('/api/admin/trades/composed', async (req, res) => {
     // Fetch binary trades
     if (!mode || mode === 'binary' || mode === 'all') {
       const binaryQuery = { status: 'active' };
-      if (demoUserIds.length > 0) {
-        binaryQuery.userId = { $nin: demoUserIds };
-      }
-      const binary = await BinaryTrade.find(binaryQuery);
-      console.log(`Composed: Found ${binary.length} binary trades`);
+      if (demoUserIds.length > 0) binaryQuery.userId = { $nin: demoUserIds };
+      const binary = await BinaryTrade.find(binaryQuery).lean();
       binary.forEach(p => {
         addToComposed(p.symbol, p.direction, p.amount || 0, p.entryPrice || 0, 0, p.userId, 'binary');
       });
@@ -4811,60 +4830,110 @@ app.get('/api/admin/trades/pending', async (req, res) => {
 app.get('/api/admin/trades/history', async (req, res) => {
   try {
     const { page = 1, limit = 50, search, symbol, mode, dateFrom, dateTo } = req.query;
+    const ChallengePosition = require('./models/ChallengePosition');
+    const ChallengeAccount = require('./models/ChallengeAccount');
 
     // Get list of demo user IDs to exclude
     const demoUserIds = [];
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.max(1, Math.min(200, parseInt(limit, 10) || 50));
 
-    const query = { type: { $in: ['close', 'partial_close', 'binary'] }, userId: { $nin: demoUserIds } };
-    if (symbol) query.symbol = { $regex: symbol, $options: 'i' };
-    if (search) query.userId = { $regex: search, $options: 'i', $nin: demoUserIds };
-    if (mode && mode !== 'all') query.mode = mode;
+    // ── 1) Closed ChallengePositions (primary on this prop-only platform) ──
+    const cpQuery = { status: 'closed' };
+    if (symbol) cpQuery.symbol = { $regex: symbol, $options: 'i' };
+    if (search) cpQuery.userId = { $regex: search, $options: 'i' };
     if (dateFrom || dateTo) {
-      query.executedAt = {};
-      if (dateFrom) query.executedAt.$gte = new Date(dateFrom);
-      if (dateTo) query.executedAt.$lte = new Date(dateTo + 'T23:59:59.999Z');
+      cpQuery.closeTime = {};
+      if (dateFrom) cpQuery.closeTime.$gte = new Date(dateFrom);
+      if (dateTo) cpQuery.closeTime.$lte = new Date(dateTo + 'T23:59:59.999Z');
     }
+    const [cpTotal, cpRows] = await Promise.all([
+      ChallengePosition.countDocuments(cpQuery),
+      ChallengePosition.find(cpQuery).sort({ closeTime: -1 }).skip((pageNum - 1) * pageSize).limit(pageSize).lean()
+    ]);
+    // Enrich with challenge account code
+    const accIds = [...new Set(cpRows.map(p => String(p.challengeAccountId)))];
+    const accMap = {};
+    if (accIds.length) {
+      const accs = await ChallengeAccount.find({ _id: { $in: accIds } }).select('accountId').lean();
+      for (const a of accs) accMap[String(a._id)] = a.accountId;
+    }
+    // Enrich with userName
+    const cpUserIds = [...new Set(cpRows.map(p => p.userId).filter(Boolean))];
+    const cpUserMap = {};
+    if (cpUserIds.length) {
+      const users = await User.find({ oderId: { $in: cpUserIds } }).select('oderId name email').lean();
+      for (const u of users) cpUserMap[u.oderId] = u.name || u.email || u.oderId;
+    }
+    const challengeTrades = cpRows.map(p => ({
+      ...p,
+      _id: p._id,
+      tradeId: p.positionId,
+      mode: 'netting',
+      type: 'close',
+      positionType: 'ChallengePosition',
+      challengeAccountCode: accMap[String(p.challengeAccountId)] || '',
+      userName: cpUserMap[p.userId] || p.userId,
+      closePrice: p.closePrice || p.currentPrice,
+      executedAt: p.closeTime || p.updatedAt,
+      closedAt: p.closeTime
+    }));
 
-    const total = await Trade.countDocuments(query);
-    const trades = await Trade.find(query)
-      .sort({ executedAt: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+    // ── 2) Legacy Trade collection (hedging / netting / binary) ──
+    const tQuery = { type: { $in: ['close', 'partial_close', 'binary'] }, userId: { $nin: demoUserIds } };
+    if (symbol) tQuery.symbol = { $regex: symbol, $options: 'i' };
+    if (search) tQuery.userId = { $regex: search, $options: 'i', $nin: demoUserIds };
+    if (mode && mode !== 'all') tQuery.mode = mode;
+    if (dateFrom || dateTo) {
+      tQuery.executedAt = {};
+      if (dateFrom) tQuery.executedAt.$gte = new Date(dateFrom);
+      if (dateTo) tQuery.executedAt.$lte = new Date(dateTo + 'T23:59:59.999Z');
+    }
+    const [tTotal, tRows] = await Promise.all([
+      Trade.countDocuments(tQuery),
+      Trade.find(tQuery).sort({ executedAt: -1 }).skip((pageNum - 1) * pageSize).limit(pageSize).lean()
+    ]);
 
-    // Summary stats
-    const allMatchingTrades = await Trade.find(query).select('profit mode symbol volume');
-    const totalPnL = allMatchingTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
-    const winningTrades = allMatchingTrades.filter(t => (t.profit || 0) > 0).length;
-    const losingTrades = allMatchingTrades.filter(t => (t.profit || 0) < 0).length;
+    // ── 3) Merge, sort, paginate ──
+    const merged = [...challengeTrades, ...tRows].sort((a, b) => {
+      const ta = new Date(a.executedAt || a.closeTime || a.closedAt || 0);
+      const tb = new Date(b.executedAt || b.closeTime || b.closedAt || 0);
+      return tb - ta;
+    }).slice(0, pageSize);
+    const total = cpTotal + tTotal;
 
-    // Top symbols
-    const symbolMap = {};
-    allMatchingTrades.forEach(t => {
-      if (!symbolMap[t.symbol]) symbolMap[t.symbol] = { count: 0, pnl: 0 };
-      symbolMap[t.symbol].count++;
-      symbolMap[t.symbol].pnl += t.profit || 0;
-    });
-    const topSymbols = Object.entries(symbolMap)
-      .map(([sym, data]) => ({ symbol: sym, ...data }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    // Summary: aggregate all challenge closed + all Trade closed for totals
+    const cpSummary = await ChallengePosition.aggregate([
+      { $match: { ...cpQuery } },
+      { $group: { _id: null, totalPnL: { $sum: '$profit' }, count: { $sum: 1 }, wins: { $sum: { $cond: [{ $gt: ['$profit', 0] }, 1, 0] } }, losses: { $sum: { $cond: [{ $lt: ['$profit', 0] }, 1, 0] } } } }
+    ]);
+    const cpStats = cpSummary[0] || { totalPnL: 0, count: 0, wins: 0, losses: 0 };
+
+    const tSummaryRows = await Trade.find(tQuery).select('profit symbol').lean();
+    const tPnL = tSummaryRows.reduce((s, t) => s + (t.profit || 0), 0);
+    const tWins = tSummaryRows.filter(t => (t.profit || 0) > 0).length;
+    const tLosses = tSummaryRows.filter(t => (t.profit || 0) < 0).length;
+
+    const totalPnL = cpStats.totalPnL + tPnL;
+    const totalTrades = cpStats.count + tSummaryRows.length;
+    const winningTrades = cpStats.wins + tWins;
+    const losingTrades = cpStats.losses + tLosses;
 
     res.json({
       success: true,
-      trades: trades.map(t => ({ ...t.toObject() })),
+      trades: merged,
       pagination: {
         total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        pages: Math.ceil(total / parseInt(limit))
+        page: pageNum,
+        limit: pageSize,
+        pages: Math.ceil(total / pageSize)
       },
       summary: {
-        totalTrades: allMatchingTrades.length,
+        totalTrades,
         totalPnL,
         winningTrades,
         losingTrades,
-        winRate: allMatchingTrades.length > 0 ? ((winningTrades / allMatchingTrades.length) * 100).toFixed(1) : 0,
-        topSymbols
+        winRate: totalTrades > 0 ? ((winningTrades / totalTrades) * 100).toFixed(1) : 0
       }
     });
   } catch (error) {
@@ -4884,7 +4953,11 @@ app.post('/api/admin/trades/:id/close', async (req, res) => {
     let position;
     let Model;
 
-    if (positionType === 'HedgingPosition') {
+    if (positionType === 'ChallengePosition') {
+      const ChallengePosition = require('./models/ChallengePosition');
+      Model = ChallengePosition;
+      position = await ChallengePosition.findById(id);
+    } else if (positionType === 'HedgingPosition') {
       Model = HedgingPosition;
       position = await HedgingPosition.findById(id);
     } else if (positionType === 'NettingPosition') {
@@ -4901,6 +4974,14 @@ app.post('/api/admin/trades/:id/close', async (req, res) => {
     if (!(await assertUserInAdminScope(req, res, position.userId))) return;
 
     const closeP = currentPrice || position.currentPrice || position.entryPrice;
+
+    // ChallengePosition: use challengePropEngine to close properly
+    // (updates challenge account wallet, drawdown, profit targets, etc.)
+    if (positionType === 'ChallengePosition') {
+      const challengePropEngine = require('./services/challengePropEngine.service');
+      const result = await challengePropEngine.closePosition(position.positionId, closeP, 'admin');
+      return res.json({ success: true, message: 'Challenge position closed by admin', profit: result?.profit || 0 });
+    }
 
     // Calculate profit
     let profit = 0;
@@ -5199,8 +5280,10 @@ app.delete('/api/admin/trades/:id/delete', async (req, res) => {
 
     let doc = null;
 
+    const ChallengePosition = require('./models/ChallengePosition');
     if (tradeType === 'open' || !tradeType) {
-      doc = await HedgingPosition.findById(id);
+      doc = await ChallengePosition.findById(id);
+      if (!doc) doc = await HedgingPosition.findById(id);
       if (!doc) doc = await NettingPosition.findById(id);
       if (!doc) doc = await BinaryTrade.findById(id);
     }
@@ -5208,7 +5291,8 @@ app.delete('/api/admin/trades/:id/delete', async (req, res) => {
       doc = await HedgingPosition.findOne({ _id: id, status: 'pending' });
     }
     if ((tradeType === 'history' || !tradeType) && !doc) {
-      doc = await Trade.findById(id);
+      doc = await ChallengePosition.findById(id);
+      if (!doc) doc = await Trade.findById(id);
     }
 
     if (!doc) {

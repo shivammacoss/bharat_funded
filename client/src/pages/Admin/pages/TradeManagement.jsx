@@ -1135,7 +1135,7 @@ function TradeManagement() {
                         {activeTab === 'pending-orders' ? (
                           <button onClick={() => cancelPendingOrder(trade._id)} className="admin-btn danger small">Cancel</button>
                         ) : !isClosedTrade && (
-                          <button onClick={() => forceClosePosition(trade._id, trade.mode || 'hedging', trade.symbol)} className="admin-btn danger small">Close</button>
+                          <button onClick={() => forceClosePosition(trade._id, trade.positionType || (trade.mode === 'hedging' ? 'HedgingPosition' : trade.mode === 'binary' ? 'BinaryTrade' : 'NettingPosition'), trade.symbol)} className="admin-btn danger small">Close</button>
                         )}
                         <button
                           onClick={() => deleteTrade(trade._id, activeTab === 'pending-orders' ? 'pending' : (isClosedTrade ? 'history' : 'open'))}
