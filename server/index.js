@@ -5146,7 +5146,11 @@ app.post('/api/admin/trades/:id/reopen', async (req, res) => {
     let position = null;
     let historyTrade = null;
 
-    if (mode === 'hedging' || !mode) {
+    // Check ChallengePosition first (primary on this prop-only platform)
+    const ChallengePosition = require('./models/ChallengePosition');
+    position = await ChallengePosition.findById(id);
+
+    if (!position && (mode === 'hedging' || !mode)) {
       position = await HedgingPosition.findById(id);
     }
     if (!position && (mode === 'netting' || !mode)) {
@@ -5333,6 +5337,23 @@ app.post('/api/admin/trades/:id/close-with-pnl', async (req, res) => {
 
     let position;
 
+    // Check ChallengePosition first (primary on this prop-only platform)
+    const ChallengePosition = require('./models/ChallengePosition');
+    position = await ChallengePosition.findById(id);
+    if (position) {
+      // For challenge positions, use challengePropEngine to close properly
+      const { assertUserInAdminScope } = require('./utils/adminScopeGuard');
+      if (!(await assertUserInAdminScope(req, res, position.userId))) return;
+      // Update entry price if changed before closing
+      if (entryPrice !== undefined) position.entryPrice = entryPrice;
+      if (volume !== undefined) position.volume = volume;
+      await position.save();
+      const challengePropEngine = require('./services/challengePropEngine.service');
+      const closeP = closePrice || position.currentPrice || position.entryPrice;
+      const result = await challengePropEngine.closePosition(position.positionId, closeP, 'admin');
+      return res.json({ success: true, message: 'Challenge trade closed & synced to challenge account', profit: result?.profit || 0, walletSynced: false });
+    }
+
     // Try to find position in different collections based on mode
     if (mode === 'hedging' || !mode) {
       position = await HedgingPosition.findById(id);
@@ -5456,7 +5477,15 @@ app.put('/api/admin/trades/:id/edit', async (req, res) => {
     let isTradeHistory = false;
 
     // Try to find position in different collections based on mode
-    if (mode === 'hedging' || !mode) {
+    // Check ChallengePosition first (primary on this prop-only platform)
+    const ChallengePosition = require('./models/ChallengePosition');
+    let isChallengePosition = false;
+    position = await ChallengePosition.findById(id);
+    if (position) {
+      Model = ChallengePosition;
+      isChallengePosition = true;
+    }
+    if (!position && (mode === 'hedging' || !mode)) {
       position = await HedgingPosition.findById(id);
       Model = HedgingPosition;
     }
@@ -5524,7 +5553,9 @@ app.put('/api/admin/trades/:id/edit', async (req, res) => {
       $or: [{ oderId: userOderId }, { _id: userOderId.match?.(/^[0-9a-fA-F]{24}$/) ? userOderId : null }]
     });
 
-    if (isClosed && user) {
+    // Challenge positions use the isolated sub-wallet on ChallengeAccount,
+    // NOT the user's main wallet — skip main-wallet sync for them.
+    if (isClosed && user && !isChallengePosition) {
       // Calculate P/L difference for wallet sync
       pnlDiff = (pnl || 0) - oldPnL;
 
