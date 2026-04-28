@@ -11,7 +11,8 @@ const PropTrading = () => {
     challengeModeEnabled: false,
     displayName: 'Prop Trading Challenge',
     description: '',
-    termsAndConditions: ''
+    termsAndConditions: '',
+    autoCloseAtMarketClose: false
   });
 
   // Dashboard stats
@@ -65,6 +66,9 @@ const PropTrading = () => {
         maxLossPerTradePercent: 2,
         profitTargetPhase1Percent: 8,
         profitTargetPhase2Percent: 5,
+        profitTargetInstantPercent: 8,
+        maxOneDayProfitPercentOfTarget: null,
+        consistencyRulePercent: null,
         minLotSize: 0.01,
         maxLotSize: 100,
         allowFractionalLots: true,
@@ -609,20 +613,44 @@ const PropTrading = () => {
                     </div>
                   </div>
 
-                  {ch.stepsCount > 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px', marginTop: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px', marginTop: '8px' }}>
+                    {ch.stepsCount > 0 && (
                       <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
                         <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Phase 1 Target</div>
                         <div style={{ color: '#3b82f6', fontWeight: '600' }}>{ch.rules?.profitTargetPhase1Percent || 8}%</div>
                       </div>
-                      {ch.stepsCount === 2 && (
-                        <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
-                          <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Phase 2 Target</div>
-                          <div style={{ color: '#8b5cf6', fontWeight: '600' }}>{ch.rules?.profitTargetPhase2Percent || 5}%</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    )}
+                    {ch.stepsCount === 2 && (
+                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Phase 2 Target</div>
+                        <div style={{ color: '#8b5cf6', fontWeight: '600' }}>{ch.rules?.profitTargetPhase2Percent || 5}%</div>
+                      </div>
+                    )}
+                    {ch.stepsCount === 0 && ch.rules?.profitTargetInstantPercent && (
+                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Profit Target</div>
+                        <div style={{ color: '#f59e0b', fontWeight: '600' }}>{ch.rules.profitTargetInstantPercent}%</div>
+                      </div>
+                    )}
+                    {ch.rules?.maxOneDayProfitPercentOfTarget && (
+                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Max Day Profit</div>
+                        <div style={{ color: '#f59e0b', fontWeight: '600' }}>{ch.rules.maxOneDayProfitPercentOfTarget}% of target</div>
+                      </div>
+                    )}
+                    {ch.rules?.consistencyRulePercent && (
+                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Consistency</div>
+                        <div style={{ color: '#8b5cf6', fontWeight: '600' }}>{ch.rules.consistencyRulePercent}%</div>
+                      </div>
+                    )}
+                    {ch.rules?.tradingDaysRequired && (
+                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Min Trading Days</div>
+                        <div style={{ color: '#3b82f6', fontWeight: '600' }}>{ch.rules.tradingDaysRequired} days</div>
+                      </div>
+                    )}
+                  </div>
 
                   <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     {ch.rules?.stopLossMandatory && <span>SL Required</span>}
@@ -862,6 +890,63 @@ const PropTrading = () => {
               />
             </div>
 
+            {/* Intraday auto-close toggle. ON → all open challenge positions
+                are force-closed at 15:30 IST (NSE/BSE close) every weekday. */}
+            {(() => {
+              const on = !!settings.autoCloseAtMarketClose;
+              return (
+                <div style={{
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  border: `1px solid ${on ? '#3b82f6' : 'var(--border-color)'}`,
+                  background: on ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '14px'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ color: 'var(--text-primary)', fontSize: '14px', fontWeight: 600 }}>
+                      Auto-close at Market Close (Intraday only)
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '12px', lineHeight: 1.5 }}>
+                      ON → at 3:30 PM IST every weekday, every open challenge position is auto-closed at the last traded price. No overnight / weekend holding for any prop account.<br />
+                      OFF → users can hold challenge positions overnight (default).
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    onClick={() => setSettings(p => ({ ...p, autoCloseAtMarketClose: !on }))}
+                    style={{
+                      position: 'relative',
+                      width: '56px',
+                      height: '30px',
+                      borderRadius: '15px',
+                      border: 'none',
+                      background: on ? '#3b82f6' : 'var(--bg-tertiary)',
+                      cursor: 'pointer',
+                      transition: 'background 0.18s ease',
+                      flexShrink: 0
+                    }}
+                  >
+                    <span style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: on ? '29px' : '3px',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.18s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
+                    }} />
+                  </button>
+                </div>
+              );
+            })()}
+
             <button
               onClick={saveSettings}
               style={{ alignSelf: 'flex-start', padding: '10px 30px', borderRadius: '8px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
@@ -1032,23 +1117,39 @@ const PropTrading = () => {
             </div>
 
             {/* Profit Targets */}
-            {challengeForm.stepsCount > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Profit Targets</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Profit Targets</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {challengeForm.stepsCount > 0 && (
                   <div>
                     <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phase 1 Target %</label>
                     <input type="number" step="0.1" value={challengeForm.rules.profitTargetPhase1Percent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetPhase1Percent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                   </div>
-                  {challengeForm.stepsCount === 2 && (
-                    <div>
-                      <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phase 2 Target %</label>
-                      <input type="number" step="0.1" value={challengeForm.rules.profitTargetPhase2Percent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetPhase2Percent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                    </div>
-                  )}
+                )}
+                {challengeForm.stepsCount === 2 && (
+                  <div>
+                    <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phase 2 Target %</label>
+                    <input type="number" step="0.1" value={challengeForm.rules.profitTargetPhase2Percent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetPhase2Percent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                  </div>
+                )}
+                {challengeForm.stepsCount === 0 && (
+                  <div>
+                    <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Instant Profit Target %</label>
+                    <input type="number" step="0.1" value={challengeForm.rules.profitTargetInstantPercent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, profitTargetInstantPercent: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                  </div>
+                )}
+                <div>
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max One-Day Profit (% of target)</label>
+                  <input type="number" step="1" value={challengeForm.rules.maxOneDayProfitPercentOfTarget || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxOneDayProfitPercentOfTarget: e.target.value ? Number(e.target.value) : null } }))} placeholder="e.g. 40" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>40 = no single day profit can exceed 40% of total target</span>
+                </div>
+                <div>
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Consistency Rule %</label>
+                  <input type="number" step="1" value={challengeForm.rules.consistencyRulePercent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, consistencyRulePercent: e.target.value ? Number(e.target.value) : null } }))} placeholder="e.g. 30" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
+                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>30 = no single day can be more than 30% of total profit</span>
                 </div>
               </div>
-            )}
+            </div>
 
             {/* Trade Rules */}
             <div style={{ marginBottom: '20px' }}>

@@ -530,6 +530,15 @@ function PropChallengePage() {
               {selectedPlan.rules?.profitTargetPhase2Percent != null && selectedPlan.stepsCount === 2 && (
                 <li>Phase 2 profit target: <strong>{selectedPlan.rules.profitTargetPhase2Percent}%</strong></li>
               )}
+              {selectedPlan.rules?.profitTargetInstantPercent != null && selectedPlan.stepsCount === 0 && (
+                <li>Profit target: <strong>{selectedPlan.rules.profitTargetInstantPercent}%</strong></li>
+              )}
+              {selectedPlan.rules?.maxOneDayProfitPercentOfTarget != null && (
+                <li>Max one-day profit: <strong>{selectedPlan.rules.maxOneDayProfitPercentOfTarget}%</strong> of target</li>
+              )}
+              {selectedPlan.rules?.consistencyRulePercent != null && (
+                <li>Consistency rule: no single day can exceed <strong>{selectedPlan.rules.consistencyRulePercent}%</strong> of total profit</li>
+              )}
               {selectedPlan.rules?.maxLeverage != null && (
                 <li>Max leverage: <strong>1:{selectedPlan.rules.maxLeverage}</strong></li>
               )}

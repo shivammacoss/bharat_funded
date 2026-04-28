@@ -23,6 +23,13 @@ const propSettingsSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // When true, every open challenge position is force-closed at Indian
+  // market-close time (15:30 IST, weekdays only). No overnight holding for
+  // any prop-trading account. The cron uses last-known LTP as exit price.
+  autoCloseAtMarketClose: {
+    type: Boolean,
+    default: false
+  },
   updatedAt: {
     type: Date,
     default: Date.now

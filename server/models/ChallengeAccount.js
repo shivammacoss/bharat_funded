@@ -162,6 +162,13 @@ const challengeAccountSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // Per-day PnL map (YYYY-MM-DD → profit/loss amount). Used by the
+  // max-one-day-profit and consistency rules in propTradingEngine.
+  dailyPnlMap: {
+    type: Map,
+    of: Number,
+    default: () => new Map()
+  },
 
   // Rule violations
   violations: [{

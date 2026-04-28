@@ -25,7 +25,9 @@ const ERROR_CODES = {
   TAKE_PROFIT_REQUIRED: 'TAKE_PROFIT_REQUIRED',
   MAX_TOTAL_TRADES: 'MAX_TOTAL_TRADES',
   MIN_TRADES_NOT_MET: 'MIN_TRADES_NOT_MET',
-  TRADING_DAYS_NOT_MET: 'TRADING_DAYS_NOT_MET'
+  TRADING_DAYS_NOT_MET: 'TRADING_DAYS_NOT_MET',
+  MAX_ONE_DAY_PROFIT: 'MAX_ONE_DAY_PROFIT',
+  CONSISTENCY_RULE: 'CONSISTENCY_RULE'
 };
 
 class PropTradingEngine {
@@ -107,6 +109,13 @@ class PropTradingEngine {
     const totalPhases = challenge.stepsCount === 0 ? 0 : challenge.stepsCount;
     const expiresAt = this.computeExpiresAt(challenge);
 
+    // Instant (0-step) with a configured profit target must go through
+    // evaluation (ACTIVE) before becoming FUNDED.  Only skip to FUNDED
+    // if no target is set (legacy instant-fund behaviour).
+    const hasInstantTarget = challenge.stepsCount === 0
+      && Number(challenge.rules?.profitTargetInstantPercent) > 0;
+    const instantStatus = hasInstantTarget ? 'ACTIVE' : 'FUNDED';
+
     const account = await ChallengeAccount.create({
       userId,
       challengeId: challenge._id,
@@ -114,7 +123,7 @@ class PropTradingEngine {
       accountType: 'CHALLENGE',
       currentPhase: challenge.stepsCount === 0 ? 0 : 1,
       totalPhases,
-      status: challenge.stepsCount === 0 ? 'FUNDED' : 'ACTIVE',
+      status: challenge.stepsCount === 0 ? instantStatus : 'ACTIVE',
       initialBalance: fundSize,
       currentBalance: fundSize,
       currentEquity: fundSize,
@@ -292,10 +301,23 @@ class PropTradingEngine {
     // Update equity tracking
     await account.updateEquity(account.currentEquity);
 
+    // Track daily PnL for max-one-day-profit / consistency rules
+    const todayIso = new Date().toISOString().slice(0, 10);
+    if (!account.dailyPnlMap) account.dailyPnlMap = new Map();
+    const prevDayPnl = account.dailyPnlMap.get(todayIso) || 0;
+    account.dailyPnlMap.set(todayIso, prevDayPnl + closePnL);
+    account.markModified('dailyPnlMap');
+
     // Check drawdown breach
     const ddResult = await this.checkDrawdownBreach(account, rules);
     if (ddResult.breached) {
       return { account, failed: true, reason: ddResult.reason };
+    }
+
+    // Check max one-day profit rule
+    const oneDayResult = await this.checkMaxOneDayProfit(account, challenge);
+    if (oneDayResult.violated) {
+      // Warn but don't fail — the account just can't pass while violated
     }
 
     // Check profit target (phase progression)
@@ -362,26 +384,121 @@ class PropTradingEngine {
   }
 
   /**
+   * Resolve the active profit target % for any challenge type / phase
+   */
+  getTargetPercent(account, challenge) {
+    const rules = challenge.rules || {};
+    if (challenge.stepsCount === 0) {
+      return rules.profitTargetInstantPercent || 0;
+    }
+    if (account.currentPhase === 1) return rules.profitTargetPhase1Percent || 0;
+    if (account.currentPhase === 2) return rules.profitTargetPhase2Percent || 0;
+    return 0;
+  }
+
+  /**
+   * Check max one-day profit rule (e.g. 40% of target)
+   */
+  async checkMaxOneDayProfit(account, challenge) {
+    const rules = challenge.rules || {};
+    const capPercent = rules.maxOneDayProfitPercentOfTarget;
+    if (!capPercent || capPercent <= 0) return { violated: false };
+
+    const targetPercent = this.getTargetPercent(account, challenge);
+    if (!targetPercent) return { violated: false };
+
+    const maxDayProfitAbs = (capPercent / 100) * (targetPercent / 100) * account.phaseStartBalance;
+    const dailyPnlMap = account.dailyPnlMap || new Map();
+
+    for (const [day, pnl] of dailyPnlMap) {
+      if (pnl > maxDayProfitAbs) {
+        const existing = (account.violations || []).find(
+          v => v.rule === 'MAX_ONE_DAY_PROFIT' && v.description?.includes(day)
+        );
+        if (!existing) {
+          await account.addViolation(
+            'MAX_ONE_DAY_PROFIT',
+            `Day ${day}: profit ₹${pnl.toFixed(2)} exceeds ${capPercent}% of target (max ₹${maxDayProfitAbs.toFixed(2)})`,
+            'WARNING'
+          );
+        }
+        return { violated: true, day, pnl, max: maxDayProfitAbs };
+      }
+    }
+    return { violated: false };
+  }
+
+  /**
+   * Check consistency rule at pass-time (e.g. no single day > 30% of total profit)
+   */
+  checkConsistencyRule(account, challenge) {
+    const rules = challenge.rules || {};
+    const consistencyPercent = rules.consistencyRulePercent;
+    if (!consistencyPercent || consistencyPercent <= 0) return { passed: true };
+
+    const dailyPnlMap = account.dailyPnlMap || new Map();
+    let totalProfit = 0;
+    let bestDay = 0;
+    let bestDayKey = '';
+
+    for (const [day, pnl] of dailyPnlMap) {
+      if (pnl > 0) {
+        totalProfit += pnl;
+        if (pnl > bestDay) {
+          bestDay = pnl;
+          bestDayKey = day;
+        }
+      }
+    }
+
+    if (totalProfit <= 0) return { passed: true };
+
+    const bestDayRatio = (bestDay / totalProfit) * 100;
+    if (bestDayRatio > consistencyPercent) {
+      return {
+        passed: false,
+        reason: `Consistency rule: best day (${bestDayKey}) is ${bestDayRatio.toFixed(1)}% of total profit, max allowed is ${consistencyPercent}%`,
+        code: ERROR_CODES.CONSISTENCY_RULE,
+        bestDayRatio
+      };
+    }
+    return { passed: true, bestDayRatio };
+  }
+
+  /**
    * Check profit target for phase progression
    */
   async checkProfitTarget(account, challenge) {
     const rules = challenge.rules || {};
+    const targetPercent = this.getTargetPercent(account, challenge);
 
-    // 0-step (instant fund) has no profit target
-    if (challenge.stepsCount === 0) return { targetReached: false };
-
-    let targetPercent = 0;
-    if (account.currentPhase === 1) {
-      targetPercent = rules.profitTargetPhase1Percent || 8;
-    } else if (account.currentPhase === 2) {
-      targetPercent = rules.profitTargetPhase2Percent || 5;
-    }
+    // No target configured — nothing to check
     if (!targetPercent) return { targetReached: false };
 
     if (account.currentProfitPercent >= targetPercent) {
       // Check for FAIL violations
       if (account.violations.some(v => v.severity === 'FAIL')) {
         return { targetReached: false };
+      }
+
+      // Gate: max one-day profit — if any day breaches, block passing
+      const oneDayCheck = await this.checkMaxOneDayProfit(account, challenge);
+      if (oneDayCheck.violated) {
+        return {
+          targetReached: false,
+          reason: `Max one-day profit rule breached — cannot pass yet`,
+          code: ERROR_CODES.MAX_ONE_DAY_PROFIT
+        };
+      }
+
+      // Gate: consistency rule
+      const consistencyCheck = this.checkConsistencyRule(account, challenge);
+      if (!consistencyCheck.passed) {
+        return {
+          targetReached: false,
+          reason: consistencyCheck.reason,
+          code: ERROR_CODES.CONSISTENCY_RULE
+        };
       }
 
       // Gate: minimum trades required for this phase
@@ -405,7 +522,17 @@ class PropTradingEngine {
         }
       }
 
-      if (account.currentPhase < account.totalPhases) {
+      // For instant (0-step) with a profit target configured, passing means
+      // we mark the account as PASSED and create a funded account.
+      if (challenge.stepsCount === 0 || account.currentPhase >= account.totalPhases) {
+        // Challenge PASSED — create funded account
+        account.status = 'PASSED';
+        account.passedAt = new Date();
+        await account.save();
+
+        const fundedAccount = await this.createFundedAccount(account);
+        return { targetReached: true, funded: true, fundedAccount };
+      } else if (account.currentPhase < account.totalPhases) {
         // Advance to next phase
         account.currentPhase += 1;
         account.phaseStartBalance = account.currentEquity;
@@ -414,14 +541,6 @@ class PropTradingEngine {
         account.maxDailyDrawdownHit = 0;
         await account.save();
         return { targetReached: true, nextPhase: account.currentPhase, funded: false };
-      } else {
-        // Challenge PASSED — create funded account
-        account.status = 'PASSED';
-        account.passedAt = new Date();
-        await account.save();
-
-        const fundedAccount = await this.createFundedAccount(account);
-        return { targetReached: true, funded: true, fundedAccount };
       }
     }
 
@@ -563,10 +682,8 @@ class PropTradingEngine {
     const remainingMs = new Date(account.expiresAt) - new Date();
     const remainingDays = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
 
-    // Target progress
-    let targetPercent = 0;
-    if (account.currentPhase === 1) targetPercent = rules.profitTargetPhase1Percent || 8;
-    else if (account.currentPhase === 2) targetPercent = rules.profitTargetPhase2Percent || 5;
+    // Target progress — works for instant, 1-step, and 2-step
+    const targetPercent = this.getTargetPercent(account, challenge);
     const targetProgress = targetPercent > 0 ? Math.min(100, (Math.max(0, account.currentProfitPercent) / targetPercent) * 100) : 0;
 
     // Withdrawable profit (funded only)

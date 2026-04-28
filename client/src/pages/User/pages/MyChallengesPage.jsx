@@ -241,9 +241,11 @@ function MyChallengesPage() {
             const totalPnlPct = acc.initialBalance > 0 ? (totalPnl / acc.initialBalance) * 100 : 0;
             const openCount = Number(acc.openCount ?? (Array.isArray(acc.openPositions) ? acc.openPositions.length : 0));
 
-            const targetPct = acc.currentPhase === 1
-              ? Number(ch?.rules?.profitTargetPhase1Percent || 0)
-              : Number(ch?.rules?.profitTargetPhase2Percent || 0);
+            const targetPct = ch?.stepsCount === 0
+              ? Number(ch?.rules?.profitTargetInstantPercent || 0)
+              : acc.currentPhase === 1
+                ? Number(ch?.rules?.profitTargetPhase1Percent || 0)
+                : Number(ch?.rules?.profitTargetPhase2Percent || 0);
             const profitPct = Number(acc.currentProfitPercent || 0);
             const targetProgress = targetPct > 0 ? Math.max(0, Math.min(100, (profitPct / targetPct) * 100)) : 0;
 

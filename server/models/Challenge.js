@@ -81,6 +81,27 @@ const challengeSchema = new mongoose.Schema({
       type: Number,
       default: null
     },
+    // Instant (0-step) challenge profit target — unlike 1/2-step which use
+    // the phase fields above, instant funds use this dedicated target.
+    profitTargetInstantPercent: {
+      type: Number,
+      default: null
+    },
+    // Max single-day profit as a percentage of the profit target. E.g. 40
+    // means a trader cannot earn more than 40% of the total target in one day.
+    // Excess profit on that day is still credited but the day is flagged as a
+    // violation and the account cannot pass until the rule is met cleanly.
+    maxOneDayProfitPercentOfTarget: {
+      type: Number,
+      default: null
+    },
+    // Consistency rule: no single profitable day can contribute more than
+    // this percentage of the total profit. E.g. 30 means no day can be more
+    // than 30% of cumulative profit. Checked at pass-time.
+    consistencyRulePercent: {
+      type: Number,
+      default: null
+    },
 
     // Lot Size Rules
     minLotSize: {

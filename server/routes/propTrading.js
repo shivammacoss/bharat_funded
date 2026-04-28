@@ -40,12 +40,13 @@ router.get('/admin/settings', verifyAdminToken, async (req, res) => {
 // PUT /api/prop/admin/settings
 router.put('/admin/settings', verifyAdminToken, async (req, res) => {
   try {
-    const { challengeModeEnabled, displayName, description, termsAndConditions } = req.body;
+    const { challengeModeEnabled, displayName, description, termsAndConditions, autoCloseAtMarketClose } = req.body;
     const settings = await PropSettings.updateSettings({
       challengeModeEnabled,
       displayName,
       description,
-      termsAndConditions
+      termsAndConditions,
+      autoCloseAtMarketClose
     }, req.admin._id);
     res.json({ success: true, message: 'Settings updated', settings });
   } catch (error) {
@@ -681,9 +682,11 @@ router.get('/account/:id/insights', verifyUserToken, async (req, res) => {
     const dailyMax = Number(rules.maxDailyDrawdownPercent || 5);
     const overallMax = Number(rules.maxOverallDrawdownPercent || 10);
     const tradingDaysRequired = Number(rules.tradingDaysRequired || 0);
-    const targetPercent = account.currentPhase === 1
-      ? Number(rules.profitTargetPhase1Percent || 8)
-      : Number(rules.profitTargetPhase2Percent || 5);
+    const targetPercent = challenge.stepsCount === 0
+      ? Number(rules.profitTargetInstantPercent || 0)
+      : account.currentPhase === 1
+        ? Number(rules.profitTargetPhase1Percent || 8)
+        : Number(rules.profitTargetPhase2Percent || 5);
     const dailyUsed = Number(account.currentDailyDrawdownPercent || 0);
     const overallUsed = Number(account.currentOverallDrawdownPercent || 0);
     const profitPercent = Number(account.currentProfitPercent || 0);
@@ -725,6 +728,44 @@ router.get('/account/:id/insights', verifyUserToken, async (req, res) => {
         actual: profitPercent,
         unit: '%',
         passed: profitPercent >= targetPercent
+      });
+    }
+
+    // Max one-day profit objective
+    const maxOneDayCap = Number(rules.maxOneDayProfitPercentOfTarget || 0);
+    if (maxOneDayCap > 0 && targetPercent > 0) {
+      const maxDayProfitAbs = (maxOneDayCap / 100) * (targetPercent / 100) * initialBalance;
+      const dailyPnlMap = account.dailyPnlMap || new Map();
+      let bestDayPnl = 0;
+      for (const [, pnl] of dailyPnlMap) {
+        if (pnl > bestDayPnl) bestDayPnl = pnl;
+      }
+      objectives.push({
+        key: 'max-one-day-profit',
+        label: `Max One-Day Profit ₹${maxDayProfitAbs.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+        target: maxOneDayCap,
+        actual: maxDayProfitAbs > 0 ? Number(((bestDayPnl / maxDayProfitAbs) * 100).toFixed(1)) : 0,
+        unit: '% used',
+        passed: bestDayPnl <= maxDayProfitAbs
+      });
+    }
+
+    // Consistency rule objective
+    const consistencyLimit = Number(rules.consistencyRulePercent || 0);
+    if (consistencyLimit > 0) {
+      const dailyPnlMap = account.dailyPnlMap || new Map();
+      let totalProfit = 0, bestDay = 0;
+      for (const [, pnl] of dailyPnlMap) {
+        if (pnl > 0) { totalProfit += pnl; if (pnl > bestDay) bestDay = pnl; }
+      }
+      const bestRatio = totalProfit > 0 ? (bestDay / totalProfit) * 100 : 0;
+      objectives.push({
+        key: 'consistency',
+        label: `Consistency (no day > ${consistencyLimit}% of total profit)`,
+        target: consistencyLimit,
+        actual: Number(bestRatio.toFixed(1)),
+        unit: '%',
+        passed: totalProfit <= 0 || bestRatio <= consistencyLimit
       });
     }
 

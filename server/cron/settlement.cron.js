@@ -310,12 +310,79 @@ async function checkAutoSquareOff() {
       // Get current prices from Zerodha service (empty object as fallback)
       const ZerodhaService = require('../services/zerodha.service');
       const currentPrices = ZerodhaService.getLastPrices ? ZerodhaService.getLastPrices() : {};
-      
+
       await nettingEngine.autoSquareOff(currentPrices);
     } catch (error) {
       console.error('[Auto Square-Off] Error:', error.message);
     }
   }
+
+  // Prop-challenge intraday auto-close — fire ONCE per day, exactly at 15:30
+  // IST. Reads PropSettings.autoCloseAtMarketClose; if any admin has it on,
+  // every open ChallengePosition under their challenges is force-closed at
+  // the last-known LTP. The exact-minute gate prevents double-firing across
+  // the cron's 10-minute square-off window.
+  if (currentTime === 15 * 60 + 30) {
+    runChallengeMarketCloseSquareOff().catch(err =>
+      console.error('[ChallengeMarketClose] error:', err.message)
+    );
+  }
+}
+
+/**
+ * Force-close every open ChallengePosition belonging to admins whose
+ * PropSettings.autoCloseAtMarketClose is true. Called at 15:30 IST on
+ * weekdays. Uses last-known Zerodha LTP as exit price; falls back to the
+ * position's currentPrice / entryPrice when no live price is cached.
+ */
+async function runChallengeMarketCloseSquareOff() {
+  const PropSettings = require('../models/PropSettings');
+  const Challenge = require('../models/Challenge');
+  const ChallengeAccount = require('../models/ChallengeAccount');
+  const { ChallengePosition } = require('../models/Position');
+  const challengePropEngine = require('../services/challengePropEngine.service');
+  const ZerodhaService = require('../services/zerodha.service');
+
+  const enabled = await PropSettings.find({ autoCloseAtMarketClose: true }).select('adminId').lean();
+  if (enabled.length === 0) return;
+  const adminIds = enabled.map(s => s.adminId); // includes null for global
+
+  const challenges = await Challenge.find({ adminId: { $in: adminIds } }).select('_id').lean();
+  if (challenges.length === 0) return;
+  const challengeIds = challenges.map(c => c._id);
+
+  const accounts = await ChallengeAccount.find({
+    challengeId: { $in: challengeIds },
+    status: { $in: ['ACTIVE', 'FUNDED'] }
+  }).select('_id').lean();
+  if (accounts.length === 0) return;
+  const accountIds = accounts.map(a => a._id);
+
+  const openPositions = await ChallengePosition.find({
+    challengeAccountId: { $in: accountIds },
+    status: 'open'
+  }).lean();
+  if (openPositions.length === 0) return;
+
+  console.log(`[ChallengeMarketClose] Closing ${openPositions.length} open challenge position(s) at 15:30 IST`);
+  const lastPrices = ZerodhaService.getLastPrices ? ZerodhaService.getLastPrices() : {};
+  let closed = 0;
+  let failed = 0;
+  for (const pos of openPositions) {
+    try {
+      const lp = lastPrices[pos.symbol] || {};
+      const px = pos.side === 'buy'
+        ? Number(lp.bid ?? lp.last ?? pos.currentPrice ?? pos.entryPrice)
+        : Number(lp.ask ?? lp.last ?? pos.currentPrice ?? pos.entryPrice);
+      if (!Number.isFinite(px) || px <= 0) { failed++; continue; }
+      const result = await challengePropEngine.closePosition(pos.positionId, px, 'auto-market-close');
+      if (result?.success) closed++; else failed++;
+    } catch (err) {
+      console.error(`[ChallengeMarketClose] failed on ${pos.positionId}:`, err.message);
+      failed++;
+    }
+  }
+  console.log(`[ChallengeMarketClose] Done — ${closed} closed, ${failed} failed`);
 }
 
 /**
