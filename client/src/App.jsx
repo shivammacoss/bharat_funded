@@ -62,6 +62,7 @@ import LandingContactPage from './pages/Landing/pages/ContactPage';
 import InstrumentsPage from './pages/Landing/pages/InstrumentsPage';
 import BlogPage from './pages/Landing/pages/BlogPage';
 import ResultsPage from './pages/Landing/pages/ResultsPage';
+import ChallengesPage from './pages/Landing/pages/ChallengesPage';
 import ScrollToTop from './pages/Landing/components/ScrollToTop';
 import SubAdminLogin from './pages/Admin/SubAdminLogin';
 import BrokerLogin from './pages/Admin/BrokerLogin';
@@ -2390,7 +2391,7 @@ function App({ user, onLogout }) {
       {/* Header with Navigation */}
       <header className="header">
         <div className="header-left">
-          <span className="logo">Bharat Funded Trader</span>
+          <span className="logo">Bharath Funded Trader</span>
         </div>
         <div className="header-nav">
           <button
@@ -4581,6 +4582,7 @@ function AppRouter() {
         <Route path="/instruments" element={<InstrumentsPage />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/results" element={<ResultsPage />} />
+        <Route path="/challenges" element={<ChallengesPage />} />
         <Route path="/login" element={
           auth.isAuthenticated ? <Navigate to="/app" replace /> : <Login onLogin={handleLogin} />
         } />

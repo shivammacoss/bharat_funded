@@ -14,7 +14,7 @@ export default function LegalPageShell({ title, subtitle, lastUpdated, children 
       <div className="auth-card terms-card">
         <div className="auth-header">
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <h1 className="auth-logo">Bharat Funded Trader</h1>
+            <h1 className="auth-logo">Bharath Funded Trader</h1>
           </Link>
           <p className="auth-subtitle">{title}</p>
           {subtitle && <p className="password-hint" style={{ marginTop: 8 }}>{subtitle}</p>}

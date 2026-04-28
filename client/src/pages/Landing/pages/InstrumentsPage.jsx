@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import TopBanner from '../components/TopBanner';
 import '../landing.css';
 
 const instruments = [
@@ -10,7 +11,7 @@ const instruments = [
     exchange: 'NSE',
     type: 'Index Futures & Options',
     description: 'India\'s benchmark index tracking the top 50 companies listed on NSE. The most liquid and widely traded index derivative in India — perfect for intraday scalping and swing strategies.',
-    lotSize: '25 units',
+    lotSize: '65 units',
     tradingHours: '9:15 AM – 3:30 PM IST',
     marginRequired: 'As per plan capital',
     allowed: ['Futures Buy', 'Options Buy (CE/PE)'],
@@ -21,7 +22,7 @@ const instruments = [
     exchange: 'NSE',
     type: 'Index Futures & Options',
     description: 'Tracks the performance of the 12 most liquid and large capitalised banking stocks. Known for higher volatility and wider intraday ranges — favoured by experienced traders who thrive on momentum.',
-    lotSize: '15 units',
+    lotSize: '35 units',
     tradingHours: '9:15 AM – 3:30 PM IST',
     marginRequired: 'As per plan capital',
     allowed: ['Futures Buy', 'Options Buy (CE/PE)'],
@@ -32,7 +33,7 @@ const instruments = [
     exchange: 'BSE',
     type: 'Index Futures & Options',
     description: 'The oldest index in India, representing 30 well-established companies on BSE. Lower lot size makes it accessible for traders who prefer tighter risk management and smaller position sizes.',
-    lotSize: '10 units',
+    lotSize: '20 units',
     tradingHours: '9:15 AM – 3:30 PM IST',
     marginRequired: 'As per plan capital',
     allowed: ['Futures Buy', 'Options Buy (CE/PE)'],
@@ -52,6 +53,7 @@ const rules = [
 export default function InstrumentsPage() {
   return (
     <div className="landing-page min-h-screen bg-white">
+      <TopBanner />
       <Navbar />
 
       {/* Hero */}

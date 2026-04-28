@@ -5,7 +5,7 @@ const SAMPLE_VARS = {
   code: '123456',
   otp: '123456',
   expiryMinutes: '10',
-  brandName: 'Bharat Funded Trader',
+  brandName: 'Bharath Funded Trader',
   supportEmail: 'support@example.com',
   userName: 'Demo User',
   loginUrl: 'https://example.com/login',

@@ -13,7 +13,7 @@ const landingConfig = {
 
   // ─── BRAND ─────────────────────────────────────
   brand: {
-    name: 'Bharat Funded Trader',
+    name: 'Bharath Funded Trader',
     tagline: 'India Ka Apna Funded Trader Platform',
     logo: '/landing/img/bharatfunded-logo.svg',
   },
@@ -103,7 +103,7 @@ const landingConfig = {
       name: 'Rajesh K.',
       role: 'Intraday Trader',
       avatar: 'RK',
-      text: 'Bharat Funded Trader gave me the structure I needed. The rules keep me disciplined and the payouts are real.',
+      text: 'Bharath Funded Trader gave me the structure I needed. The rules keep me disciplined and the payouts are real.',
       rating: 5,
     },
     {
@@ -125,7 +125,7 @@ const landingConfig = {
   // ─── CTA BANNER ───────────────────────────────
   ctaBanner: {
     title: 'Ready to Start Your Funded Trading Journey?',
-    subtitle: 'Join thousands of traders who trust Bharat Funded Trader for structured evaluations and real rewards.',
+    subtitle: 'Join thousands of traders who trust Bharath Funded Trader for structured evaluations and real rewards.',
     buttonText: 'Start Your Journey',
     buttonLink: '/register',
   },
@@ -150,8 +150,8 @@ const landingConfig = {
         { text: 'Refund Policy', href: '/refund-policy' },
       ],
     },
-    copyright: `© ${new Date().getFullYear()} Bharat Funded Trader. All rights reserved.`,
-    disclaimer: 'Bharat Funded Trader is not a broker and does not execute live trades on NSE or BSE. The platform provides simulated evaluations and performance-based reward programs. Trading involves risk. Please read all terms before participating.',
+    copyright: `© ${new Date().getFullYear()} Bharath Funded Trader. All rights reserved.`,
+    disclaimer: 'Bharath Funded Trader is not a broker and does not execute live trades on NSE or BSE. The platform provides simulated evaluations and performance-based reward programs. Trading involves risk. Please read all terms before participating.',
   },
 
   // ─── SECTION VISIBILITY ───────────────────────

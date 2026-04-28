@@ -10,7 +10,7 @@ export default function PrivacyPolicy() {
       <section className="terms-section">
         <h2>1. Introduction</h2>
         <p>
-          Bharat Funded Trader (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) respects your privacy. This policy describes how we handle
+          Bharath Funded Trader (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;) respects your privacy. This policy describes how we handle
           personal data when you use our website, applications, and related services (the &quot;Platform&quot;).
         </p>
       </section>

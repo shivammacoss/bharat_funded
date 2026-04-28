@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import TopBanner from '../components/TopBanner';
 import '../landing.css';
 
 const highlights = [
@@ -27,7 +28,7 @@ const testimonials = [
     initials: 'VN',
     name: 'Vikram Nair',
     role: 'Intraday Trader, Pune',
-    quote: 'I was sceptical at first. Every prop firm I had seen was either US-based or had hidden conditions. Bharat Funded Trader was different — INR payments, Indian market hours, and the rules were exactly what they said. I passed in 8 days and received my payout in my bank account within a week. No drama.',
+    quote: 'I was sceptical at first. Every prop firm I had seen was either US-based or had hidden conditions. Bharath Funded Trader was different — INR payments, Indian market hours, and the rules were exactly what they said. I passed in 8 days and received my payout in my bank account within a week. No drama.',
   },
   {
     initials: 'AS',
@@ -46,6 +47,7 @@ const testimonials = [
 export default function ResultsPage() {
   return (
     <div className="landing-page min-h-screen bg-white">
+      <TopBanner />
       <Navbar />
 
       {/* Hero */}

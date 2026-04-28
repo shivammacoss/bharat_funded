@@ -36,12 +36,18 @@ export default function TradingPlatform() {
             </h2>
 
             {/* Platform image */}
-            <div className="rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.1)]">
+            <div className="rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.1)] bg-[#FAFBFD] border border-[#E8EAF0]">
               <img
-                src="/landing/img/card1.png"
-                alt="Bharat Funded Trader Platform"
+                src="/landing/img/platform-preview.png"
+                alt="Bharath Funded Trader Platform"
                 className="w-full h-auto block"
+                loading="lazy"
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
               />
+              <div className="hidden flex-col items-center justify-center text-[#6B7080] p-12 text-center aspect-[4/3]">
+                <p className="text-sm font-semibold mb-1">Platform preview image</p>
+                <p className="text-xs">Add at /landing/img/platform-preview.png</p>
+              </div>
             </div>
           </div>
 

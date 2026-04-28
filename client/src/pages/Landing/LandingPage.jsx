@@ -137,7 +137,7 @@ export default function LandingPage() {
                         <div className="lp-section-header">
                             <span className="lp-section-label">Testimonials</span>
                             <h2>Loved by Traders</h2>
-                            <p>See what our community has to say about Bharat Funded Trader.</p>
+                            <p>See what our community has to say about Bharath Funded Trader.</p>
                         </div>
                         <div className="lp-testimonials-grid">
                             {testimonials.map((t, i) => (

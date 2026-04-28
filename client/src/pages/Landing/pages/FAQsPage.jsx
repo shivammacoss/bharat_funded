@@ -3,12 +3,13 @@ import { ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import TopBanner from '../components/TopBanner';
 import '../landing.css';
 
 const faqCategories = {
   'General': [
-    { q: 'What is Bharat Funded Trader?', a: 'Bharat Funded Trader is a simulated prop firm evaluation platform built for Indian intraday traders. You trade with virtual capital under defined rules and earn rewards upon successful completion. We are not a broker and do not execute live trades on NSE or BSE.' },
-    { q: 'Is this legal in India?', a: 'Yes. Bharat Funded Trader operates as a simulated evaluation platform. It is not a broker or SEBI-registered intermediary. Simulated trading is legal in India. We provide a skill evaluation service, not investment advice or brokerage services.' },
+    { q: 'What is Bharath Funded Trader?', a: 'Bharath Funded Trader is a simulated prop firm evaluation platform built for Indian intraday traders. You trade with virtual capital under defined rules and earn rewards upon successful completion. We are not a broker and do not execute live trades on NSE or BSE.' },
+    { q: 'Is this legal in India?', a: 'Yes. Bharath Funded Trader operates as a simulated evaluation platform. It is not a broker or SEBI-registered intermediary. Simulated trading is legal in India. We provide a skill evaluation service, not investment advice or brokerage services.' },
     { q: 'Who is this platform for?', a: 'This platform is built for serious Indian intraday traders who want to prove their trading discipline and earn performance-based rewards without risking their own capital. Whether you trade NIFTY, BANKNIFTY or SENSEX — if you have a consistent strategy, this is for you.' },
   ],
   'Trading': [
@@ -52,6 +53,7 @@ export default function FAQsPage() {
 
   return (
     <div className="landing-page min-h-screen bg-white">
+      <TopBanner />
       <Navbar />
 
       {/* Hero */}
@@ -62,7 +64,7 @@ export default function FAQsPage() {
             Frequently asked <span className="text-[#2B4EFF]">questions</span>
           </h1>
           <p className="text-base sm:text-lg text-[#6B7080] max-w-2xl mx-auto leading-relaxed">
-            Everything you need to know about Bharat Funded Trader. Can't find what you're looking for?{' '}
+            Everything you need to know about Bharath Funded Trader. Can't find what you're looking for?{' '}
             <Link to="/contact-us" className="text-[#2B4EFF] hover:underline">Contact our team</Link>.
           </p>
         </div>

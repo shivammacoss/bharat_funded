@@ -1022,7 +1022,7 @@ function Admin() {
     return (
       <div className="auth-container">
         <div className="auth-card" style={{ textAlign: 'center', padding: '60px 40px' }}>
-          <h1 className="auth-logo">Bharat Funded Trader</h1>
+          <h1 className="auth-logo">Bharath Funded Trader</h1>
           <p className="auth-subtitle">Verifying admin session...</p>
         </div>
       </div>
@@ -1291,7 +1291,7 @@ function Admin() {
       {/* Sidebar */}
       <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
-          <span className="sidebar-logo">{sidebarCollapsed ? 'SP' : 'Bharat Funded Trader Admin'}</span>
+          <span className="sidebar-logo">{sidebarCollapsed ? 'SP' : 'Bharath Funded Trader Admin'}</span>
           <button
             className="sidebar-toggle"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
