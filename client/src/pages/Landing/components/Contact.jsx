@@ -1,30 +1,26 @@
-import { Phone, Mail, MessageCircle, MessageSquare, Send } from 'lucide-react';
+import { Phone, Mail, MessageSquare, Send } from 'lucide-react';
 import { useState } from 'react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
+
+const SUPPORT_EMAIL = 'bharathfundedtradersupport@gmail.com';
 
 const contactMethods = [
   {
     icon: Phone,
     label: 'Phone Support',
-    value: '+91 1800-123-4567',
+    value: '+91 8367045119',
     sub: 'Mon–Sat, 9AM–6PM IST',
   },
   {
     icon: Mail,
     label: 'Email Support',
-    value: 'support@bharatfundedtrader.in',
+    value: SUPPORT_EMAIL,
     sub: 'Response within 2 hours',
-  },
-  {
-    icon: MessageCircle,
-    label: 'Live Chat',
-    value: 'Chat with us now',
-    sub: 'Available 24/7',
   },
   {
     icon: MessageSquare,
     label: 'WhatsApp',
-    value: '+91 98765 43210',
+    value: '+91 8367045119',
     sub: 'Mon–Sat, 9AM–9PM IST',
   },
 ];
@@ -37,6 +33,13 @@ export default function Contact() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const subject = encodeURIComponent(
+      formData.subject ? `[Support] ${formData.subject}` : '[Support] New enquiry'
+    );
+    const body = encodeURIComponent(
+      `Name: ${formData.name}\nEmail: ${formData.email}\nSubject: ${formData.subject}\n\n${formData.message}`
+    );
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 3000);
   };

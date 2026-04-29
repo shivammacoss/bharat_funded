@@ -25,7 +25,7 @@ const landingConfig = {
     subtitle: 'Trade NIFTY, BANKNIFTY & SENSEX in a structured simulated evaluation. Pass the challenge, follow risk rules, and earn real performance rewards. Built for serious Indian intraday traders.',
     primaryCTA: {
       text: 'Explore Plans',
-      link: '/register',
+      link: '/pricing',
     },
     secondaryCTA: {
       text: 'Try For Free',

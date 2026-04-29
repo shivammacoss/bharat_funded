@@ -4,6 +4,7 @@ import { ArrowRight, Check, Tag } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
+import PricingTierCard from '../components/PricingTierCard';
 import '../landing.css';
 
 const plans = {
@@ -126,49 +127,7 @@ export default function PricingPage() {
           {/* Tier Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {activePlan.tiers.map((tier) => (
-              <div
-                key={tier.capital}
-                className={`rounded-2xl p-6 sm:p-8 transition-all relative ${
-                  tier.popular
-                    ? 'bg-[#0C0C1D] text-white border-2 border-[#2B4EFF] shadow-[0_8px_40px_rgba(43,78,255,0.2)]'
-                    : 'bg-white border border-[#E8EAF0] shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:border-[#2B4EFF] hover:shadow-[0_8px_32px_rgba(43,78,255,0.08)]'
-                }`}
-              >
-                {tier.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2B4EFF] text-white text-xs font-bold px-4 py-1 rounded-full">
-                    Most chosen
-                  </span>
-                )}
-
-                <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${tier.popular ? 'text-[#9AA0B4]' : 'text-[#6B7080]'}`}>
-                  Account Size
-                </p>
-                <div className={`text-3xl sm:text-4xl font-extrabold mb-4 ${tier.popular ? 'text-white' : 'text-[#0D0F1A]'}`} style={{ letterSpacing: '-0.03em' }}>
-                  {tier.capital}
-                </div>
-
-                <div className={`pb-5 mb-5 border-b ${tier.popular ? 'border-[rgba(255,255,255,0.1)]' : 'border-[#E8EAF0]'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${tier.popular ? 'text-[#9AA0B4]' : 'text-[#6B7080]'}`}>
-                    One-time fee
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-extrabold text-[#2B4EFF]">
-                      {tier.price}
-                    </span>
-                  </div>
-                </div>
-
-                <Link
-                  to="/register"
-                  className={`w-full flex items-center justify-center gap-2 py-3 rounded-full text-sm font-semibold transition-all ${
-                    tier.popular
-                      ? 'bg-[#2B4EFF] text-white hover:bg-[#4B6AFF]'
-                      : 'border border-[#E8EAF0] text-[#0D0F1A] hover:border-[#2B4EFF] hover:text-[#2B4EFF]'
-                  }`}
-                >
-                  Get this plan <ArrowRight size={14} />
-                </Link>
-              </div>
+              <PricingTierCard key={tier.capital} tier={tier} plan={tab} />
             ))}
           </div>
 

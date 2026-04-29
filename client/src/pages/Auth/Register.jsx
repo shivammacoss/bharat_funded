@@ -125,7 +125,7 @@ function Register({ onLogin }) {
         <div className="auth-card" style={{ maxWidth: '440px', padding: '32px 28px' }}>
           {/* Header */}
           <div className="auth-header" style={{ marginBottom: '24px' }}>
-            <img src="/landing/img/bharat funded trader landscape.png" alt="Bharath Funded Trader" className="auth-logo-img" />
+            <img src="/landing/img/bharat_funded_white_logo.png" alt="Bharath Funded Trader" className="auth-logo-img" />
             <p className="auth-subtitle">Create your account to start trading</p>
           </div>
 

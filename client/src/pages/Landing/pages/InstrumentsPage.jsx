@@ -14,8 +14,8 @@ const instruments = [
     lotSize: '65 units',
     tradingHours: '9:15 AM – 3:30 PM IST',
     marginRequired: 'As per plan capital',
-    allowed: ['Futures Buy', 'Options Buy (CE/PE)'],
-    notAllowed: ['Options Selling', 'Overnight Positions'],
+    allowed: ['Options Buy', 'Options Sell'],
+    notAllowed: ['Futures', 'Overnight Positions', 'Copy Trading', 'Algo Trading'],
   },
   {
     name: 'BANKNIFTY',
@@ -25,8 +25,8 @@ const instruments = [
     lotSize: '35 units',
     tradingHours: '9:15 AM – 3:30 PM IST',
     marginRequired: 'As per plan capital',
-    allowed: ['Futures Buy', 'Options Buy (CE/PE)'],
-    notAllowed: ['Options Selling', 'Overnight Positions'],
+    allowed: ['Options Buy', 'Options Sell'],
+    notAllowed: ['Futures', 'Overnight Positions', 'Copy Trading', 'Algo Trading'],
   },
   {
     name: 'SENSEX',
@@ -36,8 +36,8 @@ const instruments = [
     lotSize: '20 units',
     tradingHours: '9:15 AM – 3:30 PM IST',
     marginRequired: 'As per plan capital',
-    allowed: ['Futures Buy', 'Options Buy (CE/PE)'],
-    notAllowed: ['Options Selling', 'Overnight Positions'],
+    allowed: ['Options Buy', 'Options Sell'],
+    notAllowed: ['Futures', 'Overnight Positions', 'Copy Trading', 'Algo Trading'],
   },
 ];
 
