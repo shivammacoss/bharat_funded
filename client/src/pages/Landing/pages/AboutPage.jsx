@@ -76,7 +76,7 @@ const reasons = [
 ];
 
 const team = [
-  { initials: 'RK', photo: '/landing/img/Rajesh.jpeg', name: 'Rajesh Kumar', role: 'Founder & CEO', bio: '15+ years in Indian capital markets. Former prop desk head at a Mumbai-based trading firm. Started Bharath Funded after losing patience with foreign prop firms that did not understand the Indian market.' },
+  { initials: 'VK', photo: '/landing/img/Rajesh.jpeg', name: 'Vijaya Kumar', role: 'Founder & CEO', bio: '15+ years in Indian capital markets. Former prop desk head at a Mumbai-based trading firm. Started Bharath Funded after losing patience with foreign prop firms that did not understand the Indian market.' },
   { initials: 'SP', photo: '/landing/img/Sneha.jpeg', name: 'Sneha Patel', role: 'Head of Risk', bio: 'Ex-risk analyst at a leading Indian brokerage. Designs every drawdown rule and consistency check on the platform. Believes good rules protect traders from themselves.' },
   { initials: 'AV', photo: '/landing/img/Amit.jpeg', name: 'Amit Verma', role: 'CTO & Co-founder', bio: 'Full-stack engineer, decade of fintech experience. Built the simulated trading engine from scratch in his Bandra apartment. Still writes code on weekends because he cannot help it.' },
   { initials: 'PD', photo: '/landing/img/Priya.jpeg', name: 'Priya Desai', role: 'Head of Operations', bio: 'Handles KYC, payouts, and trader support. The reason payouts go out on time. The reason traders actually get replies to their queries.' },
