@@ -116,41 +116,6 @@ function ZerodhaConnect() {
     }
   };
 
-  // Manual token paste fallback — for when the OAuth redirect URL is
-  // unreachable (e.g. DNS not pointing to this server). The admin copies
-  // the `request_token` from the failed callback URL in their browser
-  // and pastes it here to complete the session.
-  const [manualToken, setManualToken] = useState('');
-  const [manualConnecting, setManualConnecting] = useState(false);
-
-  const connectWithManualToken = async () => {
-    const token = manualToken.trim();
-    if (!token) {
-      setMessage({ type: 'error', text: 'Paste the request_token first' });
-      return;
-    }
-    setManualConnecting(true);
-    try {
-      const res = await fetch(`${API_URL}/api/zerodha/connect-with-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_token: token })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMessage({ type: 'success', text: 'Zerodha connected!' });
-        setManualToken('');
-        fetchSettings?.();
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to connect' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Network error: ' + error.message });
-    } finally {
-      setManualConnecting(false);
-    }
-  };
-
   const disconnectZerodha = async () => {
     if (!confirm('Are you sure you want to disconnect from Zerodha?')) return;
     
@@ -472,49 +437,6 @@ function ZerodhaConnect() {
           )}
         </div>
 
-        {/* Manual token fallback — use this when Zerodha redirects to a URL
-            that doesn't resolve (DNS_PROBE_FINISHED_NXDOMAIN). Copy the
-            request_token query param from the broken URL and paste here. */}
-        {(!settings.isConnected || settings.isTokenExpired) && (
-          <div style={{
-            marginTop: 20, padding: 14, borderRadius: 10,
-            background: 'color-mix(in srgb, #f59e0b 8%, var(--bg-secondary))',
-            border: '1px solid color-mix(in srgb, #f59e0b 28%, var(--border-color))'
-          }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', marginBottom: 6 }}>
-              🛠 Manual token fallback
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.55 }}>
-              If the "Connect to Zerodha" button redirects you to a broken page
-              (e.g. <code>DNS_PROBE_FINISHED_NXDOMAIN</code> on a domain you haven't
-              pointed at this server yet), copy the <code>request_token</code> value
-              from that browser URL and paste it below:
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input
-                type="text"
-                value={manualToken}
-                onChange={(e) => setManualToken(e.target.value)}
-                placeholder="Paste request_token here"
-                className="form-input"
-                style={{ flex: 1, minWidth: 240 }}
-              />
-              <button
-                type="button"
-                onClick={connectWithManualToken}
-                disabled={manualConnecting || !manualToken.trim()}
-                className="btn-primary"
-                style={{ opacity: manualConnecting || !manualToken.trim() ? 0.6 : 1 }}
-              >
-                {manualConnecting ? 'Connecting…' : 'Connect with Token'}
-              </button>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8 }}>
-              Tokens expire within ~5 minutes. If it fails, click "Connect to Zerodha"
-              again and paste the fresh token immediately.
-            </div>
-          </div>
-        )}
       </div>
 
       {/* API Credentials */}
