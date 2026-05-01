@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check, Tag } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -6,66 +6,125 @@ import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
 import '../landing.css';
 
-const plans = {
-  'Instant': {
-    description: 'Skip the evaluation. Pay the fee, get your account, start trading the same day. Simple.',
-    tiers: [
-      { capital: '₹1,00,000',  price: '₹6,000'  },
-      { capital: '₹2,00,000',  price: '₹10,000' },
-      { capital: '₹5,00,000',  price: '₹18,000', popular: true },
-      { capital: '₹10,00,000', price: '₹29,000' },
-      { capital: '₹25,00,000', price: '₹50,000' },
-    ],
-    features: [
-      'No evaluation. Account is live from day one.',
-      'NIFTY, BANKNIFTY and SENSEX — that\'s it. No unnecessary clutter.',
-      'Same risk rules across all account sizes.',
-      'Payouts go straight to your bank after KYC.',
-      'WhatsApp support. We actually reply.',
-    ],
-  },
-  '1-Step': {
-    description: 'One evaluation phase. Hit the target without breaking the rules and you\'re funded. Most traders pick this one.',
-    tiers: [
-      { capital: '₹1,00,000',  price: '₹4,600'  },
-      { capital: '₹2,00,000',  price: '₹7,600'  },
-      { capital: '₹5,00,000',  price: '₹12,600', popular: true },
-      { capital: '₹10,00,000', price: '₹19,600' },
-      { capital: '₹25,00,000', price: '₹35,000' },
-      { capital: '₹50,00,000', price: '₹55,000' },
-    ],
-    features: [
-      'Single phase — no second round.',
-      'Same instruments — NIFTY, BANKNIFTY, SENSEX.',
-      'Targets and limits are written clearly. No surprises later.',
-      'Pass once and your fee is credited back on first payout.',
-      'Take your time. No deadline pressure.',
-    ],
-  },
-  '2-Step': {
-    description: 'Two phases, lowest cost. Built for traders who want to prove themselves without paying upfront for instant access.',
-    tiers: [
-      { capital: '₹1,00,000',  price: '₹3,000'  },
-      { capital: '₹2,00,000',  price: '₹5,000'  },
-      { capital: '₹5,00,000',  price: '₹8,000', popular: true },
-      { capital: '₹10,00,000', price: '₹13,000' },
-      { capital: '₹25,00,000', price: '₹22,000' },
-      { capital: '₹50,00,000', price: '₹36,000' },
-    ],
-    features: [
-      'Two phases — Qualifier first, then Validator.',
-      'Cheapest entry point if you\'re testing the waters.',
-      'Same NIFTY, BANKNIFTY and SENSEX trading.',
-      'Phase 2 has slightly easier targets — you earned it.',
-      'Fee credited back when you receive your first payout.',
-    ],
-  },
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// Map admin stepsCount → tab name shown on the pricing page.
+const STEP_TO_TAB = { 0: 'Instant', 1: '1-Step', 2: '2-Step' };
+const TAB_TO_STEP = { 'Instant': 0, '1-Step': 1, '2-Step': 2 };
+
+// Static plan-level features per type — these describe the *experience* (KYC,
+// payouts, support) rather than per-tier numbers, so they don't live in the
+// admin Challenge schema. Edit here if marketing copy changes.
+const FEATURES_BY_TAB = {
+  'Instant': [
+    'No evaluation. Account is live from day one.',
+    'NIFTY, BANKNIFTY and SENSEX — that\'s it. No unnecessary clutter.',
+    'Same risk rules across all account sizes.',
+    'Payouts go straight to your bank after KYC.',
+    'WhatsApp support. We actually reply.'
+  ],
+  '1-Step': [
+    'Single phase — no second round.',
+    'Same instruments — NIFTY, BANKNIFTY, SENSEX.',
+    'Targets and limits are written clearly. No surprises later.',
+    'Pass once and your fee is credited back on first payout.',
+    'Take your time. No deadline pressure.'
+  ],
+  '2-Step': [
+    'Two phases — Qualifier first, then Validator.',
+    'Cheapest entry point if you\'re testing the waters.',
+    'Same NIFTY, BANKNIFTY and SENSEX trading.',
+    'Phase 2 has slightly easier targets — you earned it.',
+    'Fee credited back when you receive your first payout.'
+  ]
+};
+
+const DESC_BY_TAB = {
+  'Instant': 'Skip the evaluation. Pay the fee, get your account, start trading the same day. Simple.',
+  '1-Step': 'One evaluation phase. Hit the target without breaking the rules and you\'re funded. Most traders pick this one.',
+  '2-Step': 'Two phases, lowest cost. Built for traders who want to prove themselves without paying upfront for instant access.'
+};
+
+const formatINR = (n) => {
+  if (n == null || isNaN(n)) return '';
+  return '₹' + Number(n).toLocaleString('en-IN');
 };
 
 export default function PricingPage() {
+  const [challenges, setChallenges] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('Instant');
   const [coupon, setCoupon] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/prop/challenges`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.challenges)) {
+          setChallenges(data.challenges);
+        }
+      })
+      .catch(() => { /* ignored — tabs render with empty tiers as a fallback */ })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Pull WELCOME10 = 10% off from the top banner for the discounted price line
+  // shown on each card. Coupon code text is intentionally hard-coded here so the
+  // marketing card matches the banner copy without needing another admin field.
+  const PROMO_CODE = 'WELCOME10';
+  const PROMO_DISCOUNT = 0.10;
+
+  // Build { tabName: { description, tiers: [{ fundSize, challengeFee, popular, label, rules }], features } }
+  // from live admin challenges. Each tier card needs both pricing (for the top
+  // block) and the rule snapshot (for the quick rules list under the price), so
+  // we attach the parent challenge's rules onto every tier — same plan, same rules.
+  const plans = useMemo(() => {
+    const out = {};
+    for (const c of challenges) {
+      const tabName = STEP_TO_TAB[c.stepsCount];
+      if (!tabName) continue;
+      const r = c.rules || {};
+      const target = c.stepsCount === 0
+        ? r.profitTargetInstantPercent
+        : r.profitTargetPhase1Percent;
+      const cardRules = [
+        target != null && { key: 'Profit Target', value: `${target}%` },
+        r.maxDailyDrawdownPercent != null && { key: 'Daily Drawdown', value: `${r.maxDailyDrawdownPercent}%` },
+        r.maxOverallDrawdownPercent != null && { key: 'Max Drawdown', value: `${r.maxOverallDrawdownPercent}%` },
+        r.tradingDaysRequired != null && { key: 'Min Trading Days', value: `${r.tradingDaysRequired} days` }
+      ].filter(Boolean);
+
+      const rawTiers = (c.tiers && c.tiers.length > 0)
+        ? c.tiers
+        : [{ fundSize: c.fundSize, challengeFee: c.challengeFee, isPopular: true, label: '' }];
+
+      const tiers = rawTiers.map(t => ({
+        fundSize: t.fundSize,
+        challengeFee: t.challengeFee,
+        capital: formatINR(t.fundSize),
+        price: formatINR(t.challengeFee),
+        discountedPrice: formatINR(Math.round(t.challengeFee * (1 - PROMO_DISCOUNT))),
+        popular: !!t.isPopular,
+        label: t.label || '',
+        rules: cardRules
+      }));
+
+      out[tabName] = {
+        description: c.description || DESC_BY_TAB[tabName],
+        tiers,
+        features: FEATURES_BY_TAB[tabName]
+      };
+    }
+    return out;
+  }, [challenges]);
+
+  // Pick a sensible default tab once data loads (in case Instant isn't available)
+  useEffect(() => {
+    if (!plans[tab] && Object.keys(plans).length > 0) {
+      setTab(Object.keys(plans)[0]);
+    }
+  }, [plans, tab]);
 
   const applyCoupon = () => {
     if (coupon.trim()) {
@@ -75,6 +134,7 @@ export default function PricingPage() {
   };
 
   const activePlan = plans[tab];
+  const tabOrder = ['Instant', '1-Step', '2-Step'].filter(t => plans[t]);
 
   return (
     <div className="landing-page min-h-screen bg-white">
@@ -98,95 +158,123 @@ export default function PricingPage() {
       {/* Tab switcher + Pricing */}
       <section className="px-6 pb-16 md:pb-24">
         <div className="max-w-6xl mx-auto">
+          {loading && (
+            <div className="text-center text-[#6B7080] py-10">Loading pricing…</div>
+          )}
 
-          {/* Tabs */}
-          <div className="flex justify-center mb-8 md:mb-10">
-            <div className="inline-flex bg-[#F0F2F8] rounded-full p-1 flex-wrap">
-              {Object.keys(plans).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`px-5 sm:px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                    tab === t
-                      ? 'bg-[#2B4EFF] text-white shadow-[0_4px_12px_rgba(43,78,255,0.3)]'
-                      : 'text-[#6B7080] hover:text-[#0D0F1A]'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+          {!loading && tabOrder.length === 0 && (
+            <div className="text-center text-[#6B7080] py-10">
+              No active plans. The team is adding new challenges — please check back soon.
             </div>
-          </div>
+          )}
 
-          {/* Description */}
-          <p className="text-center text-base text-[#6B7080] max-w-2xl mx-auto mb-10 md:mb-12">
-            {activePlan.description}
-          </p>
-
-          {/* Tier Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {activePlan.tiers.map((tier) => (
-              <div
-                key={tier.capital}
-                className={`rounded-2xl p-6 sm:p-8 transition-all relative ${
-                  tier.popular
-                    ? 'bg-[#0C0C1D] text-white border-2 border-[#2B4EFF] shadow-[0_8px_40px_rgba(43,78,255,0.2)]'
-                    : 'bg-white border border-[#E8EAF0] shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:border-[#2B4EFF] hover:shadow-[0_8px_32px_rgba(43,78,255,0.08)]'
-                }`}
-              >
-                {tier.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2B4EFF] text-white text-xs font-bold px-4 py-1 rounded-full">
-                    Most chosen
-                  </span>
-                )}
-
-                <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${tier.popular ? 'text-[#9AA0B4]' : 'text-[#6B7080]'}`}>
-                  Account Size
-                </p>
-                <div className={`text-3xl sm:text-4xl font-extrabold mb-4 ${tier.popular ? 'text-white' : 'text-[#0D0F1A]'}`} style={{ letterSpacing: '-0.03em' }}>
-                  {tier.capital}
+          {!loading && tabOrder.length > 0 && activePlan && (
+            <>
+              {/* Tabs */}
+              <div className="flex justify-center mb-8 md:mb-10">
+                <div className="inline-flex bg-[#F0F2F8] rounded-full p-1 flex-wrap">
+                  {tabOrder.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setTab(t)}
+                      className={`px-5 sm:px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                        tab === t
+                          ? 'bg-[#2B4EFF] text-white shadow-[0_4px_12px_rgba(43,78,255,0.3)]'
+                          : 'text-[#6B7080] hover:text-[#0D0F1A]'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
-
-                <div className={`pb-5 mb-5 border-b ${tier.popular ? 'border-[rgba(255,255,255,0.1)]' : 'border-[#E8EAF0]'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${tier.popular ? 'text-[#9AA0B4]' : 'text-[#6B7080]'}`}>
-                    One-time fee
-                  </p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-extrabold text-[#2B4EFF]">
-                      {tier.price}
-                    </span>
-                  </div>
-                </div>
-
-                <Link
-                  to="/register"
-                  className={`w-full flex items-center justify-center gap-2 py-3 rounded-full text-sm font-semibold transition-all ${
-                    tier.popular
-                      ? 'bg-[#2B4EFF] text-white hover:bg-[#4B6AFF]'
-                      : 'border border-[#E8EAF0] text-[#0D0F1A] hover:border-[#2B4EFF] hover:text-[#2B4EFF]'
-                  }`}
-                >
-                  Get this plan <ArrowRight size={14} />
-                </Link>
               </div>
-            ))}
-          </div>
 
-          {/* What's included */}
-          <div className="bg-[#FAFBFD] border border-[#E8EAF0] rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto">
-            <h3 className="text-lg font-bold text-[#0D0F1A] mb-2">
-              What you get with {tab}
-            </h3>
-            <p className="text-sm text-[#6B7080] mb-5">Same across every account size in this plan.</p>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {activePlan.features.map((f) => (
-                <li key={f} className="flex items-start gap-3">
-                  <Check size={16} className="text-[#2B4EFF] shrink-0 mt-0.5" />
-                  <span className="text-sm text-[#6B7080]">{f}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+              {/* Description */}
+              <p className="text-center text-base text-[#6B7080] max-w-2xl mx-auto mb-10 md:mb-12">
+                {activePlan.description}
+              </p>
+
+              {/* Tier Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                {activePlan.tiers.map((tier) => (
+                  <div
+                    key={tier.capital + '-' + tier.price}
+                    className={`rounded-2xl p-6 sm:p-8 bg-white relative transition-all ${
+                      tier.popular
+                        ? 'border-2 border-[#2B4EFF] shadow-[0_8px_40px_rgba(43,78,255,0.18)]'
+                        : 'border border-[#E8EAF0] shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:border-[#2B4EFF] hover:shadow-[0_8px_32px_rgba(43,78,255,0.08)]'
+                    }`}
+                  >
+                    {tier.popular && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2B4EFF] text-white text-xs font-bold px-4 py-1 rounded-full">
+                        {tier.label || 'Most chosen'}
+                      </span>
+                    )}
+
+                    {/* Header: capital + plan label inline */}
+                    <div className="text-center mb-4">
+                      <span className="text-2xl sm:text-3xl font-extrabold text-[#0D0F1A]" style={{ letterSpacing: '-0.03em' }}>
+                        {tier.capital}
+                      </span>
+                      <span className="text-base sm:text-lg font-semibold text-[#6B7080] ml-2 uppercase tracking-wide">
+                        {tab}
+                      </span>
+                    </div>
+
+                    {/* Price row: strikethrough original + discounted + /One Time */}
+                    <div className="text-center mb-1">
+                      <span className="text-base text-[#9AA0B4] line-through mr-2">{tier.price}</span>
+                      <span className="text-2xl sm:text-3xl font-extrabold text-[#2B4EFF]">{tier.discountedPrice}</span>
+                      <span className="text-sm text-[#6B7080] ml-1">/ One Time</span>
+                    </div>
+                    <p className="text-center text-xs font-semibold text-[#2B4EFF] uppercase tracking-wider mb-5">
+                      With code {PROMO_CODE}
+                    </p>
+
+                    <div className="border-t border-[#E8EAF0] pt-5 mb-5 space-y-3">
+                      {tier.rules.map((rule) => (
+                        <div key={rule.key} className="flex justify-between items-center">
+                          <span className="text-sm text-[#6B7080]">{rule.key}</span>
+                          <span className="text-sm font-bold text-[#0D0F1A]">{rule.value}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-3">
+                      <Link
+                        to="/challenges"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-sm font-semibold border border-[#E8EAF0] text-[#0D0F1A] hover:border-[#2B4EFF] hover:text-[#2B4EFF] transition-all"
+                      >
+                        Funded Rules
+                      </Link>
+                      <Link
+                        to="/register"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-sm font-semibold bg-[#2B4EFF] text-white hover:bg-[#4B6AFF] transition-all"
+                      >
+                        Select Platform
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* What's included */}
+              <div className="bg-[#FAFBFD] border border-[#E8EAF0] rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto">
+                <h3 className="text-lg font-bold text-[#0D0F1A] mb-2">
+                  What you get with {tab}
+                </h3>
+                <p className="text-sm text-[#6B7080] mb-5">Same across every account size in this plan.</p>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {activePlan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-3">
+                      <Check size={16} className="text-[#2B4EFF] shrink-0 mt-0.5" />
+                      <span className="text-sm text-[#6B7080]">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </div>
       </section>
 

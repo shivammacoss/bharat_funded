@@ -4453,11 +4453,26 @@ function ProtectedRoute({ children, isAuthenticated }) {
   return children;
 }
 
-// Check if we're on admin subdomain
+// Check if we're on admin subdomain (or localhost dev hitting /admin)
 const isAdminSubdomain = () => {
   const hostname = window.location.hostname;
-  return hostname.startsWith('admin.');
+  if (hostname.startsWith('admin.')) return true;
+  // Dev convenience: on localhost / 127.0.0.1, treat /admin as the admin app
+  // so devs don't have to set up admin.localhost in their hosts file.
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+  if (isLocalHost && window.location.pathname.startsWith('/admin')) return true;
+  return false;
 };
+
+// Cross-origin redirect component — <Navigate> treats absolute URLs as
+// relative paths and would append them to the current pathname (causing the
+// /admin/https:/.../https:/... loop), so use a real browser navigation.
+function ExternalRedirect({ to }) {
+  useEffect(() => {
+    window.location.replace(to);
+  }, [to]);
+  return null;
+}
 
 // Main App with Router
 function AppRouter() {
@@ -4664,7 +4679,7 @@ function AppRouter() {
         </Route>
 
         {/* Admin routes blocked on main domain - redirect to admin subdomain */}
-        <Route path="/admin/*" element={<Navigate to="https://admin.bharathfundedtrader.com" replace />} />
+        <Route path="/admin/*" element={<ExternalRedirect to="https://admin.bharathfundedtrader.com" />} />
         {/* Landing page at root */}
         <Route path="/" element={<NewLandingPage />} />
         {/* User App - requires authentication with nested routes */}

@@ -386,7 +386,7 @@ router.get('/status', async (req, res) => {
 router.get('/challenges', async (req, res) => {
   try {
     const challenges = await Challenge.find({ isActive: true })
-      .select('name description stepsCount fundSize challengeFee tiers currency rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.challengeExpiryDays rules.stopLossMandatory rules.takeProfitMandatory rules.maxLeverage rules.tradingDaysRequired fundedSettings.profitSplitPercent fundedSettings.withdrawalFrequencyDays sortOrder')
+      .select('name description stepsCount fundSize challengeFee tiers currency rules.maxDailyDrawdownPercent rules.maxOverallDrawdownPercent rules.maxLossPerTradePercent rules.profitTargetPhase1Percent rules.profitTargetPhase2Percent rules.profitTargetInstantPercent rules.maxOneDayProfitPercentOfTarget rules.consistencyRulePercent rules.minTradesRequired rules.maxTradesPerDay rules.minLotSize rules.maxLotSize rules.allowFractionalLots rules.challengeExpiryDays rules.stopLossMandatory rules.takeProfitMandatory rules.allowWeekendHolding rules.allowNewsTrading rules.maxLeverage rules.tradingDaysRequired fundedSettings.profitSplitPercent fundedSettings.withdrawalFrequencyDays sortOrder')
       .sort({ sortOrder: 1, fundSize: 1 });
     res.json({ success: true, challenges });
   } catch (error) {
