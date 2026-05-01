@@ -442,40 +442,37 @@ function FundManagement() {
     if (item.qrImage) setQrPreview(item.qrImage);
   };
 
-  // Save edited payment method
-  const saveEditPaymentMethod = () => {
-    const { type, item } = editModal;
-    let updated;
-    
-    if (type === 'bank') {
-      updated = {
-        ...paymentMethods,
-        bankAccounts: paymentMethods.bankAccounts.map(b => 
-          b.id === item.id ? { ...b, ...editForm } : b
-        )
-      };
-    } else if (type === 'upi') {
-      updated = {
-        ...paymentMethods,
-        upiIds: paymentMethods.upiIds.map(u => 
-          u.id === item.id ? { ...u, ...editForm } : u
-        )
-      };
-    } else if (type === 'crypto') {
-      updated = {
-        ...paymentMethods,
-        cryptoWallets: paymentMethods.cryptoWallets.map(c => 
-          c.id === item.id ? { ...c, ...editForm } : c
-        )
-      };
+  // Save edited payment method — was previously only updating local state +
+  // localStorage, so admin edits never reached the DB and users kept seeing
+  // the old name/UPI/QR. Now PUTs to /api/admin/payment-details/:id and re-
+  // fetches the canonical list from the server.
+  const saveEditPaymentMethod = async () => {
+    const { item } = editModal;
+    const id = item?._id || item?.id;
+    if (!id) {
+      alert('Cannot save: payment method id missing.');
+      return;
     }
-    
-    setPaymentMethods(updated);
-    localStorage.setItem('bharatfunded-payment-methods', JSON.stringify(updated));
-    setEditModal({ open: false, type: '', item: null });
-    setEditForm({});
-    setQrPreview('');
-    alert('Payment method updated successfully!');
+    try {
+      const res = await fetch(`${API_URL}/api/admin/payment-details/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        alert(data.error || 'Failed to update payment method');
+        return;
+      }
+      await fetchPaymentDetails();
+      setEditModal({ open: false, type: '', item: null });
+      setEditForm({});
+      setQrPreview('');
+      alert('Payment method updated successfully!');
+    } catch (err) {
+      console.error('Error updating payment method:', err);
+      alert('Error updating payment method');
+    }
   };
 
   // Handle QR upload for edit form
