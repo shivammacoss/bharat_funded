@@ -11,6 +11,12 @@ import {
   LuGift, LuRadio, LuClock, LuFileChartColumn,
   LuBell, LuSettings, LuActivity, LuTrophy
 } from 'react-icons/lu';
+// Theme-aware admin sidebar logos. The PNG named "light" is the LIGHT-coloured
+// (white / cream) variant — meant for DARK backgrounds. The "dark" PNG is the
+// DARK-coloured variant — meant for LIGHT backgrounds. Swap accordingly when
+// the admin theme flips so the logo never disappears into the background.
+import logoForLightBg from '../../assets/bharat funded trader new logo dark.png';
+import logoForDarkBg from '../../assets/bharat funded trader new logo light.png';
 import '../../styles/themes.css';
 import './Admin.css';
 
@@ -219,9 +225,9 @@ function AdminLayout() {
       <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           {sidebarCollapsed ? (
-            <img src={adminTheme === 'light' ? "/landing/img/bharatfunded-logo-dark.svg" : "/landing/img/bharatfunded-logo.svg"} alt="BharatFunded" className="sidebar-logo-img" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+            <img src={adminTheme === 'light' ? logoForLightBg : logoForDarkBg} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '32px', width: '32px', objectFit: 'contain' }} />
           ) : (
-            <img src={adminTheme === 'light' ? "/landing/img/bharatfunded-logo-dark.svg" : "/landing/img/bharatfunded-logo.svg"} alt="BharatFunded" className="sidebar-logo-img" style={{ height: '32px', width: 'auto', maxWidth: '160px', objectFit: 'contain' }} />
+            <img src={adminTheme === 'light' ? logoForLightBg : logoForDarkBg} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '40px', width: 'auto', maxWidth: '180px', objectFit: 'contain' }} />
           )}
           <button
             className="sidebar-toggle"

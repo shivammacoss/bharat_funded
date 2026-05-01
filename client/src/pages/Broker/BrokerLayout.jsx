@@ -6,6 +6,7 @@ import {
   LuChevronLeft, LuChevronRight, LuArrowLeft, LuMenu, LuX,
   LuCalculator, LuShield, LuClock, LuTriangleAlert, LuScroll
 } from 'react-icons/lu';
+import logoDark from '../../assets/bharat funded trader new logo dark.png';
 import '../../styles/themes.css';
 import '../Admin/Admin.css';
 
@@ -286,9 +287,9 @@ function BrokerLayout() {
       <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           {sidebarCollapsed ? (
-            <img src="/landing/img/bharatfunded-logo.svg" alt="BharatFunded" className="sidebar-logo-img" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+            <img src={logoDark} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '32px', width: '32px', objectFit: 'contain' }} />
           ) : (
-            <img src="/landing/img/bharatfunded-logo.svg" alt="BharatFunded" className="sidebar-logo-img" style={{ height: '32px', width: 'auto', maxWidth: '160px', objectFit: 'contain' }} />
+            <img src={logoDark} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '40px', width: 'auto', maxWidth: '180px', objectFit: 'contain' }} />
           )}
           <button
             className="sidebar-toggle"

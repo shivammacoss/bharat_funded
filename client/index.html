@@ -32,8 +32,15 @@
     <meta name="twitter:image" content="https://bharathfundedtrader.in/landing/img/bharat%20funded%20trader%20landscape.png" />
 
     <!-- ── Favicons ────────────────────────────────────────────────────── -->
-    <link rel="icon" type="image/svg+xml" href="/landing/img/bharatfunded-logo.svg" />
-    <link rel="apple-touch-icon" href="/landing/img/bharatfunded-logo.svg" />
+    <!-- Single PNG covers both user (bharathfundedtrader.com) and admin
+         subdomain (admin.bharathfundedtrader.com) since they ship the same
+         index.html. The size hints help browsers and the home-screen icon
+         on iOS / Android pick the right resolution. -->
+    <link rel="icon" type="image/png" sizes="any" href="/favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png" />
 
     <!-- ── Theme color for browser chrome ──────────────────────────────── -->
     <meta name="theme-color" content="#2B4EFF" />

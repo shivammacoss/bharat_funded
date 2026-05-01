@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LuEye, LuEyeOff } from 'react-icons/lu';
 import TubesBackground from '../../components/TubesBackground';
+import logoWhite from '../../assets/bharat funded trader new logo dark.png';
 import './Auth.css';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -144,7 +145,8 @@ function Register({ onLogin }) {
       if (!res.ok) {
         setError(data.error || 'Could not send verification code'); setLoading(false); return;
       }
-      setSuccess(`Verification code sent to ${formData.email}. Check your inbox (and spam).`);
+      // The OTP step's persistent info box already says "We sent a 6-digit
+      // code to <email>" — don't also fire a success toast or it duplicates.
       setStep('otp');
       setResendCooldown(45);
     } catch {
@@ -220,7 +222,7 @@ function Register({ onLogin }) {
         <div className="auth-card" style={{ maxWidth: '440px', padding: '32px 28px' }}>
           {/* Header */}
           <div className="auth-header" style={{ marginBottom: '24px' }}>
-            <img src="/landing/img/bharat_funded_white_logo.png" alt="Bharath Funded Trader" className="auth-logo-img" />
+            <img src={logoWhite} alt="Bharath Funded Trader" className="auth-logo-img" />
             <p className="auth-subtitle">
               {step === 'otp' ? 'Verify your email to finish' : 'Create your account to start trading'}
             </p>
@@ -356,10 +358,6 @@ function Register({ onLogin }) {
           <div className="auth-footer" style={{ marginTop: '20px', paddingTop: '20px' }}>
             <p>Already have an account? <Link to="/login">Login</Link></p>
           </div>
-        </div>
-
-        <div className="tubes-hint">
-          <span>Click anywhere to change colors</span>
         </div>
       </div>
     </TubesBackground>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import TubesBackground from '../../components/TubesBackground';
+import logoWhite from '../../assets/bharat funded trader new logo dark.png';
 import './Auth.css';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -90,7 +91,7 @@ function ForgotPassword() {
       <div className="auth-container tubes-auth">
         <div className="auth-card">
           <div className="auth-header">
-            <img src="/landing/img/bharat_funded_white_logo.png" alt="Bharath Funded Trader" className="auth-logo-img" />
+            <img src={logoWhite} alt="Bharath Funded Trader" className="auth-logo-img" />
             <p className="auth-subtitle">
               {step === 1 && 'Enter your email to receive a reset code.'}
               {step === 2 && 'Enter the code from your email and choose a new password.'}

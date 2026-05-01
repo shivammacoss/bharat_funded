@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import TubesBackground from '../../components/TubesBackground';
 import tradingSounds from '../../utils/sounds';
+// Auth pages sit on the dark TubesBackground — use the white/inverted logo.
+import logoWhite from '../../assets/bharat funded trader new logo dark.png';
 import './Auth.css';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -83,7 +85,7 @@ function Login({ onLogin }) {
       <div className="auth-container tubes-auth">
         <div className="auth-card">
           <div className="auth-header">
-            <img src="/landing/img/bharat_funded_white_logo.png" alt="Bharath Funded Trader" className="auth-logo-img" />
+            <img src={logoWhite} alt="Bharath Funded Trader" className="auth-logo-img" />
             <p className="auth-subtitle">Welcome back! Please login to continue.</p>
           </div>
 
@@ -141,10 +143,6 @@ function Login({ onLogin }) {
           <div className="auth-footer">
             <p>Don't have an account? <Link to="/register">Register Now</Link></p>
           </div>
-        </div>
-        
-        <div className="tubes-hint">
-          <span>✨ Click anywhere to change colors</span>
         </div>
       </div>
     </TubesBackground>

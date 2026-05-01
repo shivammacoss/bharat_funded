@@ -7,8 +7,11 @@ import {
   LuCircleUser, LuLogOut, LuPlus, LuEllipsisVertical, LuMenu,
   LuTrophy
 } from 'react-icons/lu';
-import logoLight from '../../assets/bharatfunded-logo.svg';
-import logoDark from '../../assets/bharatfunded-logo-dark.svg';
+// Theme-aware logos. The "light" PNG is the dark-text version meant for light
+// backgrounds; the "dark" PNG is the white/inverted version for dark mode.
+// Filenames have spaces — Vite handles those, but keep the import names clean.
+import logoLight from '../../assets/bharat funded trader new logo light.png';
+import logoDark from '../../assets/bharat funded trader new logo dark.png';
 import { useMetaApiPrices } from '../../hooks/useMetaApiPrices';
 import { useZerodhaTicks } from '../../hooks/useZerodhaTicks';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
