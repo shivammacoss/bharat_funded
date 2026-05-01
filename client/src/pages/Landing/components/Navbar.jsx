@@ -35,7 +35,7 @@ export default function Navbar() {
 
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <img
-            src="/landing/img/bharat funded trader landscape.png"
+            src="/landing/img/bharat_funded trader_logo.png"
             alt="Bharath Funded Trader"
             className="h-9 w-auto"
           />

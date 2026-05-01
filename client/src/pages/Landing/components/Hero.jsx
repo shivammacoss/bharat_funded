@@ -116,7 +116,7 @@ export default function Hero() {
         <BlurFade delay={0.75} inView>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link
-              to="/register"
+              to="/pricing"
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#2B4EFF] text-white font-semibold text-sm shadow-[0_6px_20px_rgba(43,78,255,0.3)] hover:bg-[#4B6AFF] transition-all"
             >
               Explore Plans

@@ -76,10 +76,10 @@ const reasons = [
 ];
 
 const team = [
-  { initials: 'RK', name: 'Rajesh Kumar', role: 'Founder & CEO', bio: '15+ years in Indian capital markets. Former prop desk head at a Mumbai-based trading firm. Started Bharath Funded after losing patience with foreign prop firms that did not understand the Indian market.' },
-  { initials: 'SP', name: 'Sneha Patel', role: 'Head of Risk', bio: 'Ex-risk analyst at a leading Indian brokerage. Designs every drawdown rule and consistency check on the platform. Believes good rules protect traders from themselves.' },
-  { initials: 'AV', name: 'Amit Verma', role: 'CTO & Co-founder', bio: 'Full-stack engineer, decade of fintech experience. Built the simulated trading engine from scratch in his Bandra apartment. Still writes code on weekends because he cannot help it.' },
-  { initials: 'PD', name: 'Priya Desai', role: 'Head of Operations', bio: 'Handles KYC, payouts, and trader support. The reason payouts go out on time. The reason traders actually get replies to their queries.' },
+  { initials: 'RK', photo: '/landing/img/Rajesh.jpeg', name: 'Rajesh Kumar', role: 'Founder & CEO', bio: '15+ years in Indian capital markets. Former prop desk head at a Mumbai-based trading firm. Started Bharath Funded after losing patience with foreign prop firms that did not understand the Indian market.' },
+  { initials: 'SP', photo: '/landing/img/Sneha.jpeg', name: 'Sneha Patel', role: 'Head of Risk', bio: 'Ex-risk analyst at a leading Indian brokerage. Designs every drawdown rule and consistency check on the platform. Believes good rules protect traders from themselves.' },
+  { initials: 'AV', photo: '/landing/img/Amit.jpeg', name: 'Amit Verma', role: 'CTO & Co-founder', bio: 'Full-stack engineer, decade of fintech experience. Built the simulated trading engine from scratch in his Bandra apartment. Still writes code on weekends because he cannot help it.' },
+  { initials: 'PD', photo: '/landing/img/Priya.jpeg', name: 'Priya Desai', role: 'Head of Operations', bio: 'Handles KYC, payouts, and trader support. The reason payouts go out on time. The reason traders actually get replies to their queries.' },
 ];
 
 export default function AboutPage() {
@@ -152,7 +152,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <div className="md:col-span-2 aspect-[16/10] rounded-2xl overflow-hidden bg-[#F0F2F8] border border-[#E8EAF0] flex items-center justify-center relative">
               <img
-                src="/landing/img/banner3.png"
+                src="/landing/img/banner_change_2.jpeg"
                 alt="Our Mumbai office"
                 className="w-full h-full object-cover"
               />
@@ -240,9 +240,17 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {team.map((t) => (
               <div key={t.name} className="bg-white border border-[#E8EAF0] rounded-2xl p-6 sm:p-8 flex gap-5 items-start">
-                <div className="w-14 h-14 rounded-full bg-[#2B4EFF] flex items-center justify-center text-white font-bold text-lg shrink-0">
-                  {t.initials}
-                </div>
+                {t.photo ? (
+                  <img
+                    src={t.photo}
+                    alt={t.name}
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#2B4EFF] flex items-center justify-center text-white font-bold text-2xl shrink-0">
+                    {t.initials}
+                  </div>
+                )}
                 <div>
                   <h3 className="text-lg font-bold text-[#0D0F1A] mb-1">{t.name}</h3>
                   <p className="text-sm text-[#2B4EFF] font-medium mb-3">{t.role}</p>

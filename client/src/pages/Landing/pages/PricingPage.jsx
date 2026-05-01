@@ -4,6 +4,7 @@ import { ArrowRight, Check, Tag } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
+import PricingTierCard from '../components/PricingTierCard';
 import '../landing.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -197,64 +198,7 @@ export default function PricingPage() {
               {/* Tier Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
                 {activePlan.tiers.map((tier) => (
-                  <div
-                    key={tier.capital + '-' + tier.price}
-                    className={`rounded-2xl p-6 sm:p-8 bg-white relative transition-all ${
-                      tier.popular
-                        ? 'border-2 border-[#2B4EFF] shadow-[0_8px_40px_rgba(43,78,255,0.18)]'
-                        : 'border border-[#E8EAF0] shadow-[0_2px_16px_rgba(0,0,0,0.04)] hover:border-[#2B4EFF] hover:shadow-[0_8px_32px_rgba(43,78,255,0.08)]'
-                    }`}
-                  >
-                    {tier.popular && (
-                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2B4EFF] text-white text-xs font-bold px-4 py-1 rounded-full">
-                        {tier.label || 'Most chosen'}
-                      </span>
-                    )}
-
-                    {/* Header: capital + plan label inline */}
-                    <div className="text-center mb-4">
-                      <span className="text-2xl sm:text-3xl font-extrabold text-[#0D0F1A]" style={{ letterSpacing: '-0.03em' }}>
-                        {tier.capital}
-                      </span>
-                      <span className="text-base sm:text-lg font-semibold text-[#6B7080] ml-2 uppercase tracking-wide">
-                        {tab}
-                      </span>
-                    </div>
-
-                    {/* Price row: strikethrough original + discounted + /One Time */}
-                    <div className="text-center mb-1">
-                      <span className="text-base text-[#9AA0B4] line-through mr-2">{tier.price}</span>
-                      <span className="text-2xl sm:text-3xl font-extrabold text-[#2B4EFF]">{tier.discountedPrice}</span>
-                      <span className="text-sm text-[#6B7080] ml-1">/ One Time</span>
-                    </div>
-                    <p className="text-center text-xs font-semibold text-[#2B4EFF] uppercase tracking-wider mb-5">
-                      With code {PROMO_CODE}
-                    </p>
-
-                    <div className="border-t border-[#E8EAF0] pt-5 mb-5 space-y-3">
-                      {tier.rules.map((rule) => (
-                        <div key={rule.key} className="flex justify-between items-center">
-                          <span className="text-sm text-[#6B7080]">{rule.key}</span>
-                          <span className="text-sm font-bold text-[#0D0F1A]">{rule.value}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="space-y-3">
-                      <Link
-                        to="/challenges"
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-sm font-semibold border border-[#E8EAF0] text-[#0D0F1A] hover:border-[#2B4EFF] hover:text-[#2B4EFF] transition-all"
-                      >
-                        Funded Rules
-                      </Link>
-                      <Link
-                        to="/register"
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-sm font-semibold bg-[#2B4EFF] text-white hover:bg-[#4B6AFF] transition-all"
-                      >
-                        Select Platform
-                      </Link>
-                    </div>
-                  </div>
+                  <PricingTierCard key={tier.capital + '-' + tier.price} tier={tier} plan={tab} />
                 ))}
               </div>
 

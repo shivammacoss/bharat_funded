@@ -38,7 +38,7 @@ export default function TradingPlatform() {
             {/* Platform image */}
             <div className="rounded-2xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.1)] bg-[#FAFBFD] border border-[#E8EAF0]">
               <img
-                src="/landing/img/platform-preview.png"
+                src="/landing/img/platform_img.png"
                 alt="Bharath Funded Trader Platform"
                 className="w-full h-auto block"
                 loading="lazy"
