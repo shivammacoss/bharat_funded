@@ -347,10 +347,18 @@ router.post('/register', async (req, res) => {
     });
     
     await user.save();
-    
+
     // Generate token
     const token = signToken(user._id);
-    
+
+    // Fire-and-forget welcome email — never block / fail registration on
+    // SMTP issues. Errors are logged but the response goes out immediately.
+    if (emailService.isSmtpConfigured()) {
+      emailService
+        .sendWelcomeEmail(user.email, { name: user.name, userId: user.oderId })
+        .catch((err) => console.error('[Welcome email] failed:', err.message));
+    }
+
     // Log registration activity
     const userAgent = req.get('User-Agent') || '';
     await UserActivityLog.logActivity({

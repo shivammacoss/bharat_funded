@@ -19,7 +19,10 @@ import tradingSounds from '../../utils/sounds';
 import socketService from '../../services/socketService';
 import { mergeQuoteObject, resolveMetaapiLiveQuote } from '../../utils/pricePersistence';
 
-const MARKET_STATE_LS = 'bharatfunded-market-state';
+// Key bumped from `bharatfunded-market-state` so existing users whose state
+// was pinned to TCS get the new NIFTY50 default automatically. Old key is
+// abandoned and ignored.
+const MARKET_STATE_LS = 'bharatfunded-market-state-v2';
 
 function readMarketStateFromLS() {
   try {
@@ -35,7 +38,7 @@ function readMarketStateFromLS() {
   } catch (_) {
     /* ignore */
   }
-  return { selectedSymbol: 'TCS', chartTabs: ['TCS'] };
+  return { selectedSymbol: 'NIFTY50', chartTabs: ['NIFTY50'] };
 }
 
 const FNO_CATEGORIES_FOR_EXPIRY = new Set([
@@ -210,8 +213,16 @@ function UserLayout({ user, onLogout }) {
     let nextTabs = tabs.length ? [...new Set(tabs.map(String))].slice(0, 20) : [];
     const sym = s && String(s).trim();
     if (sym && !nextTabs.includes(sym)) nextTabs = [...nextTabs, sym];
-    if (nextTabs.length === 0) nextTabs = ['TCS'];
-    const sel = sym && nextTabs.includes(sym) ? sym : nextTabs[nextTabs.length - 1];
+    if (nextTabs.length === 0) nextTabs = ['NIFTY50'];
+    let sel = sym && nextTabs.includes(sym) ? sym : nextTabs[nextTabs.length - 1];
+    // Migration: if the user's saved state is exactly the legacy default
+    // (only TCS, nothing else added), promote it to NIFTY50 — the new
+    // default. Users who explicitly added TCS alongside other tabs keep
+    // their full list untouched.
+    if (nextTabs.length === 1 && nextTabs[0] === 'TCS') {
+      nextTabs = ['NIFTY50'];
+      sel = 'NIFTY50';
+    }
     setChartTabs(nextTabs);
     setSelectedSymbol(sel);
     try {

@@ -3681,16 +3681,18 @@ function MarketPage() {
                 {chartTabs.length > 1 && <button className="close-tab" onClick={(e) => removeChartTab(symbol, e)}>×</button>}
               </div>
             ))}
+            {/* Add-tab button lives INSIDE .chart-tabs so it sits right after
+                the last chart tab instead of being floated to the far right. */}
+            <button
+              type="button"
+              className="add-tab"
+              title="Add instrument to chart"
+              aria-label="Add instrument to chart"
+              onClick={() => setPickerOpen(true)}
+            >
+              +
+            </button>
           </div>
-          <button
-            type="button"
-            className="add-tab"
-            title="Add instrument to chart"
-            aria-label="Add instrument to chart"
-            onClick={() => setPickerOpen(true)}
-          >
-            +
-          </button>
         </div>
         <div className="chart-container" ref={chartContainerRef}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}>

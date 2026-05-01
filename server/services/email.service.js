@@ -185,6 +185,62 @@ async function sendPasswordResetOtpEmail(to, code) {
   await sendMail({ to, subject, text, html });
 }
 
+async function sendWelcomeEmail(to, { name, userId } = {}) {
+  // Try the admin-managed template first so marketing can edit copy from the
+  // panel; fall back to a hard-coded design if the template isn't seeded yet.
+  const safeName = String(name || '').trim() || 'Trader';
+  const safeUserId = String(userId || '').trim();
+  const vars = { name: safeName, userId: safeUserId, year: String(new Date().getFullYear()) };
+
+  try {
+    const rendered = await emailTemplateService.getRenderedForSend('welcome', vars);
+    if (rendered) {
+      await sendMail({ to, subject: rendered.subject, text: rendered.text, html: rendered.html || rendered.text });
+      return;
+    }
+  } catch (_) {
+    /* fall through to hard-coded copy */
+  }
+
+  const subject = `Welcome to Bharat Funded Trader, ${safeName}!`;
+  const text = [
+    `Hi ${safeName},`,
+    '',
+    'Welcome aboard — your Bharat Funded Trader account is live.',
+    safeUserId ? `Your User ID: ${safeUserId}` : null,
+    '',
+    'What you can do next:',
+    '  • Pick a challenge (1-Step / 2-Step / Instant)',
+    '  • Fund your wallet and start your evaluation',
+    '  • Reach us anytime at support@bharathfundedtrader.com or WhatsApp +91 8367045119',
+    '',
+    'Trade safe — see you on the charts!',
+    '— The Bharat Funded Trader team'
+  ].filter(Boolean).join('\n');
+
+  const html = `
+    <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #0D0F1A;">
+      <div style="background: linear-gradient(135deg, #2B4EFF 0%, #4B6AFF 100%); padding: 28px 24px; border-radius: 12px 12px 0 0; color: #fff;">
+        <h1 style="margin: 0; font-size: 22px; letter-spacing: -0.02em;">Welcome to Bharat Funded Trader</h1>
+        <p style="margin: 6px 0 0 0; opacity: 0.9; font-size: 14px;">Your trader account is live, ${safeName}.</p>
+      </div>
+      <div style="background: #FAFBFD; padding: 24px; border: 1px solid #E8EAF0; border-top: none; border-radius: 0 0 12px 12px;">
+        ${safeUserId ? `<p style="margin: 0 0 12px 0; font-size: 14px;"><strong>Your User ID:</strong> <span style="font-family: monospace; background: #fff; padding: 2px 8px; border-radius: 4px; border: 1px solid #E8EAF0;">${safeUserId}</span></p>` : ''}
+        <p style="margin: 0 0 8px 0; font-size: 14px; line-height: 1.6;">Here's what you can do next:</p>
+        <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 14px; line-height: 1.7; color: #4B5165;">
+          <li>Pick a challenge — <strong>1-Step</strong>, <strong>2-Step</strong>, or <strong>Instant</strong></li>
+          <li>Fund your wallet and start your evaluation</li>
+          <li>Track your performance from the dashboard</li>
+        </ul>
+        <p style="margin: 16px 0 0 0; font-size: 13px; color: #6B7080;">Need help? Reply to this email or reach us on WhatsApp <a href="https://wa.me/918367045119" style="color: #2B4EFF; text-decoration: none;">+91 8367045119</a> or Telegram <a href="https://t.me/bharathfundedtraderr" style="color: #2B4EFF; text-decoration: none;">@bharathfundedtraderr</a>.</p>
+      </div>
+      <p style="margin: 16px 0 0 0; text-align: center; font-size: 11px; color: #9AA0B4;">© ${vars.year} Bharat Funded Trader. All rights reserved.</p>
+    </div>
+  `;
+
+  await sendMail({ to, subject, text, html });
+}
+
 module.exports = {
   isSmtpConfigured,
   createTransport,
@@ -192,6 +248,7 @@ module.exports = {
   sendMail,
   sendSignupOtpEmail,
   sendPasswordResetOtpEmail,
+  sendWelcomeEmail,
   getSmtpConfig,
   getSmtpStatusForAdmin
 };
