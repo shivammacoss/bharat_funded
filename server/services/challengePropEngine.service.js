@@ -73,11 +73,43 @@ function recomputeWallet(account, openPositions) {
   return account;
 }
 
+// Indian equity / index F&O segments stop accepting new orders at 15:15 IST
+// (15-min cutoff before the official 15:30 close) and don't trade outside
+// 09:15-15:15 on weekdays. MCX (commodities) keeps its longer window. Other
+// segments (FOREX/CRYPTO etc.) are 24/7 and skip this gate entirely.
+function isIndianMarketOpenForNewOrders(exchange) {
+  const ex = String(exchange || '').toUpperCase();
+  const INDIAN = new Set(['NSE', 'NFO', 'BSE', 'BFO', 'CDS']);
+  if (!INDIAN.has(ex)) return { allowed: true };
+
+  const ist = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const day = ist.getDay();
+  if (day === 0 || day === 6) {
+    return { allowed: false, reason: 'Indian market is closed on weekends. New orders are not allowed.' };
+  }
+  const minutes = ist.getHours() * 60 + ist.getMinutes();
+  const open = 9 * 60 + 15;   // 09:15 IST
+  const cutoff = 15 * 60 + 15; // 15:15 IST — order entry stops here
+  if (minutes < open) {
+    return { allowed: false, reason: 'Indian market opens at 09:15 IST. New orders cannot be placed yet.' };
+  }
+  if (minutes >= cutoff) {
+    return { allowed: false, reason: 'Indian market order cutoff is 15:15 IST. All open positions are auto-squared-off at 15:15.' };
+  }
+  return { allowed: true };
+}
+
 async function openPosition(challengeAccountId, orderData) {
   const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
   if (!account) return { success: false, error: 'Challenge account not found' };
   if (!['ACTIVE', 'FUNDED'].includes(account.status)) {
     return { success: false, error: `Account is ${account.status}` };
+  }
+
+  // Block new orders on Indian segments outside 09:15-15:15 IST.
+  const marketCheck = isIndianMarketOpenForNewOrders(orderData.exchange || orderData.segment);
+  if (!marketCheck.allowed) {
+    return { success: false, error: marketCheck.reason, code: 'MARKET_CLOSED' };
   }
 
   // Run the full rule-based validator (extends to maxLeverage,

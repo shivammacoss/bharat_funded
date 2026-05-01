@@ -286,15 +286,13 @@ async function checkAutoSquareOff() {
   const currentTime = currentHour * 60 + currentMinute;
   
   // Market square-off times (IST) — MUST match NettingEngine.marketTimings.squareOffTime.
-  // Fix 24: previously set to 15:15 but NettingEngine.autoSquareOff checked >= 15:30,
-  // creating a 15-minute gap where the cron fired but the engine skipped everything.
-  // Now aligned to 15:30 with a 10-minute window (15:30-15:39) so the engine's
-  // `currentTime >= 930` check passes on every cron tick in that window.
+  // Cutoff moved from 15:30 → 15:15 so prop traders get squared off and
+  // blocked from placing new orders 15 minutes before the official close.
   const squareOffTimes = {
-    NSE: 15 * 60 + 30,  // 15:30 IST
-    NFO: 15 * 60 + 30,  // 15:30 IST
-    BSE: 15 * 60 + 30,  // 15:30 IST
-    BFO: 15 * 60 + 30,  // 15:30 IST
+    NSE: 15 * 60 + 15,  // 15:15 IST
+    NFO: 15 * 60 + 15,  // 15:15 IST
+    BSE: 15 * 60 + 15,  // 15:15 IST
+    BFO: 15 * 60 + 15,  // 15:15 IST
     CDS: 16 * 60 + 55   // 16:55 IST
     // MCX EXCLUDED - no auto square-off
   };
@@ -317,12 +315,12 @@ async function checkAutoSquareOff() {
     }
   }
 
-  // Prop-challenge intraday auto-close — fire ONCE per day, exactly at 15:30
-  // IST. Reads PropSettings.autoCloseAtMarketClose; if any admin has it on,
-  // every open ChallengePosition under their challenges is force-closed at
-  // the last-known LTP. The exact-minute gate prevents double-firing across
-  // the cron's 10-minute square-off window.
-  if (currentTime === 15 * 60 + 30) {
+  // Prop-challenge intraday auto-close — fire ONCE per day, exactly at 15:15
+  // IST. Always runs (no per-admin opt-in) so every ACTIVE/FUNDED challenge
+  // account on Indian instruments is force-closed at the last-known LTP.
+  // The exact-minute gate prevents double-firing across the cron's 10-minute
+  // square-off window above.
+  if (currentTime === 15 * 60 + 15) {
     runChallengeMarketCloseSquareOff().catch(err =>
       console.error('[ChallengeMarketClose] error:', err.message)
     );
@@ -336,39 +334,33 @@ async function checkAutoSquareOff() {
  * position's currentPrice / entryPrice when no live price is cached.
  */
 async function runChallengeMarketCloseSquareOff() {
-  const PropSettings = require('../models/PropSettings');
-  const Challenge = require('../models/Challenge');
   const ChallengeAccount = require('../models/ChallengeAccount');
   const { ChallengePosition } = require('../models/Position');
   const challengePropEngine = require('../services/challengePropEngine.service');
   const ZerodhaService = require('../services/zerodha.service');
 
-  const enabled = await PropSettings.find({ autoCloseAtMarketClose: true }).select('adminId').lean();
-  if (enabled.length === 0) return;
-  const adminIds = enabled.map(s => s.adminId); // includes null for global
-
-  const challenges = await Challenge.find({ adminId: { $in: adminIds } }).select('_id').lean();
-  if (challenges.length === 0) return;
-  const challengeIds = challenges.map(c => c._id);
-
+  // Always close every open Indian-segment position on every ACTIVE/FUNDED
+  // challenge — no per-admin opt-in. Non-Indian segments (FOREX/CRYPTO etc.)
+  // are skipped so 24/7 markets keep running.
   const accounts = await ChallengeAccount.find({
-    challengeId: { $in: challengeIds },
     status: { $in: ['ACTIVE', 'FUNDED'] }
   }).select('_id').lean();
   if (accounts.length === 0) return;
   const accountIds = accounts.map(a => a._id);
 
+  const INDIAN_EX = new Set(['NSE', 'NFO', 'BSE', 'BFO', 'CDS']);
   const openPositions = await ChallengePosition.find({
     challengeAccountId: { $in: accountIds },
     status: 'open'
   }).lean();
-  if (openPositions.length === 0) return;
+  const indianOpen = openPositions.filter(p => INDIAN_EX.has(String(p.exchange || '').toUpperCase()));
+  if (indianOpen.length === 0) return;
 
-  console.log(`[ChallengeMarketClose] Closing ${openPositions.length} open challenge position(s) at 15:30 IST`);
+  console.log(`[ChallengeMarketClose] Closing ${indianOpen.length} open Indian challenge position(s) at 15:15 IST`);
   const lastPrices = ZerodhaService.getLastPrices ? ZerodhaService.getLastPrices() : {};
   let closed = 0;
   let failed = 0;
-  for (const pos of openPositions) {
+  for (const pos of indianOpen) {
     try {
       const lp = lastPrices[pos.symbol] || {};
       const px = pos.side === 'buy'

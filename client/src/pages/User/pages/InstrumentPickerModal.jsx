@@ -18,11 +18,7 @@ const CATEGORIES = [
   { key: 'all',        label: 'All',         color: '#64748b',  kind: 'search' },
   { key: 'nifty',      label: 'Nifty',       color: '#10b981',  kind: 'chain',  query: 'NIFTY',      segment: 'nseOpt' },
   { key: 'banknifty',  label: 'BankNifty',   color: '#8b5cf6',  kind: 'chain',  query: 'BANKNIFTY',  segment: 'nseOpt' },
-  { key: 'finnifty',   label: 'FinNifty',    color: '#10b981',  kind: 'chain',  query: 'FINNIFTY',   segment: 'nseOpt' },
-  { key: 'midcpnifty', label: 'MidcapNifty', color: '#f59e0b',  kind: 'chain',  query: 'MIDCPNIFTY', segment: 'nseOpt' },
-  { key: 'sensex',     label: 'Sensex',      color: '#ef4444',  kind: 'chain',  query: 'SENSEX',     segment: 'bseOpt' },
-  { key: 'equity',     label: 'Equity',      color: '#3b82f6',  kind: 'flat',   segment: 'nseEq' },
-  { key: 'commodity',  label: 'Commodity',   color: '#f97316',  kind: 'flat',   segment: 'mcxFut' }
+  { key: 'sensex',     label: 'Sensex',      color: '#ef4444',  kind: 'chain',  query: 'SENSEX',     segment: 'bseOpt' }
 ];
 
 /**

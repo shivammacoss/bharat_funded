@@ -87,11 +87,15 @@ class NettingEngine {
     // convention is 15:15 (a 15-minute buffer) but the product team chose
     // to give users the full session: auto-square-off only fires after the
     // last LTP tick at 15:30. MCX keeps its extended-hours convention.
+    // Indian equity / index F&O segments stop accepting new orders at 15:15
+    // (15 minutes before the official 15:30 close) and every open position is
+    // squared off at 15:15 — no overnight holding on prop accounts. MCX
+    // (commodities) keeps its extended-hours window.
     this.marketTimings = {
-      NSE: { open: '09:15', close: '15:30', squareOffTime: '15:30' },
-      NFO: { open: '09:15', close: '15:30', squareOffTime: '15:30' },
+      NSE: { open: '09:15', close: '15:15', squareOffTime: '15:15' },
+      NFO: { open: '09:15', close: '15:15', squareOffTime: '15:15' },
       MCX: { open: '09:00', close: '23:30', squareOffTime: '23:25' }, // MCX has extended hours
-      BFO: { open: '09:15', close: '15:30', squareOffTime: '15:30' }
+      BFO: { open: '09:15', close: '15:15', squareOffTime: '15:15' }
     };
     
     // Segments that require lot size from exchange (F&O)

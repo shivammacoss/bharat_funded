@@ -3666,22 +3666,8 @@ function MarketPage() {
         )}
       </div>
 
-      {/* Instruments Panel */}
-      <div className={`instruments-panel ${instrumentsPanelCollapsed ? 'collapsed' : ''}`}>
-        <div className="panel-header">
-          <button className="collapse-btn" onClick={() => setInstrumentsPanelCollapsed(!instrumentsPanelCollapsed)} title={instrumentsPanelCollapsed ? 'Expand' : 'Collapse'}>
-            {instrumentsPanelCollapsed ? '▶' : '◀'}
-          </button>
-          {!instrumentsPanelCollapsed && <span className="panel-title">Instruments</span>}
-        </div>
-        {!instrumentsPanelCollapsed && (
-          <>
-            {renderDynamicTopSearchArea(false)}
-            {renderSegmentTabsGroup()}
-            {renderSegmentTabContent(false)}
-          </>
-        )}
-      </div>
+      {/* Instruments Panel removed per request — challenge view uses the
+          option-chain modal (top-bar + button) for symbol selection now. */}
 
       {/* Mobile: this wrapper only participates in layout on Chart tab; otherwise it stole 50% height while children were display:none */}
       <div className={`market-main-area${mobileMarketTab === 'chart' ? ' mobile-market-main-active' : ''}`}>
