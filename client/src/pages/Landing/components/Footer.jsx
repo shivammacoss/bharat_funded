@@ -45,7 +45,7 @@ export default function Footer() {
           <div className="col-span-2 md:col-span-1">
             <a href="#home" className="flex items-center gap-2 mb-4 group">
               <img
-                src="/landing/img/bharat_funded_white_logo.png"
+                src="/landing/img/bharat funded trader new logo light.png"
                 alt="Bharath Funded Trader"
                 className="h-9 w-auto"
               />

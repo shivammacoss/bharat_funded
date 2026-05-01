@@ -9,6 +9,7 @@ const navLinks = [
   { label: 'Instruments', to: '/instruments' },
   { label: 'Pricing', to: '/pricing' },
   { label: 'FAQ', to: '/faqs' },
+  { label: 'Blog', to: '/blog' },
   { label: 'About', to: '/about' },
   { label: 'Contact', to: '/contact-us' },
 ];
@@ -35,7 +36,7 @@ export default function Navbar() {
 
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <img
-            src="/landing/img/bharat_funded trader_logo.png"
+            src="/landing/img/bharat funded trader new logo dark.png"
             alt="Bharath Funded Trader"
             className="h-9 w-auto"
           />
