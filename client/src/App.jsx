@@ -1257,15 +1257,18 @@ function App({ user, onLogout }) {
   const [filterTab, setFilterTab] = useState('FAVORITES');
   const [instrumentsPanelCollapsed, setInstrumentsPanelCollapsed] = useState(false);
   const [expandedSegments, setExpandedSegments] = useState({});
-  const DEFAULT_WATCHLIST = ['NIFTY50', 'BANKNIFTY', 'RELIANCE', 'TCS', 'INFY', 'HDFCBANK'];
+  const DEFAULT_WATCHLIST = ['NIFTY50', 'BANKNIFTY', 'SENSEX', 'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK'];
 
-  // Load watchlist from localStorage or use defaults
+  // Load watchlist from localStorage or use defaults. An empty saved array
+  // (e.g. user removed everything in a past session) also falls back to the
+  // defaults so a brand-new view never shows "No favourites added".
   const [watchlist, setWatchlist] = useState(() => {
     const saved = localStorage.getItem('bharatfunded-watchlist');
     let list = DEFAULT_WATCHLIST;
     if (saved) {
       try {
-        list = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        list = Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_WATCHLIST;
       } catch {
         list = DEFAULT_WATCHLIST;
       }

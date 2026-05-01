@@ -4,7 +4,7 @@ import {
   LuHouse, LuTrendingUp, LuClipboardList, LuWallet,
   LuBriefcase, LuSettings, LuBell, LuSun, LuMoon,
   LuX, LuChartColumn, LuZap, LuUser,
-  LuCircleUser, LuLogOut, LuPlus, LuEllipsisVertical,
+  LuCircleUser, LuLogOut, LuPlus, LuEllipsisVertical, LuMenu,
   LuTrophy
 } from 'react-icons/lu';
 import logoLight from '../../assets/bharatfunded-logo.svg';
@@ -155,6 +155,23 @@ function UserLayout({ user, onLogout }) {
   
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Desktop sidebar collapse — persisted so the user's preference survives
+  // page reloads. Mobile uses mobileMenuOpen above (overlay drawer pattern).
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('bft-sidebar-collapsed') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('bft-sidebar-collapsed', sidebarCollapsed ? '1' : '0'); } catch { /* localStorage may be blocked */ }
+  }, [sidebarCollapsed]);
+  // Hamburger toggles the mobile drawer on small screens and collapses the
+  // desktop sidebar on larger screens — single button, two modes.
+  const toggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setMobileMenuOpen(v => !v);
+    } else {
+      setSidebarCollapsed(v => !v);
+    }
+  };
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [mobileMarketTab, setMobileMarketTab] = useState('instruments'); // 'instruments', 'chart', 'history'
   const [mobileShowChartBelow, setMobileShowChartBelow] = useState(false);
@@ -2377,10 +2394,16 @@ function UserLayout({ user, onLogout }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
             className="prop-hamburger"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '4px', display: 'none' }}
+            onClick={toggleSidebar}
+            aria-label="Toggle sidebar"
+            title="Toggle sidebar"
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-primary)',
+              cursor: 'pointer', padding: '6px', display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center', borderRadius: '6px'
+            }}
           >
-            {mobileMenuOpen ? <LuX size={22} /> : <LuEllipsisVertical size={22} />}
+            {mobileMenuOpen ? <LuX size={22} /> : <LuMenu size={22} />}
           </button>
           <button
             type="button"
@@ -2492,22 +2515,27 @@ function UserLayout({ user, onLogout }) {
 
       {/* ===== LEFT SIDEBAR ===== */}
       <aside className="prop-sidebar" style={{
-        position: 'fixed', top: '56px', left: 0, bottom: 0, width: '180px', zIndex: 90,
+        position: 'fixed', top: '56px', left: 0, bottom: 0,
+        width: sidebarCollapsed ? '64px' : '180px', zIndex: 90,
         background: 'var(--bg-secondary)', borderRight: '1px solid var(--border-color)',
-        display: 'flex', flexDirection: 'column', padding: '16px 0', overflowY: 'auto'
+        display: 'flex', flexDirection: 'column', padding: '16px 0', overflowY: 'auto', overflowX: 'hidden',
+        transition: 'width 0.2s ease'
       }}>
         {/* Start Evaluation CTA */}
-        <div style={{ padding: '0 14px', marginBottom: '20px' }}>
+        <div style={{ padding: sidebarCollapsed ? '0 8px' : '0 14px', marginBottom: '20px' }}>
           <button
             onClick={() => navigateToPage('challenges')}
+            title="Start Evaluation"
             style={{
-              width: '100%', padding: '11px 0', borderRadius: '10px', border: 'none',
+              width: '100%', padding: sidebarCollapsed ? '11px 0' : '11px 0',
+              borderRadius: '10px', border: 'none',
               cursor: 'pointer', fontWeight: '700', fontSize: '12px', color: '#fff',
               background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-              boxShadow: '0 2px 10px rgba(59,130,246,0.3)'
+              boxShadow: '0 2px 10px rgba(59,130,246,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
             }}
           >
-            Start Evaluation
+            {sidebarCollapsed ? <LuPlus size={16} /> : 'Start Evaluation'}
           </button>
         </div>
 
@@ -2524,18 +2552,22 @@ function UserLayout({ user, onLogout }) {
               <button
                 key={item.key}
                 onClick={() => navigateToPage(item.key)}
+                title={sidebarCollapsed ? item.label : undefined}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '10px 20px', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center',
+                  gap: sidebarCollapsed ? 0 : '10px',
+                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+                  padding: sidebarCollapsed ? '12px 0' : '10px 20px',
+                  border: 'none', cursor: 'pointer',
                   background: isActive ? 'var(--bg-tertiary, var(--bg-primary))' : 'transparent',
                   color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
                   fontWeight: isActive ? '600' : '400', fontSize: '13px',
                   borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
-                  transition: 'all 0.15s'
+                  transition: 'all 0.15s', whiteSpace: 'nowrap', overflow: 'hidden'
                 }}
               >
                 {item.icon}
-                {item.label}
+                {!sidebarCollapsed && item.label}
               </button>
             );
           })}
@@ -2771,8 +2803,11 @@ function UserLayout({ user, onLogout }) {
       
       {/* Main Content - Outlet for nested routes */}
       <div className="main-content" style={{
-        position: 'fixed', top: '56px', left: '180px', right: 0, bottom: 0,
-        overflow: 'hidden', background: 'var(--bg-primary)'
+        position: 'fixed', top: '56px',
+        left: sidebarCollapsed ? '64px' : '180px',
+        right: 0, bottom: 0,
+        overflow: 'hidden', background: 'var(--bg-primary)',
+        transition: 'left 0.2s ease'
       }}>
         <Outlet context={outletContext} />
       </div>
@@ -3059,9 +3094,10 @@ function UserLayout({ user, onLogout }) {
         @media (max-width: 768px) {
           .prop-sidebar { display: none !important; }
           .main-content { left: 0 !important; }
-          /* The mobile bottom nav replaces the old sidebar; the 3-dot
-             hamburger is not needed on mobile and only clutters the header. */
-          .prop-hamburger { display: none !important; }
+          /* Hamburger stays visible on mobile so the user can open the
+             slide-over drawer (the bottom nav covers most pages but
+             secondary destinations like Billing/Contact only live here). */
+          .prop-hamburger { display: inline-flex !important; }
           /* Top bar compaction */
           .bft-topbar { padding: 0 10px !important; }
           .bft-topbar .bft-header-logo-btn img { height: 28px !important; }

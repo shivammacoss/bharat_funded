@@ -14,7 +14,6 @@ const WhyChooseUs = lazy(() => import('./components/WhyChooseUs'));
 const TradingPlatform = lazy(() => import('./components/TradingPlatform'));
 const Testimonials = lazy(() => import('./components/Testimonials'));
 const FAQ = lazy(() => import('./components/FAQ'));
-const Education = lazy(() => import('./components/Education'));
 const AccountOpening = lazy(() => import('./components/AccountOpening'));
 const Contact = lazy(() => import('./components/Contact'));
 const Footer = lazy(() => import('./components/Footer'));
@@ -37,7 +36,6 @@ export default function NewLandingPage() {
         <TradingPlatform />
         <Testimonials />
         <FAQ />
-        <Education />
         <AccountOpening />
         <Contact />
         <Footer />
