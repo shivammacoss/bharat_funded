@@ -312,22 +312,31 @@ function WalletPage() {
       setPaymentMethod(withdrawMethod);
     }
 
+    // Submit the request to the backend. The previous implementation silently
+    // wrote to localStorage on network/CORS failure and still alerted "submitted
+    // successfully" — admins never saw the request because it never reached the
+    // DB. Now we surface the real error and keep the form filled so the user
+    // can retry.
+    let serverResult = null;
     try {
       const response = await fetch(`${API_URL}/api/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRequest)
       });
-      if (response.ok) {
-        setTransactions([...transactions, newRequest]);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        alert(`Failed to submit ${activeTab}: ${data.error || `HTTP ${response.status}`}\n\nYour details are still in the form — please try again.`);
+        return;
       }
+      serverResult = data?.transaction || data || newRequest;
     } catch (error) {
-      const requests = JSON.parse(localStorage.getItem('bharatfunded-fund-requests') || '[]');
-      requests.push(newRequest);
-      localStorage.setItem('bharatfunded-fund-requests', JSON.stringify(requests));
-      setTransactions([...transactions, newRequest]);
+      console.error(`[${activeTab}] submit failed:`, error);
+      alert(`Network error — could not reach the server. Please check your connection and try again.\n\n(${error?.message || 'fetch failed'})`);
+      return;
     }
 
+    setTransactions([...transactions, serverResult]);
     setAmount('');
     setPaymentMethod('');
     setProofImage('');
