@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -124,33 +124,35 @@ function WalletPage() {
     return () => clearTimeout(t);
   }, [amount, currency, activeTab, user]);
 
+  // Pulled out so we can re-call on tab switch + via the polling interval below.
+  // Without this, an admin editing a UPI/bank/crypto entry won't be reflected
+  // until the user reloads the wallet page.
+  const loadPaymentMethods = useCallback(async () => {
+    try {
+      const userId = user?.oderId || user?.id;
+      const endpoint = userId
+        ? `${API_URL}/api/admin-payment-details/for-user/${userId}`
+        : `${API_URL}/api/admin-payment-details`;
+
+      const response = await fetch(endpoint);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setPaymentMethods({
+            bankAccounts: data.bankAccounts || [],
+            upiIds: data.upiIds || [],
+            cryptoWallets: data.cryptoWallets || []
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchWalletFromServer();
     fetchTransactionsFromServer();
-
-    // Load payment details from user's parent admin (broker/subadmin) or fallback to superadmin
-    const loadPaymentMethods = async () => {
-      try {
-        const userId = user?.oderId || user?.id;
-        const endpoint = userId 
-          ? `${API_URL}/api/admin-payment-details/for-user/${userId}`
-          : `${API_URL}/api/admin-payment-details`;
-        
-        const response = await fetch(endpoint);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setPaymentMethods({
-              bankAccounts: data.bankAccounts || [],
-              upiIds: data.upiIds || [],
-              cryptoWallets: data.cryptoWallets || []
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error loading payment methods:', error);
-      }
-    };
     loadPaymentMethods();
 
     const hashes = JSON.parse(localStorage.getItem('bharatfunded-uploaded-hashes') || '[]');
@@ -193,8 +195,22 @@ function WalletPage() {
     loadSavedUpiAccounts();
 
     const walletInterval = setInterval(fetchWalletFromServer, 5000);
-    return () => clearInterval(walletInterval);
-  }, [user]);
+    // Refresh admin-side payment details every 15s so users see UPI / bank /
+    // crypto edits made by the admin without having to reload the page.
+    const paymentMethodsInterval = setInterval(loadPaymentMethods, 15000);
+    return () => {
+      clearInterval(walletInterval);
+      clearInterval(paymentMethodsInterval);
+    };
+  }, [user, loadPaymentMethods]);
+
+  // Re-fetch payment methods when the user opens the deposit tab so the latest
+  // admin-edited UPI / bank list shows up immediately (no 15s wait).
+  useEffect(() => {
+    if (activeTab === 'deposit') {
+      loadPaymentMethods();
+    }
+  }, [activeTab, loadPaymentMethods]);
 
   // Generate hash for duplicate detection
   const generateHash = async (data) => {

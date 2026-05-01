@@ -16,9 +16,10 @@ function ContactPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {[
-            { icon: '\u{1F4E7}', title: 'Email Support', desc: 'support@bharatfunded.com', sub: 'We typically respond within 24 hours' },
-            { icon: '\u{1F4AC}', title: 'Live Chat', desc: 'Available Monday - Saturday', sub: '10:00 AM - 6:00 PM IST' },
-            { icon: '\u{1F4F1}', title: 'Telegram', desc: '@BharatFundedSupport', sub: 'Join our community for updates' },
+            { icon: '\u{1F4DE}', title: 'Phone Support', desc: '+91 8367045119', sub: 'Mon-Sat, 10:00 AM - 6:00 PM IST', href: 'tel:+918367045119' },
+            { icon: '\u{1F4E7}', title: 'Email Support', desc: 'bharathfundedtradersupport@gmail.com', sub: 'We typically respond within 24 hours', href: 'mailto:bharathfundedtradersupport@gmail.com' },
+            { icon: '\u{1F4AC}', title: 'WhatsApp', desc: '+91 8367045119', sub: 'Chat with us anytime', href: 'https://wa.me/918367045119' },
+            { icon: '\u{1F4F1}', title: 'Telegram', desc: '@bharathfundedtraderr', sub: 'Join our community for updates', href: 'https://t.me/bharathfundedtraderr' },
           ].map((item, i) => (
             <div key={i} style={{
               padding: '20px', borderRadius: '14px',
@@ -34,7 +35,18 @@ function ContactPage() {
               </div>
               <div>
                 <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '14px', marginBottom: '2px' }}>{item.title}</div>
-                <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600' }}>{item.desc}</div>
+                {item.href ? (
+                  <a
+                    href={item.href}
+                    target={item.href.startsWith('http') ? '_blank' : undefined}
+                    rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600', textDecoration: 'none', wordBreak: 'break-all' }}
+                  >
+                    {item.desc}
+                  </a>
+                ) : (
+                  <div style={{ fontSize: '12px', color: '#3b82f6', fontWeight: '600' }}>{item.desc}</div>
+                )}
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{item.sub}</div>
               </div>
             </div>
