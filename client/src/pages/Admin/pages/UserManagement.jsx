@@ -530,11 +530,17 @@ function UserManagement() {
   };
 
   const loginAsUser = async (user) => {
+    // Pre-open the popup synchronously (inside the click handler) so the
+    // browser keeps the user-gesture context. If we wait for fetch() to
+    // resolve before calling window.open, popup blockers strip the new tab.
+    const popup = window.open('about:blank', '_blank');
+
     try {
       // Admin token is required — the /api/admin/* middleware enforces
       // the `admin.impersonateUser` permission and returns 401 without it.
       const adminToken = localStorage.getItem('bharatfunded-admin-token');
       if (!adminToken) {
+        popup?.close();
         alert('Admin session expired. Please log in to the admin panel again.');
         return;
       }
@@ -546,23 +552,33 @@ function UserManagement() {
         }
       });
       const data = await res.json();
-      if (!data.success) {
-        alert(data.error || 'Failed to login as user');
+      if (!res.ok || !data.success) {
+        popup?.close();
+        alert(data.error || `Failed to login as user (HTTP ${res.status})`);
         return;
       }
 
       // Admin panel runs on admin.<domain>; the user app runs on <domain>.
       // Those are separate origins, so localStorage set here is invisible
-      // to the user app. Instead, pass the credentials through the URL as
-      // a base64-encoded blob — AppRouter on the user side decodes it,
-      // stores it in localStorage (on the main origin), and strips the
-      // query param before routing.
+      // to the user app. Pass the credentials through the URL as a base64
+      // blob — AppRouter on the user side decodes it, stores it in
+      // localStorage (on the main origin), and strips the query param.
+      // Use window.location.host (not hostname) so the port survives in
+      // local dev — without it the URL becomes localhost/app on port 80.
       const payload = btoa(JSON.stringify({ token: data.token, user: data.user }));
-      const mainDomain = window.location.hostname.replace(/^admin\./, '');
-      const userAppUrl = `${window.location.protocol}//${mainDomain}/app?impersonate=${encodeURIComponent(payload)}`;
-      window.open(userAppUrl, '_blank');
+      const mainHost = window.location.host.replace(/^admin\./, '');
+      const userAppUrl = `${window.location.protocol}//${mainHost}/app?impersonate=${encodeURIComponent(payload)}`;
+
+      if (popup) {
+        popup.location.href = userAppUrl;
+      } else {
+        // Popup was blocked despite synchronous open — fall back to the
+        // current tab so the admin still ends up logged in as the user.
+        window.location.href = userAppUrl;
+      }
     } catch (error) {
       console.error('Error logging in as user:', error);
+      popup?.close();
       alert('Failed to login as user: ' + (error?.message || 'network error'));
     }
   };

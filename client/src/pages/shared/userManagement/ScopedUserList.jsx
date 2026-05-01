@@ -249,21 +249,34 @@ export default function ScopedUserList({ status = 'all' }) {
 
   const loginAsUser = async (u) => {
     if (!confirm(`Login as ${u.name || u.oderId}? A new tab will open with their account.`)) return;
+    // Open the popup synchronously so the browser keeps the click context —
+    // popup blockers strip new tabs that open after an await.
+    const popup = window.open('about:blank', '_blank');
     setBusyId(u._id); setError(null);
     try {
       const { res, data } = await adminFetch(`${API_URL}/api/admin/users/${u._id}/login-as`, { method: 'POST' });
-      if (!res.ok || data?.success === false) throw new Error(data?.error || `HTTP ${res.status}`);
-      // Stash user session in localStorage so /app picks it up (same behavior
-      // as super-admin UserManagement.jsx loginAsUser).
-      localStorage.setItem('bharatfunded-auth', JSON.stringify({
-        isAuthenticated: true, token: data.token, user: data.user,
-      }));
-      localStorage.setItem('bharatfunded-token', data.token);
-      // Open user app on main domain (not admin/subadmin subdomain)
-      const mainDomain = window.location.hostname.replace(/^(admin|subadmin|broker)\./, '');
-      const userAppUrl = `${window.location.protocol}//${mainDomain}/app`;
-      window.open(userAppUrl, '_blank');
-    } catch (e) { setError(e.message); } finally { setBusyId(null); }
+      if (!res.ok || data?.success === false) {
+        popup?.close();
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      // Pass credentials through the URL — admin/sub-admin/broker run on a
+      // different sub-domain than /app so localStorage here is invisible there.
+      // AppRouter on the user side decodes ?impersonate= into localStorage and
+      // strips the param before routing.
+      const payload = btoa(JSON.stringify({ token: data.token, user: data.user }));
+      // Use window.location.host (not hostname) so the port survives in dev —
+      // without it the URL becomes localhost/app on port 80 in local dev.
+      const mainHost = window.location.host.replace(/^(admin|subadmin|broker)\./, '');
+      const userAppUrl = `${window.location.protocol}//${mainHost}/app?impersonate=${encodeURIComponent(payload)}`;
+      if (popup) {
+        popup.location.href = userAppUrl;
+      } else {
+        window.location.href = userAppUrl;
+      }
+    } catch (e) {
+      popup?.close();
+      setError(e.message);
+    } finally { setBusyId(null); }
   };
 
   // ─── Download Report ────────────────────────────────────────────────────

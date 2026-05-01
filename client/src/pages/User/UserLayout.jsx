@@ -5,13 +5,14 @@ import {
   LuBriefcase, LuSettings, LuBell, LuSun, LuMoon,
   LuX, LuChartColumn, LuZap, LuUser,
   LuCircleUser, LuLogOut, LuPlus, LuEllipsisVertical, LuMenu,
-  LuTrophy
+  LuChevronLeft, LuChevronRight, LuTrophy
 } from 'react-icons/lu';
-// Theme-aware logos. The "light" PNG is the dark-text version meant for light
-// backgrounds; the "dark" PNG is the white/inverted version for dark mode.
-// Filenames have spaces — Vite handles those, but keep the import names clean.
-import logoLight from '../../assets/bharat funded trader new logo light.png';
-import logoDark from '../../assets/bharat funded trader new logo dark.png';
+// Theme-aware logos. Filenames describe the mode they're designed FOR:
+//   "...logo light.png" → designed for LIGHT mode (dark-coloured logo)
+//   "...logo dark.png"  → designed for DARK mode (white / inverted logo)
+// Variable names mirror that intent so the ternary below reads correctly.
+import logoForLightMode from '../../assets/bharat funded trader new logo light.png';
+import logoForDarkMode from '../../assets/bharat funded trader new logo dark.png';
 import { useMetaApiPrices } from '../../hooks/useMetaApiPrices';
 import { useZerodhaTicks } from '../../hooks/useZerodhaTicks';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -2406,14 +2407,17 @@ function UserLayout({ user, onLogout }) {
         borderBottom: '1px solid var(--border-color)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Hamburger only opens the mobile drawer now — on desktop, the
+              collapse toggle lives at the bottom of the sidebar. CSS in the
+              media query block hides this on screens > 768px. */}
           <button
             className="prop-hamburger"
-            onClick={toggleSidebar}
-            aria-label="Toggle sidebar"
-            title="Toggle sidebar"
+            onClick={() => setMobileMenuOpen(v => !v)}
+            aria-label="Open menu"
+            title="Open menu"
             style={{
               background: 'none', border: 'none', color: 'var(--text-primary)',
-              cursor: 'pointer', padding: '6px', display: 'inline-flex',
+              cursor: 'pointer', padding: '6px', display: 'none',
               alignItems: 'center', justifyContent: 'center', borderRadius: '6px'
             }}
           >
@@ -2426,7 +2430,7 @@ function UserLayout({ user, onLogout }) {
             className="bft-header-logo-btn"
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}
           >
-            <img src={isDark ? logoLight : logoDark} alt="BharatFunded" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
+            <img src={isDark ? logoForDarkMode : logoForLightMode} alt="Bharat Funded Trader" style={{ height: '40px', width: 'auto', objectFit: 'contain' }} />
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -2586,6 +2590,38 @@ function UserLayout({ user, onLogout }) {
             );
           })}
         </nav>
+
+        {/* Collapse / expand toggle — pinned to the bottom of the sidebar.
+            Replaces the old top-bar hamburger on desktop. Click flips the
+            sidebar between 180px (expanded) and 64px (icon-only). */}
+        <div style={{
+          padding: '10px 12px', borderTop: '1px solid var(--border-color)',
+          display: 'flex', justifyContent: sidebarCollapsed ? 'center' : 'flex-end'
+        }}>
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed(v => !v)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            style={{
+              width: '32px', height: '32px',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: '1px solid var(--border-color)',
+              borderRadius: '8px', cursor: 'pointer',
+              color: 'var(--text-secondary)', transition: 'all 0.15s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-tertiary, var(--bg-primary))';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
+            {sidebarCollapsed ? <LuChevronRight size={16} /> : <LuChevronLeft size={16} />}
+          </button>
+        </div>
       </aside>
 
       {/* Trade Notifications (Expiry, Margin Call, Stop Out) */}

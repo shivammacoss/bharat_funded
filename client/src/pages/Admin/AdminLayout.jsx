@@ -11,12 +11,12 @@ import {
   LuGift, LuRadio, LuClock, LuFileChartColumn,
   LuBell, LuSettings, LuActivity, LuTrophy
 } from 'react-icons/lu';
-// Theme-aware admin sidebar logos. The PNG named "light" is the LIGHT-coloured
-// (white / cream) variant — meant for DARK backgrounds. The "dark" PNG is the
-// DARK-coloured variant — meant for LIGHT backgrounds. Swap accordingly when
-// the admin theme flips so the logo never disappears into the background.
-import logoForLightBg from '../../assets/bharat funded trader new logo dark.png';
-import logoForDarkBg from '../../assets/bharat funded trader new logo light.png';
+// Theme-aware admin sidebar logos. Filenames describe the mode they're
+// designed FOR:
+//   "...logo light.png" → designed for LIGHT mode (dark-coloured logo)
+//   "...logo dark.png"  → designed for DARK mode (white / inverted logo)
+import logoForLightMode from '../../assets/bharat funded trader new logo light.png';
+import logoForDarkMode from '../../assets/bharat funded trader new logo dark.png';
 import '../../styles/themes.css';
 import './Admin.css';
 
@@ -225,9 +225,9 @@ function AdminLayout() {
       <aside className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           {sidebarCollapsed ? (
-            <img src={adminTheme === 'light' ? logoForLightBg : logoForDarkBg} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '32px', width: '32px', objectFit: 'contain' }} />
+            <img src={adminTheme === 'light' ? logoForLightMode : logoForDarkMode} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '32px', width: '32px', objectFit: 'contain' }} />
           ) : (
-            <img src={adminTheme === 'light' ? logoForLightBg : logoForDarkBg} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '40px', width: 'auto', maxWidth: '180px', objectFit: 'contain' }} />
+            <img src={adminTheme === 'light' ? logoForLightMode : logoForDarkMode} alt="Bharat Funded Trader" className="sidebar-logo-img" style={{ height: '40px', width: 'auto', maxWidth: '180px', objectFit: 'contain' }} />
           )}
           <button
             className="sidebar-toggle"
