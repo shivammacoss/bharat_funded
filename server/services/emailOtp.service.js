@@ -30,8 +30,10 @@ function assertCanSend(purpose, email) {
 }
 
 async function requireSignupOtp() {
-  // OTP disabled — normal registration without email verification
-  return false;
+  // Signup OTP is required when SMTP is configured. Set SIGNUP_OTP_DISABLED=true
+  // in .env to bypass (e.g. local dev without a working mailbox).
+  if (String(process.env.SIGNUP_OTP_DISABLED).toLowerCase() === 'true') return false;
+  return require('./email.service').isSmtpConfigured();
 }
 
 function generateSixDigitCode() {
