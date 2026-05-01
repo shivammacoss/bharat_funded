@@ -1258,12 +1258,17 @@ function App({ user, onLogout }) {
   const [instrumentsPanelCollapsed, setInstrumentsPanelCollapsed] = useState(false);
   const [expandedSegments, setExpandedSegments] = useState({});
   const DEFAULT_WATCHLIST = ['NIFTY50', 'BANKNIFTY', 'SENSEX', 'RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK'];
+  // Bumping the localStorage key forces every existing user onto the new
+  // default favourites the next time they load the app — cheaper than asking
+  // them to clear browser storage. The old `bharatfunded-watchlist` key from
+  // pre-default sessions is intentionally ignored.
+  const WATCHLIST_LS_KEY = 'bharatfunded-watchlist-v2';
 
   // Load watchlist from localStorage or use defaults. An empty saved array
   // (e.g. user removed everything in a past session) also falls back to the
   // defaults so a brand-new view never shows "No favourites added".
   const [watchlist, setWatchlist] = useState(() => {
-    const saved = localStorage.getItem('bharatfunded-watchlist');
+    const saved = localStorage.getItem(WATCHLIST_LS_KEY);
     let list = DEFAULT_WATCHLIST;
     if (saved) {
       try {
@@ -1995,7 +2000,7 @@ function App({ user, onLogout }) {
 
   // Save watchlist to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('bharatfunded-watchlist', JSON.stringify(watchlist));
+    localStorage.setItem(WATCHLIST_LS_KEY, JSON.stringify(watchlist));
   }, [watchlist]);
 
   // Add instrument to chart tabs
