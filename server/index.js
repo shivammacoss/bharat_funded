@@ -3334,38 +3334,74 @@ app.delete('/api/banners/:id', async (req, res) => {
 // Admin: Get dashboard stats
 app.get('/api/admin/dashboard/stats', async (req, res) => {
   try {
-    // Only count actual users (role: 'user'), exclude admins
+    const ChallengeAccount = require('./models/ChallengeAccount');
+
+    // User counts
     const totalUsers = await User.countDocuments({ role: { $ne: 'admin' } });
     const activeUsers = await User.countDocuments({ role: { $ne: 'admin' }, isActive: { $ne: false } });
     const blockedUsers = await User.countDocuments({ role: { $ne: 'admin' }, isActive: false });
-    const demoUsers = 0;
 
-    // Count SubAdmins and Brokers from Admin model
-    const totalSubAdmins = await Admin.countDocuments({ role: 'sub_admin' });
-    const totalBrokers = await Admin.countDocuments({ role: 'broker' });
-
+    // Trade counts
     const totalTrades = await Trade.countDocuments();
     const openPositions = await HedgingPosition.countDocuments({ status: 'open' });
     const closedTrades = await Trade.countDocuments();
 
-    const transactions = await Transaction.find({ status: 'approved' });
-    const totalDeposits = transactions
-      .filter(t => t.type === 'deposit')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const totalWithdrawals = transactions
-      .filter(t => t.type === 'withdrawal')
-      .reduce((sum, t) => sum + t.amount, 0);
+    // ── Challenge Buys (revenue) — from ChallengeAccount collection so
+    //    old wallet-flow purchases are included alongside the new UPI
+    //    flow. Fee resolution priority: linked Tx → couponSnapshot →
+    //    challenge tier → legacy challengeFee.
+    const completedAccounts = await ChallengeAccount.find({
+      paymentStatus: 'COMPLETED',
+      status: { $ne: 'CANCELLED' }
+    }).populate('challengeId', 'challengeFee tiers').lean();
+    let totalChallengeBuys = 0;
+    for (const a of completedAccounts) {
+      let fee = 0;
+      if (a.pendingPurchaseTransactionId) {
+        try {
+          const tx = await Transaction.findById(a.pendingPurchaseTransactionId).select('amount').lean();
+          if (tx?.amount > 0) fee = Number(tx.amount);
+        } catch (e) { /* ignore */ }
+      }
+      if (!fee && a.couponSnapshot?.finalFee > 0) fee = Number(a.couponSnapshot.finalFee);
+      if (!fee) {
+        const ch = a.challengeId;
+        if (ch?.tiers?.length) fee = Number(ch.tiers[0]?.challengeFee || 0);
+        if (!fee && ch?.challengeFee) fee = Number(ch.challengeFee);
+      }
+      totalChallengeBuys += fee;
+    }
+    const challengeBuyCount = completedAccounts.length;
 
-    const pendingDeposits = await Transaction.countDocuments({ type: 'deposit', status: 'pending' });
-    const pendingWithdrawals = await Transaction.countDocuments({ type: 'withdrawal', status: 'pending' });
+    // ── Funded payouts (admin-approved profit withdrawals)
+    const payouts = await Transaction.aggregate([
+      { $match: { type: 'withdrawal', status: { $in: ['approved', 'completed'] }, 'paymentDetails.kind': 'prop_payout' } },
+      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+    ]);
+    const totalPayouts = payouts[0]?.total || 0;
+    const payoutCount = payouts[0]?.count || 0;
 
-    // Get recent users (last 10) - only actual users, not admins
+    // Pending queues (challenge buy requests + funded payout requests)
+    const pendingChallengeBuys = await Transaction.countDocuments({ type: 'challenge_purchase', status: 'pending' });
+    const pendingPayouts = await Transaction.countDocuments({
+      type: 'withdrawal',
+      status: 'pending',
+      'paymentDetails.kind': 'prop_payout'
+    });
+
+    // Account status snapshot
+    const activeAccounts = await ChallengeAccount.countDocuments({ status: 'ACTIVE' });
+    const fundedAccounts = await ChallengeAccount.countDocuments({ status: 'FUNDED' });
+    const passedAccounts = await ChallengeAccount.countDocuments({ status: 'PASSED' });
+    const failedAccounts = await ChallengeAccount.countDocuments({ status: 'FAILED' });
+
+    // Recent users (no balance — wallet is hidden in the prop-only model)
     const recentUsers = await User.find({ role: { $ne: 'admin' } })
       .sort({ createdAt: -1 })
       .limit(10)
-      .select('oderId name email isActive createdAt wallet');
+      .select('oderId name email isActive createdAt');
 
-    // Get recent trades (last 10)
+    // Recent trades
     const recentTrades = await Trade.find({})
       .sort({ executedAt: -1 })
       .limit(10)
@@ -3377,16 +3413,21 @@ app.get('/api/admin/dashboard/stats', async (req, res) => {
         totalUsers,
         activeUsers,
         blockedUsers,
-        demoUsers,
-        totalSubAdmins,
-        totalBrokers,
         totalTrades,
         openPositions,
         closedTrades,
-        totalDeposits,
-        totalWithdrawals,
-        pendingDeposits,
-        pendingWithdrawals
+        // Prop-only money metrics
+        totalChallengeBuys,
+        challengeBuyCount,
+        totalPayouts,
+        payoutCount,
+        pendingChallengeBuys,
+        pendingPayouts,
+        // Account status snapshot
+        activeAccounts,
+        fundedAccounts,
+        passedAccounts,
+        failedAccounts
       },
       recentUsers,
       recentTrades

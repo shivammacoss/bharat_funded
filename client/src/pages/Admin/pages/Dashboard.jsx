@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   LuUsers, LuTrendingUp, LuBanknote, LuChartColumn,
-  LuUserCheck, LuUserX, LuClock, LuGamepad2,
-  LuBriefcase, LuHandshake, LuArrowDownToLine, LuHourglass
+  LuUserCheck, LuUserX, LuClock, LuTrophy,
+  LuShoppingCart, LuArrowUpFromLine, LuShield, LuHourglass
 } from 'react-icons/lu';
 
 // Auto-shrink stat value: full font at <=10 chars, scales down for longer text
@@ -19,28 +19,33 @@ function StatValue({ children, style }) {
 }
 
 function Dashboard() {
-  const { API_URL, adminCurrency, usdInrRate, formatAdminCurrency } = useOutletContext();
-  
-  // Local currency formatter that handles INR values (deposits/withdrawals are stored in INR)
+  const { API_URL } = useOutletContext();
+
+  // INR formatter (all prop money is INR)
   const formatCurrency = (value) => {
     const numValue = Number(value || 0);
     return `₹${numValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
+
   const [statsLoading, setStatsLoading] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
     blockedUsers: 0,
-    demoUsers: 0,
-    totalSubAdmins: 0,
-    totalBrokers: 0,
     totalTrades: 0,
     openPositions: 0,
     closedTrades: 0,
-    totalDeposits: 0,
-    totalWithdrawals: 0,
-    pendingDeposits: 0,
-    pendingWithdrawals: 0
+    // Prop-only metrics
+    totalChallengeBuys: 0,
+    challengeBuyCount: 0,
+    totalPayouts: 0,
+    payoutCount: 0,
+    pendingChallengeBuys: 0,
+    pendingPayouts: 0,
+    activeAccounts: 0,
+    fundedAccounts: 0,
+    passedAccounts: 0,
+    failedAccounts: 0
   });
   const [recentUsers, setRecentUsers] = useState([]);
   const [recentTrades, setRecentTrades] = useState([]);
@@ -72,6 +77,7 @@ function Dashboard() {
 
   return (
     <div className="admin-dashboard">
+      {/* Row 1 — Users + Challenge Buys (revenue) + Payouts + Open Positions */}
       <div className="fund-stats-row">
         <div className="fund-stat-card">
           <div className="fund-stat-card__top">
@@ -84,21 +90,23 @@ function Dashboard() {
         </div>
         <div className="fund-stat-card">
           <div className="fund-stat-card__top">
-            <div className="fund-stat-card__icon" style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.35)', color: '#4ade80' }}><LuTrendingUp size={18} /></div>
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.35)', color: '#4ade80' }}><LuShoppingCart size={18} /></div>
             <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Total Trades</div>
-              <StatValue>{dashboardStats.totalTrades.toLocaleString()}</StatValue>
+              <div className="fund-stat-card__label">Total Challenge Buys</div>
+              <StatValue>{formatCurrency(dashboardStats.totalChallengeBuys)}</StatValue>
             </div>
           </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>{dashboardStats.challengeBuyCount} purchases</div>
         </div>
         <div className="fund-stat-card">
           <div className="fund-stat-card__top">
-            <div className="fund-stat-card__icon" style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.35)', color: '#4ade80' }}><LuBanknote size={18} /></div>
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171' }}><LuArrowUpFromLine size={18} /></div>
             <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Total Deposits</div>
-              <StatValue>{formatCurrency(dashboardStats.totalDeposits)}</StatValue>
+              <div className="fund-stat-card__label">Total Payouts</div>
+              <StatValue>{formatCurrency(dashboardStats.totalPayouts)}</StatValue>
             </div>
           </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>{dashboardStats.payoutCount} funded withdrawals</div>
         </div>
         <div className="fund-stat-card">
           <div className="fund-stat-card__top">
@@ -111,6 +119,47 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Row 2 — Account status snapshot */}
+      <div className="fund-stats-row">
+        <div className="fund-stat-card">
+          <div className="fund-stat-card__top">
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.35)', color: '#60a5fa' }}><LuTrendingUp size={18} /></div>
+            <div className="fund-stat-card__meta">
+              <div className="fund-stat-card__label">Active Accounts</div>
+              <StatValue>{dashboardStats.activeAccounts}</StatValue>
+            </div>
+          </div>
+        </div>
+        <div className="fund-stat-card">
+          <div className="fund-stat-card__top">
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.35)', color: '#fbbf24' }}><LuTrophy size={18} /></div>
+            <div className="fund-stat-card__meta">
+              <div className="fund-stat-card__label">Funded Accounts</div>
+              <StatValue>{dashboardStats.fundedAccounts}</StatValue>
+            </div>
+          </div>
+        </div>
+        <div className="fund-stat-card">
+          <div className="fund-stat-card__top">
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.35)', color: '#4ade80' }}><LuShield size={18} /></div>
+            <div className="fund-stat-card__meta">
+              <div className="fund-stat-card__label">Passed Accounts</div>
+              <StatValue>{dashboardStats.passedAccounts}</StatValue>
+            </div>
+          </div>
+        </div>
+        <div className="fund-stat-card">
+          <div className="fund-stat-card__top">
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171' }}><LuUserX size={18} /></div>
+            <div className="fund-stat-card__meta">
+              <div className="fund-stat-card__label">Failed Accounts</div>
+              <StatValue>{dashboardStats.failedAccounts}</StatValue>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3 — User status + Pending queues */}
       <div className="fund-stats-row">
         <div className="fund-stat-card">
           <div className="fund-stat-card__top">
@@ -134,47 +183,8 @@ function Dashboard() {
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.35)', color: '#fbbf24' }}><LuClock size={18} /></div>
             <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Pending Deposits</div>
-              <StatValue>{dashboardStats.pendingDeposits}</StatValue>
-            </div>
-          </div>
-        </div>
-        <div className="fund-stat-card">
-          <div className="fund-stat-card__top">
-            <div className="fund-stat-card__icon" style={{ background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.35)', color: '#c084fc' }}><LuGamepad2 size={18} /></div>
-            <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Demo Users</div>
-              <StatValue>{dashboardStats.demoUsers}</StatValue>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="fund-stats-row">
-        <div className="fund-stat-card">
-          <div className="fund-stat-card__top">
-            <div className="fund-stat-card__icon" style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.35)', color: '#60a5fa' }}><LuBriefcase size={18} /></div>
-            <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Sub-Admins</div>
-              <StatValue>{dashboardStats.totalSubAdmins}</StatValue>
-            </div>
-          </div>
-        </div>
-        <div className="fund-stat-card">
-          <div className="fund-stat-card__top">
-            <div className="fund-stat-card__icon" style={{ background: 'rgba(6, 182, 212, 0.15)', border: '1px solid rgba(6, 182, 212, 0.35)', color: '#22d3ee' }}><LuHandshake size={18} /></div>
-            <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Brokers</div>
-              <StatValue>{dashboardStats.totalBrokers}</StatValue>
-            </div>
-          </div>
-        </div>
-        <div className="fund-stat-card">
-          <div className="fund-stat-card__top">
-            <div className="fund-stat-card__icon" style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171' }}><LuArrowDownToLine size={18} /></div>
-            <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Total Withdrawals</div>
-              <StatValue>{formatCurrency(dashboardStats.totalWithdrawals)}</StatValue>
+              <div className="fund-stat-card__label">Pending Buy Requests</div>
+              <StatValue>{dashboardStats.pendingChallengeBuys}</StatValue>
             </div>
           </div>
         </div>
@@ -182,8 +192,8 @@ function Dashboard() {
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.35)', color: '#fbbf24' }}><LuHourglass size={18} /></div>
             <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">Pending Withdrawals</div>
-              <StatValue>{dashboardStats.pendingWithdrawals}</StatValue>
+              <div className="fund-stat-card__label">Pending Payouts</div>
+              <StatValue>{dashboardStats.pendingPayouts}</StatValue>
             </div>
           </div>
         </div>
@@ -193,9 +203,10 @@ function Dashboard() {
         <div className="chart-card">
           <h3>Quick Stats</h3>
           <div style={{ padding: '20px' }}>
-            <p><strong>Closed Trades:</strong> {dashboardStats.closedTrades}</p>
-            <p><strong>Total Withdrawals:</strong> {formatCurrency(dashboardStats.totalWithdrawals)}</p>
-            <p><strong>Pending Withdrawals:</strong> {dashboardStats.pendingWithdrawals}</p>
+            <p><strong>Total Revenue:</strong> {formatCurrency(dashboardStats.totalChallengeBuys)}</p>
+            <p><strong>Net Revenue (after payouts):</strong> {formatCurrency(dashboardStats.totalChallengeBuys - dashboardStats.totalPayouts)}</p>
+            <p><strong>Pending Approvals:</strong> {dashboardStats.pendingChallengeBuys + dashboardStats.pendingPayouts}</p>
+            <p><strong>Active + Funded:</strong> {dashboardStats.activeAccounts + dashboardStats.fundedAccounts}</p>
           </div>
         </div>
         <div className="chart-card">
@@ -220,7 +231,7 @@ function Dashboard() {
                       <td className={trade.side === 'buy' ? 'text-green' : 'text-red'}>{trade.side?.toUpperCase()}</td>
                       <td>{trade.volume}</td>
                       <td className={trade.profit >= 0 ? 'text-green' : 'text-red'}>
-                        {trade.profit >= 0 ? '+' : ''}{formatCurrency(Math.abs(trade.profit || 0), false)}
+                        {trade.profit >= 0 ? '+' : ''}{formatCurrency(Math.abs(trade.profit || 0))}
                       </td>
                     </tr>
                   ))}
@@ -240,21 +251,19 @@ function Dashboard() {
                 <th>ID</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Balance</th>
                 <th>Status</th>
                 <th>Joined</th>
               </tr>
             </thead>
             <tbody>
               {recentUsers.length === 0 ? (
-                <tr><td colSpan="6" style={{ textAlign: 'center', color: '#888' }}>No users yet</td></tr>
+                <tr><td colSpan="5" style={{ textAlign: 'center', color: '#888' }}>No users yet</td></tr>
               ) : (
                 recentUsers.map((user, idx) => (
                   <tr key={idx}>
                     <td>#{user.oderId || user._id?.slice(-6)}</td>
                     <td>{user.name}</td>
                     <td>{user.email}</td>
-                    <td>{formatCurrency(user.wallet?.balance || 0, false)}</td>
                     <td>
                       <span className={`status-badge ${user.isActive === false ? 'blocked' : 'active'}`}>
                         {user.isActive === false ? 'Blocked' : 'Active'}
