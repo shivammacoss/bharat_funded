@@ -1979,23 +1979,18 @@ function UserLayout({ user, onLogout }) {
       if (!tick) tick = getTickBySymbolAuto(inst.symbol);
 
       if (tick && (tick.lastPrice > 0 || tick.bid > 0)) {
+        // For Indian instruments use Zerodha LTP for BOTH buy and sell —
+        // no synthetic bid/ask spread. The price the user sees is the
+        // exact Zerodha last-traded price.
         const lastPrice =
           Number(tick.lastPrice || tick.last_price || tick.ltp || 0) ||
           Number(tick.bid) ||
+          Number(tick.ask) ||
           0;
-        const tb = Number(tick.bid);
-        const ta = Number(tick.ask);
-        let rawBid = tb > 0 ? tb : lastPrice;
-        let rawAsk = ta > 0 ? ta : lastPrice;
-        if (rawBid > 0 && rawAsk > 0 && rawAsk < rawBid) {
-          const x = rawBid;
-          rawBid = rawAsk;
-          rawAsk = x;
-        }
         result = {
           ...inst,
-          bid: rawBid,
-          ask: rawAsk,
+          bid: lastPrice,
+          ask: lastPrice,
           low: tick.low || inst.low || 0,
           high: tick.high || inst.high || 0,
           open: tick.open || inst.open || 0,
@@ -2003,7 +1998,11 @@ function UserLayout({ user, onLogout }) {
           volume: tick.volume || inst.volume || 0,
           change: tick.change !== undefined ? parseFloat(tick.change) : (inst.change || 0),
           lastPrice: lastPrice,
-          lastUpdated: tick.timestamp
+          lastUpdated: tick.timestamp,
+          spreadAmount: 0,
+          // Marker so the spread-application step downstream can skip
+          // Indian instruments and not re-apply any markup.
+          _liveLtp: true
         };
       } else {
         result = { ...inst, bid: 0, ask: 0, low: 0, high: 0, change: 0 };
@@ -2072,8 +2071,10 @@ function UserLayout({ user, onLogout }) {
       }
     }
 
-    // Apply segment spread to displayed bid/ask (what user sees = what they trade at)
-    if (result.bid > 0 || result.ask > 0) {
+    // Apply segment spread to displayed bid/ask (what user sees = what they trade at).
+    // SKIP for Indian instruments — they use Zerodha live LTP directly so
+    // buy/sell price is identical with no synthetic markup.
+    if (!result._liveLtp && (result.bid > 0 || result.ask > 0)) {
       const { bid, ask, spreadAmount } = applySegmentSpread(result.bid, result.ask, result);
       result.bid = bid;
       result.ask = ask;
