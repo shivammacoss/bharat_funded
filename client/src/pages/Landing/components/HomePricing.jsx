@@ -1,45 +1,64 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import PricingTierCard from './PricingTierCard';
 
-const plans = {
-  'Instant': {
-    description: 'Skip the evaluation. Pay the fee, get your account, start trading the same day. Simple.',
-    tiers: [
-      { capital: '₹1,00,000',  price: '₹6,000'  },
-      { capital: '₹2,00,000',  price: '₹10,000' },
-      { capital: '₹5,00,000',  price: '₹18,000', popular: true },
-      { capital: '₹10,00,000', price: '₹29,000' },
-      { capital: '₹25,00,000', price: '₹50,000' },
-    ],
-  },
-  '1-Step': {
-    description: 'One evaluation phase. Hit the target without breaking the rules and you\'re funded. Most traders pick this one.',
-    tiers: [
-      { capital: '₹1,00,000',  price: '₹4,600'  },
-      { capital: '₹2,00,000',  price: '₹7,600'  },
-      { capital: '₹5,00,000',  price: '₹12,600', popular: true },
-      { capital: '₹10,00,000', price: '₹19,600' },
-      { capital: '₹25,00,000', price: '₹35,000' },
-      { capital: '₹50,00,000', price: '₹55,000' },
-    ],
-  },
-  '2-Step': {
-    description: 'Two phases, lowest cost. Built for traders who want to prove themselves without paying upfront for instant access.',
-    tiers: [
-      { capital: '₹1,00,000',  price: '₹3,000'  },
-      { capital: '₹2,00,000',  price: '₹5,000'  },
-      { capital: '₹5,00,000',  price: '₹8,000', popular: true },
-      { capital: '₹10,00,000', price: '₹13,000' },
-      { capital: '₹25,00,000', price: '₹22,000' },
-      { capital: '₹50,00,000', price: '₹36,000' },
-    ],
-  },
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+// admin stepsCount → tab label
+const STEP_TO_TAB = { 0: 'Instant', 1: '1-Step', 2: '2-Step' };
+
+const DESC_BY_TAB = {
+  'Instant': 'Skip the evaluation. Pay the fee, get your account, start trading the same day. Simple.',
+  '1-Step': 'One evaluation phase. Hit the target without breaking the rules and you\'re funded. Most traders pick this one.',
+  '2-Step': 'Two phases, lowest cost. Built for traders who want to prove themselves without paying upfront for instant access.'
 };
 
+function formatINR(n) {
+  const v = Number(n) || 0;
+  return `₹${v.toLocaleString('en-IN')}`;
+}
+
 export default function HomePricing() {
+  const [challenges, setChallenges] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('Instant');
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/prop/challenges`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.challenges)) setChallenges(data.challenges);
+      })
+      .catch(() => { /* network failure → render empty state */ })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Build live plans dictionary keyed by tab name. Each tier card pulls
+  // pricing from the admin's published challenge tiers.
+  const plans = useMemo(() => {
+    const out = {};
+    for (const c of challenges) {
+      const tabName = STEP_TO_TAB[c.stepsCount];
+      if (!tabName) continue;
+      const rawTiers = (c.tiers && c.tiers.length > 0)
+        ? c.tiers
+        : [{ fundSize: c.fundSize, challengeFee: c.challengeFee, isPopular: true, label: '' }];
+      const tiers = rawTiers.map(t => ({
+        capital: formatINR(t.fundSize),
+        price: formatINR(t.challengeFee),
+        popular: !!t.isPopular,
+        label: t.label || ''
+      }));
+      out[tabName] = {
+        description: c.description || DESC_BY_TAB[tabName],
+        tiers
+      };
+    }
+    return out;
+  }, [challenges]);
+
+  const tabOrder = ['Instant', '1-Step', '2-Step'];
   const activePlan = plans[tab];
 
   return (
@@ -63,7 +82,7 @@ export default function HomePricing() {
         {/* Tabs */}
         <div className="flex justify-center mb-8 md:mb-10">
           <div className="inline-flex bg-[#F0F2F8] border border-[#E8EAF0] rounded-full p-1 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-            {Object.keys(plans).map((t) => (
+            {tabOrder.map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -81,15 +100,26 @@ export default function HomePricing() {
 
         {/* Description */}
         <p className="text-center text-base text-[#6B7080] max-w-2xl mx-auto mb-10 md:mb-12">
-          {activePlan.description}
+          {activePlan?.description || DESC_BY_TAB[tab]}
         </p>
 
-        {/* Tier Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          {activePlan.tiers.map((tier) => (
-            <PricingTierCard key={tier.capital} tier={tier} plan={tab} />
-          ))}
-        </div>
+        {/* Tier Cards / Loading / Empty state */}
+        {loading ? (
+          <div className="text-center text-[#6B7080] py-10">Loading pricing…</div>
+        ) : activePlan && activePlan.tiers.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            {activePlan.tiers.map((tier, i) => (
+              <PricingTierCard key={tier.capital + '-' + tier.price + '-' + i} tier={tier} plan={tab} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center bg-[#FAFBFD] border border-[#E8EAF0] rounded-2xl p-10 max-w-xl mx-auto mb-10">
+            <h3 className="text-lg font-bold text-[#0D0F1A] mb-2">{tab} plans coming soon</h3>
+            <p className="text-sm text-[#6B7080]">
+              Our team is finalising the {tab} challenges. In the meantime, check the other plans above.
+            </p>
+          </div>
+        )}
 
         {/* See full pricing CTA */}
         <div className="text-center">

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { LuEye, LuEyeOff } from 'react-icons/lu';
 import TubesBackground from '../../components/TubesBackground';
 import logoWhite from '../../assets/bharat funded trader new logo dark.png';
 import './Auth.css';
@@ -12,6 +13,8 @@ function ForgotPassword() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -140,28 +143,50 @@ function ForgotPassword() {
               </div>
               <div className="form-group">
                 <label htmlFor="np">New password</label>
-                <input
-                  id="np"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    id="np"
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="At least 6 characters"
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowNewPassword((v) => !v)}
+                    tabIndex={-1}
+                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showNewPassword ? <LuEyeOff size={18} /> : <LuEye size={18} />}
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label htmlFor="cp">Confirm password</label>
-                <input
-                  id="cp"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Repeat password"
-                  required
-                  autoComplete="new-password"
-                />
+                <div className="password-input-wrapper">
+                  <input
+                    id="cp"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat password"
+                    required
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    tabIndex={-1}
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <LuEyeOff size={18} /> : <LuEye size={18} />}
+                  </button>
+                </div>
               </div>
               <button type="submit" className="auth-submit-btn" disabled={loading}>
                 {loading ? 'Updating…' : 'Update password'}
