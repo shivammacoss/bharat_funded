@@ -501,7 +501,7 @@ class PropTradingEngine {
    * Called when a trade is opened on a challenge account
    */
   async onTradeOpened(challengeAccountId) {
-    const account = await ChallengeAccount.findById(challengeAccountId);
+    const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
     if (!account) return null;
 
     account.openTradesCount += 1;
@@ -529,6 +529,14 @@ class PropTradingEngine {
     }
 
     await account.save();
+
+    // Re-evaluate equity and DD on every trade-open so a breach from a previous
+    // tick (e.g. unrealised loss from earlier trades) can't be masked by simply
+    // opening a new position. If breached, status flips to FAILED.
+    if (account.challengeId && account.status === 'ACTIVE') {
+      await this.checkDrawdownBreach(account, account.challengeId.rules || {});
+    }
+
     return account;
   }
 
@@ -845,6 +853,8 @@ class PropTradingEngine {
   async withdrawProfit(challengeAccountId, userId, payoutDetails = {}) {
     const upiId = String(payoutDetails.upiId || '').trim();
     const holderName = String(payoutDetails.holderName || '').trim();
+    const requestedAmount = Number(payoutDetails.amount) > 0 ? Number(payoutDetails.amount) : null;
+    const qrImage = payoutDetails.qrImage || '';
     if (!upiId) throw new Error('UPI ID is required');
     if (!holderName) throw new Error('Account holder name is required');
 
@@ -886,8 +896,15 @@ class PropTradingEngine {
     if (profit <= 0) throw new Error('No profit to withdraw');
 
     const splitPercent = account.profitSplitPercent || 80;
-    const withdrawable = (profit * splitPercent) / 100;
-    if (withdrawable <= 0) throw new Error('No withdrawable amount');
+    const maxWithdrawable = (profit * splitPercent) / 100;
+    if (maxWithdrawable <= 0) throw new Error('No withdrawable amount');
+    // If the user specified a custom amount, validate it; otherwise use full
+    // withdrawable. Cap at maxWithdrawable so the user can never request
+    // more than their share.
+    const withdrawable = requestedAmount != null
+      ? Math.min(requestedAmount, maxWithdrawable)
+      : maxWithdrawable;
+    if (withdrawable <= 0) throw new Error('Withdrawal amount must be positive');
 
     // Create a pending Transaction. Admin reviews + approves in the payout
     // queue; admin approval is what actually moves real INR into
@@ -901,6 +918,7 @@ class PropTradingEngine {
       status: 'pending',
       userName: holderName,
       userNote: String(payoutDetails.note || `Prop profit payout · ${splitPercent}% of ₹${profit.toFixed(2)} profit · challenge ${account.accountId}`).slice(0, 500),
+      proofImage: qrImage || '',
       paymentDetails: {
         upiId,
         challengeAccountId: String(account._id),

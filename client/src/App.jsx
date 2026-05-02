@@ -46,6 +46,7 @@ import {
   BillingPage,
   ContactPage,
   IBPage,
+  PassedChallengesPage,
 } from './pages/User/pages';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
@@ -4692,6 +4693,7 @@ function AppRouter() {
           <Route path="contact" element={<ContactPage />} />
           <Route path="ib" element={<IBPage />} />
           <Route path="ib/:section" element={<IBPage />} />
+          <Route path="passed-challenges" element={<PassedChallengesPage />} />
         </Route>
         {/* Fallback */}
         <Route path="/*" element={<NewLandingPage />} />

@@ -68,7 +68,6 @@ const PropTrading = () => {
         profitTargetPhase2Percent: 5,
         profitTargetInstantPercent: 8,
         maxOneDayProfitPercentOfTarget: null,
-        consistencyRulePercent: null,
         minLotSize: 0.01,
         maxLotSize: 100,
         allowFractionalLots: false,
@@ -644,12 +643,6 @@ const PropTrading = () => {
                         <div style={{ color: '#f59e0b', fontWeight: '600' }}>{ch.rules.maxOneDayProfitPercentOfTarget}% of target</div>
                       </div>
                     )}
-                    {ch.rules?.consistencyRulePercent && (
-                      <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Consistency</div>
-                        <div style={{ color: '#8b5cf6', fontWeight: '600' }}>{ch.rules.consistencyRulePercent}%</div>
-                      </div>
-                    )}
                     {ch.rules?.tradingDaysRequired && (
                       <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
                         <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Min Trading Days</div>
@@ -1156,116 +1149,7 @@ const PropTrading = () => {
                   <input type="number" step="1" value={challengeForm.rules.maxOneDayProfitPercentOfTarget || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxOneDayProfitPercentOfTarget: e.target.value ? Number(e.target.value) : null } }))} placeholder="e.g. 40" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                   <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>40 = no single day profit can exceed 40% of total target</span>
                 </div>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Consistency Rule %</label>
-                  <input type="number" step="1" value={challengeForm.rules.consistencyRulePercent || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, consistencyRulePercent: e.target.value ? Number(e.target.value) : null } }))} placeholder="e.g. 30" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                  <span style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>30 = no single day can be more than 30% of total profit</span>
-                </div>
               </div>
-            </div>
-
-            {/* Trade Rules */}
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Trade Rules</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Min Lot Size</label>
-                  <input type="number" step="0.01" value={challengeForm.rules.minLotSize} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, minLotSize: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Lot Size</label>
-                  <input type="number" step="0.01" value={challengeForm.rules.maxLotSize} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLotSize: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Leverage</label>
-                  <input type="number" value={challengeForm.rules.maxLeverage} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxLeverage: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Trades/Day</label>
-                  <input type="number" value={challengeForm.rules.maxTradesPerDay || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxTradesPerDay: e.target.value ? Number(e.target.value) : null } }))} placeholder="Unlimited" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Max Concurrent</label>
-                  <input type="number" value={challengeForm.rules.maxConcurrentTrades || ''} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, maxConcurrentTrades: e.target.value ? Number(e.target.value) : null } }))} placeholder="Unlimited" style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-                <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Min Hold Time (sec)</label>
-                  <input type="number" value={challengeForm.rules.minTradeHoldTimeSeconds} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, minTradeHoldTimeSeconds: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '20px', marginTop: '12px', flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
-                  <input type="checkbox" checked={challengeForm.rules.stopLossMandatory} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, stopLossMandatory: e.target.checked } }))} /> SL Mandatory
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
-                  <input type="checkbox" checked={challengeForm.rules.allowWeekendHolding} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowWeekendHolding: e.target.checked } }))} /> Weekend Holding
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>
-                  <input type="checkbox" checked={challengeForm.rules.allowNewsTrading} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, allowNewsTrading: e.target.checked } }))} /> News Trading
-                </label>
-              </div>
-
-              {/* Fractional-Lot toggle — visually prominent so admins notice it.
-                  ON state ("Whole Lots Only") blocks 1.5 / 2.5 / 3.5 etc.
-                  Stored as `allowFractionalLots` (inverse) for backward compat. */}
-              {(() => {
-                const wholeOnly = challengeForm.rules.allowFractionalLots === false;
-                return (
-                  <div style={{
-                    marginTop: '14px',
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    border: `1px solid ${wholeOnly ? '#3b82f6' : 'var(--border-color)'}`,
-                    background: wholeOnly ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-primary)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px'
-                  }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>
-                        Whole Lots Only
-                      </span>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
-                        ON → block fractional lot orders like 1.5 / 2.5 / 3.5 (only 1, 2, 3 … allowed).
-                        OFF → allow fractional lots (forex-style 0.01, 0.5, 1.5).
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={wholeOnly}
-                      onClick={() => setChallengeForm(p => ({
-                        ...p,
-                        rules: { ...p.rules, allowFractionalLots: !wholeOnly ? false : true }
-                      }))}
-                      style={{
-                        position: 'relative',
-                        width: '52px',
-                        height: '28px',
-                        borderRadius: '14px',
-                        border: 'none',
-                        background: wholeOnly ? '#3b82f6' : 'var(--bg-tertiary)',
-                        cursor: 'pointer',
-                        transition: 'background 0.18s ease',
-                        flexShrink: 0
-                      }}
-                    >
-                      <span style={{
-                        position: 'absolute',
-                        top: '3px',
-                        left: wholeOnly ? '27px' : '3px',
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '50%',
-                        background: '#fff',
-                        transition: 'left 0.18s ease',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
-                      }} />
-                    </button>
-                  </div>
-                );
-              })()}
             </div>
 
             {/* Time & Expiry */}

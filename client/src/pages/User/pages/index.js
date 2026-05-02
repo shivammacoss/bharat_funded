@@ -10,3 +10,4 @@ export { default as DashboardPage } from './DashboardPage';
 export { default as BillingPage } from './BillingPage';
 export { default as ContactPage } from './ContactPage';
 export { default as IBPage } from './IBPage';
+export { default as PassedChallengesPage } from './PassedChallengesPage';

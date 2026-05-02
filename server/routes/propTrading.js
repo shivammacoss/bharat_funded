@@ -1021,7 +1021,7 @@ router.post('/trade-closed', verifyUserToken, async (req, res) => {
 // until approval.
 router.post('/withdraw', verifyUserToken, async (req, res) => {
   try {
-    const { challengeAccountId, upiId, holderName, note } = req.body;
+    const { challengeAccountId, upiId, holderName, note, amount, qrImage } = req.body;
     if (!challengeAccountId) return res.status(400).json({ success: false, message: 'challengeAccountId required' });
     if (!upiId) return res.status(400).json({ success: false, message: 'upiId required' });
     if (!holderName) return res.status(400).json({ success: false, message: 'holderName required' });
@@ -1029,7 +1029,9 @@ router.post('/withdraw', verifyUserToken, async (req, res) => {
     const result = await propTradingEngine.withdrawProfit(challengeAccountId, req.user._id, {
       upiId,
       holderName,
-      note: note || ''
+      note: note || '',
+      amount: amount != null ? Number(amount) : null,
+      qrImage: qrImage || ''
     });
     res.json({
       success: true,
@@ -1040,6 +1042,26 @@ router.post('/withdraw', verifyUserToken, async (req, res) => {
       profit: result.profit,
       splitPercent: result.splitPercent
     });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/prop/my-payouts — user's own payout history (used by the
+// Passed Challenges page to show pending-payout banners on funded
+// account cards).
+router.get('/my-payouts', verifyUserToken, async (req, res) => {
+  try {
+    const Transaction = require('../models/Transaction');
+    const txs = await Transaction.find({
+      oderId: String(req.user.oderId || req.user._id),
+      type: 'withdrawal',
+      'paymentDetails.kind': 'prop_payout'
+    })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json({ success: true, payouts: txs });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
