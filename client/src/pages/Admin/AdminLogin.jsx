@@ -48,17 +48,6 @@ function AdminLogin({ onLogin, adminTheme = 'dark', onToggleTheme }) {
 
   return (
     <>
-      {typeof onToggleTheme === 'function' && (
-        <button
-          type="button"
-          className="admin-login-theme-toggle"
-          onClick={onToggleTheme}
-          aria-label={adminTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={adminTheme === 'dark' ? 'Light theme' : 'Dark theme'}
-        >
-          {adminTheme === 'dark' ? '☀️' : '🌙'}
-        </button>
-      )}
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">

@@ -2463,9 +2463,6 @@ function UserLayout({ user, onLogout }) {
             </span>
             {activeChallengeAccountId && <span style={{ marginLeft: 2, opacity: 0.7 }}>✕</span>}
           </button>
-          <button onClick={toggleTheme} title={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '6px' }}>
-            {isDark ? <LuSun size={20} /> : <LuMoon size={20} />}
-          </button>
           <button
             onClick={() => { setShowNotificationPanel(!showNotificationPanel); if (!showNotificationPanel) fetchSystemNotifications(); }}
             title="Notifications"

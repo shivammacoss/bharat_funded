@@ -297,15 +297,6 @@ function AdminLayout() {
         <header className="admin-header">
           <h1 className="admin-page-title">{getPageTitle()}</h1>
           <div className="admin-header-actions">
-            <button
-              type="button"
-              className="admin-theme-toggle"
-              onClick={toggleAdminTheme}
-              title={adminTheme === 'dark' ? 'Light theme' : 'Dark theme'}
-              aria-label={adminTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            >
-              {adminTheme === 'dark' ? <LuSun size={18} /> : <LuMoon size={18} />}
-            </button>
             <span className="admin-user">{adminAuth.user?.name || 'Admin'} ({adminAuth.user?.email})</span>
             <button className="admin-logout-btn" onClick={handleAdminLogout}>Logout</button>
           </div>
