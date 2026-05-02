@@ -1961,6 +1961,18 @@ function MarketPage() {
     const marginFactor = leverage / 100;
 
     if (tradingMode === 'netting') {
+      // Option BUY = pay premium (no margin). Hard-code this for option
+      // segments so we don't fall through to the underlying's sell margin
+      // when admin leaves optionBuyIntraday at 0.
+      const isOptSegBuy = orderSide === 'buy'
+        && resolvedSegmentApiName
+        && ['NSE_OPT', 'BSE_OPT', 'MCX_OPT', 'CRYPTO_OPTIONS'].includes(resolvedSegmentApiName);
+      if (isOptSegBuy && price > 0) {
+        const lotSize = selectedInstrument?.lotSize || 1;
+        const quantity = nettingVolumeIsShares ? vol : vol * lotSize;
+        return quantity * price;
+      }
+
       if (segmentSettings && price > 0) {
         const lotSize = selectedInstrument?.lotSize || 1;
         const quantity = nettingVolumeIsShares ? vol : vol * lotSize;
