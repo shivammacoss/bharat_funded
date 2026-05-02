@@ -11,12 +11,12 @@ import {
   LuGift, LuRadio, LuClock, LuFileChartColumn,
   LuBell, LuSettings, LuActivity, LuTrophy
 } from 'react-icons/lu';
-// Theme-aware admin sidebar logos. Filenames describe the mode they're
-// designed FOR:
-//   "...logo light.png" → designed for LIGHT mode (dark-coloured logo)
-//   "...logo dark.png"  → designed for DARK mode (white / inverted logo)
-import logoForLightMode from '../../assets/bharat funded trader new logo light.png';
-import logoForDarkMode from '../../assets/bharat funded trader new logo dark.png';
+// Theme-aware admin sidebar logos. NOTE: source filenames are misleading —
+//   "...logo light.png" actually has WHITE BHARAT text (use in DARK mode)
+//   "...logo dark.png"  actually has DARK-BLUE BHARAT text (use in LIGHT mode)
+// Variable names below reflect WHICH MODE they should be displayed in.
+import logoForLightMode from '../../assets/bharat funded trader new logo dark.png';
+import logoForDarkMode from '../../assets/bharat funded trader new logo light.png';
 import '../../styles/themes.css';
 import './Admin.css';
 

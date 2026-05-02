@@ -70,7 +70,48 @@ const ibSchema = new mongoose.Schema({
     totalWithdrawn: { type: Number, default: 0 },
     pendingWithdrawal: { type: Number, default: 0 }
   },
-  
+
+  // Active coupon issued by admin — drives challenge-purchase discounts and
+  // IB challenge-purchase commission. One active coupon per IB at a time;
+  // past coupons (re-issued or expired) move to couponHistory below.
+  coupon: {
+    code: { type: String, default: null, uppercase: true }, // mirrors referralCode for clarity
+    status: {
+      type: String,
+      enum: ['none', 'active', 'expired', 'pending_renewal'],
+      default: 'none'
+    },
+    discountPercent: { type: Number, default: 0, min: 0, max: 100 },
+    validityDays: { type: Number, default: 0, min: 0 },
+    validUntil: { type: Date, default: null },
+    challengePurchaseCommissionPercent: { type: Number, default: 0, min: 0, max: 100 },
+    // Optional cap on how many times this coupon can be redeemed.
+    // 0 = unlimited (until validUntil expires).
+    maxRedemptions: { type: Number, default: 0, min: 0 },
+    issuedAt: { type: Date, default: null },
+    issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    renewalRequestedAt: { type: Date, default: null },
+    renewalNote: { type: String, default: '' },
+    redemptionCount: { type: Number, default: 0 },
+    totalDiscountGiven: { type: Number, default: 0 },
+    totalCommissionEarned: { type: Number, default: 0 }
+  },
+  couponHistory: [{
+    code: { type: String },
+    discountPercent: { type: Number },
+    validityDays: { type: Number },
+    validUntil: { type: Date },
+    challengePurchaseCommissionPercent: { type: Number },
+    maxRedemptions: { type: Number, default: 0 },
+    issuedAt: { type: Date },
+    issuedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    expiredAt: { type: Date },
+    redemptionCount: { type: Number, default: 0 },
+    totalDiscountGiven: { type: Number, default: 0 },
+    totalCommissionEarned: { type: Number, default: 0 },
+    reason: { type: String, default: '' } // 'expired' | 'reissued' | 'admin_revoked' | 'redemption_limit'
+  }],
+
   // Application Details
   applicationDetails: {
     businessName: { type: String, default: '' },
@@ -95,13 +136,16 @@ const ibSchema = new mongoose.Schema({
 ibSchema.index({ parentIBId: 1 });
 ibSchema.index({ status: 1 });
 ibSchema.index({ 'stats.totalCommissionEarned': -1 });
+ibSchema.index({ 'coupon.status': 1 });
+ibSchema.index({ 'coupon.validUntil': 1 });
 
-// Generate unique referral code
+// Generate unique referral code (legacy random fallback — kept for cases
+// where the user's name yields no usable Latin characters).
 ibSchema.statics.generateReferralCode = async function() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code;
   let exists = true;
-  
+
   while (exists) {
     code = 'IB';
     for (let i = 0; i < 6; i++) {
@@ -110,7 +154,41 @@ ibSchema.statics.generateReferralCode = async function() {
     const existing = await this.findOne({ referralCode: code });
     exists = !!existing;
   }
-  
+
+  return code;
+};
+
+// Generate referral code derived from the user's display name, e.g.
+// "Pravin Kumar" → "PRAVIN24". Falls back to legacy random IB+6 when the
+// name has no usable Latin alphanumerics (single-char / non-Latin only).
+ibSchema.statics.generateReferralCodeFromName = async function(name) {
+  const raw = String(name || '');
+  // Strip diacritics, uppercase, keep [A-Z0-9] only.
+  const cleaned = raw.normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+  // Take first whitespace-separated token of length >= 3.
+  const tokens = cleaned.split(/\s+/).filter(Boolean).map(t => t.replace(/[^A-Z0-9]/g, ''));
+  const base = tokens.find(t => t.length >= 3);
+
+  if (!base) {
+    return this.generateReferralCode();
+  }
+
+  const baseCode = base.slice(0, 8);
+  const tryGenerate = async (digitLen) => {
+    for (let i = 0; i < 12; i++) {
+      const max = Math.pow(10, digitLen);
+      const num = Math.floor(Math.random() * max).toString().padStart(digitLen, '0');
+      const candidate = (baseCode + num).slice(0, 12);
+      const existing = await this.findOne({ referralCode: candidate });
+      if (!existing) return candidate;
+    }
+    return null;
+  };
+
+  let code = await tryGenerate(2);
+  if (!code) code = await tryGenerate(3);
+  if (!code) code = await tryGenerate(4);
+  if (!code) code = await this.generateReferralCode();
   return code;
 };
 

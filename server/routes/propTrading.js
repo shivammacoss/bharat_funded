@@ -397,19 +397,26 @@ router.get('/challenges', async (req, res) => {
 // POST /api/prop/buy - User: buy a challenge
 router.post('/buy', verifyUserToken, async (req, res) => {
   try {
-    const { challengeId, tierIndex } = req.body;
+    const { challengeId, tierIndex, couponCode } = req.body;
     if (!challengeId) return res.status(400).json({ success: false, message: 'challengeId required' });
+
+    const normalizedCoupon = couponCode ? String(couponCode).trim().toUpperCase() : null;
 
     const result = await propTradingEngine.buyChallenge(
       req.user._id,
       challengeId,
-      Number.isInteger(tierIndex) ? tierIndex : (tierIndex != null ? Number(tierIndex) : undefined)
+      Number.isInteger(tierIndex) ? tierIndex : (tierIndex != null ? Number(tierIndex) : undefined),
+      normalizedCoupon
     );
+    const baseMsg = result.coupon?.applied
+      ? `Challenge purchased! Coupon ${result.coupon.code} saved you ₹${Number(result.coupon.discountAmount || 0).toFixed(2)}`
+      : 'Challenge purchased successfully!';
     res.json({
       success: true,
-      message: 'Challenge purchased successfully!',
+      message: baseMsg,
       account: result.account,
-      challenge: { name: result.challenge.name, fundSize: result.account.initialBalance }
+      challenge: { name: result.challenge.name, fundSize: result.account.initialBalance },
+      coupon: result.coupon || null
     });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

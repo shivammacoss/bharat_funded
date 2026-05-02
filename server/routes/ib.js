@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const ibService = require('../services/ib.service');
 const commissionService = require('../services/commission.service');
 const walletService = require('../services/wallet.service');
+const ibCouponService = require('../services/ibCoupon.service');
 const IB = require('../models/IB');
 const IBCopySettings = require('../models/IBCopySettings');
 const User = require('../models/User');
@@ -214,6 +215,112 @@ router.get('/validate/:code', async (req, res) => {
   }
 });
 
+/**
+ * Validate a coupon code for use at challenge checkout. Returns the
+ * computed discount amount and final fee for a given challengeFee. Auth
+ * required so we can block self-redemption.
+ *
+ * GET /api/ib/coupon/validate/:code?challengeFee=1000
+ */
+router.get('/coupon/validate/:code', authMiddleware, async (req, res) => {
+  try {
+    const fee = Number(req.query.challengeFee || 0);
+    const result = await ibCouponService.validateCouponForPurchase(
+      req.params.code,
+      req.user._id,
+      fee
+    );
+    let ibName = 'IB Partner';
+    try {
+      const owner = await User.findById(result.ib.userId).select('name');
+      if (owner?.name) ibName = owner.name;
+    } catch (e) { /* ignore */ }
+    res.json({
+      success: true,
+      data: {
+        valid: true,
+        code: result.coupon.code,
+        ibName,
+        discountPercent: result.discountPercent,
+        originalFee: result.originalFee,
+        discountAmount: result.discountAmount,
+        finalFee: result.finalFee,
+        validUntil: result.coupon.validUntil
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * IB requests a new coupon (creates a pending_issue row).
+ * POST /api/ib/coupon/request
+ *   body: { note? }
+ */
+router.post('/coupon/request', authMiddleware, async (req, res) => {
+  try {
+    const ib = await ibService.getIBByUserId(req.user._id);
+    if (!ib) return res.status(404).json({ success: false, error: 'Not an IB' });
+    const coupon = await ibCouponService.requestCoupon(ib._id, req.body?.note || '');
+    res.status(201).json({ success: true, message: 'Coupon request submitted', data: coupon });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Backwards-compat alias of /coupon/request — old clients may still call /coupon/renew
+router.post('/coupon/renew', authMiddleware, async (req, res) => {
+  try {
+    const ib = await ibService.getIBByUserId(req.user._id);
+    if (!ib) return res.status(404).json({ success: false, error: 'Not an IB' });
+    const coupon = await ibCouponService.requestCoupon(ib._id, req.body?.note || '');
+    res.status(201).json({ success: true, message: 'Coupon request submitted', data: coupon });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * List the IB's own coupons (any status).
+ * GET /api/ib/coupons
+ */
+router.get('/coupons', authMiddleware, async (req, res) => {
+  try {
+    const ib = await ibService.getIBByUserId(req.user._id);
+    if (!ib) return res.status(404).json({ success: false, error: 'Not an IB' });
+    const result = await ibCouponService.listIBCoupons(ib._id, {
+      status: req.query.status,
+      page: req.query.page,
+      limit: req.query.limit
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * IB sees who used their coupon and on which challenges.
+ * GET /api/ib/coupon-redemptions
+ */
+router.get('/coupon-redemptions', authMiddleware, async (req, res) => {
+  try {
+    const ib = await ibService.getIBByUserId(req.user._id);
+    if (!ib) return res.status(404).json({ success: false, error: 'Not an IB' });
+    const result = await ibCouponService.listRedemptions({
+      ibId: ib._id,
+      page: req.query.page,
+      limit: req.query.limit,
+      startDate: req.query.startDate,
+      endDate: req.query.endDate
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 // ===== ADMIN ROUTES =====
 
 /**
@@ -255,8 +362,16 @@ router.get('/admin/pending', authMiddleware, adminMiddleware, async (req, res) =
 /**
  * Get IB details
  * GET /api/ib/admin/:id
+ *
+ * NOTE: This route is registered before more-specific /admin/<word>
+ * sibling routes (commissions, withdrawals, settings, coupons/*, etc.),
+ * so we guard with a strict ObjectId check and `next()` through to the
+ * later matchers when the param is not a valid Mongo id.
  */
-router.get('/admin/:id', authMiddleware, adminMiddleware, async (req, res) => {
+router.get('/admin/:id', authMiddleware, adminMiddleware, async (req, res, next) => {
+  if (!require('mongoose').Types.ObjectId.isValid(req.params.id)) {
+    return next();
+  }
   try {
     const ib = await IB.findById(req.params.id).populate('userId', 'name email oderId wallet');
     if (!ib) {
@@ -270,12 +385,17 @@ router.get('/admin/:id', authMiddleware, adminMiddleware, async (req, res) => {
 });
 
 /**
- * Approve IB application
+ * Approve IB application. Optionally issues the first coupon in the same
+ * call when `coupon` payload is provided.
  * POST /api/ib/admin/:id/approve
+ *   body: { commissionSettings?, coupon?: { discountPercent, validityDays, challengePurchaseCommissionPercent } }
  */
 router.post('/admin/:id/approve', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const ib = await ibService.approveIB(req.params.id, req.user._id, req.body.commissionSettings);
+    const ib = await ibService.approveIB(req.params.id, req.user._id, {
+      commissionSettings: req.body.commissionSettings,
+      coupon: req.body.coupon
+    });
     res.json({ success: true, message: 'IB approved successfully', data: ib });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -400,6 +520,181 @@ router.get('/admin/stats/summary', authMiddleware, adminMiddleware, async (req, 
   try {
     const summary = await ibService.getIBStatsSummary();
     res.json({ success: true, data: summary });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Admin issues / re-issues terms on a coupon row. Used both for
+ * first-time approval (pending_issue → active) and to update terms on
+ * an already-active coupon mid-cycle.
+ *
+ * POST /api/ib/admin/coupons/:couponId/issue
+ *   body: { discountPercent, validityDays, challengePurchaseCommissionPercent, maxRedemptions? }
+ */
+router.post('/admin/coupons/:couponId/issue', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const coupon = await ibCouponService.issueCoupon(req.params.couponId, req.user._id, req.body || {});
+    res.json({ success: true, message: 'Coupon issued', data: coupon });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// PUT alias for "edit" semantics from the admin UI.
+router.put('/admin/coupons/:couponId', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const coupon = await ibCouponService.issueCoupon(req.params.couponId, req.user._id, req.body || {});
+    res.json({ success: true, message: 'Coupon updated', data: coupon });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Admin revokes a coupon row.
+ * POST /api/ib/admin/coupons/:couponId/revoke
+ */
+router.post('/admin/coupons/:couponId/revoke', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const coupon = await ibCouponService.revokeCoupon(req.params.couponId, req.body?.reason || '');
+    res.json({ success: true, message: 'Coupon revoked', data: coupon });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Admin lookup of all coupon redemptions (filterable).
+ * GET /api/ib/admin/coupon-redemptions
+ */
+router.get('/admin/coupon-redemptions', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const result = await ibCouponService.listRedemptions({
+      ibId: req.query.ibId || null,
+      userId: req.query.userId || null,
+      code: req.query.code || null,
+      startDate: req.query.startDate || null,
+      endDate: req.query.endDate || null,
+      page: req.query.page,
+      limit: req.query.limit
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Admin: list coupons in any status across all IBs.
+ * GET /api/ib/admin/coupons?status=&page=&limit=&search=
+ */
+router.get('/admin/coupons', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const result = await ibCouponService.listAllCoupons({
+      status: req.query.status,
+      search: req.query.search,
+      page: req.query.page,
+      limit: req.query.limit
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Convenience aliases used by the admin UI tabs.
+router.get('/admin/coupons/active', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const result = await ibCouponService.listAllCoupons({
+      status: 'active', search: req.query.search, page: req.query.page, limit: req.query.limit
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/admin/coupons/pending-issue', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const result = await ibCouponService.listAllCoupons({
+      status: 'pending_issue', page: req.query.page, limit: req.query.limit
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Legacy alias — kept so older UI bundles don't 404.
+router.get('/admin/coupons/pending-renewal', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const result = await ibCouponService.listAllCoupons({
+      status: 'pending_issue', page: req.query.page, limit: req.query.limit
+    });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * List IB-source withdrawal requests for the admin queue.
+ * GET /api/ib/admin/withdrawals?status=&page=&limit=&search=
+ */
+router.get('/admin/withdrawals', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const Transaction = require('../models/Transaction');
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const status = req.query.status && req.query.status !== 'all' ? String(req.query.status) : null;
+    const search = req.query.search ? String(req.query.search).trim() : '';
+
+    const filter = { source: 'ib', type: 'withdrawal' };
+    if (status) filter.status = status;
+    if (search) {
+      const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filter.$or = [
+        { oderId: rx },
+        { userName: rx },
+        { 'withdrawalInfo.upiDetails.upiId': rx }
+      ];
+    }
+
+    const total = await Transaction.countDocuments(filter);
+    const rows = await Transaction.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean();
+
+    // Summary cards
+    const summaryAgg = await Transaction.aggregate([
+      { $match: { source: 'ib', type: 'withdrawal' } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          total: { $sum: '$amount' }
+        }
+      }
+    ]);
+    const summary = { pending: 0, approved: 0, rejected: 0, totalApproved: 0, totalPending: 0 };
+    summaryAgg.forEach(s => {
+      if (s._id === 'pending') { summary.pending = s.count; summary.totalPending = s.total; }
+      else if (s._id === 'approved' || s._id === 'completed') { summary.approved += s.count; summary.totalApproved += s.total; }
+      else if (s._id === 'rejected') { summary.rejected = s.count; }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        rows,
+        summary,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+      }
+    });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }

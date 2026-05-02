@@ -57,7 +57,6 @@ function ContactPage() {
         <h2 style={{ color: 'var(--text-primary)', fontSize: '16px', fontWeight: '700', margin: '28px 0 14px' }}>Frequently Asked Questions</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {[
-            { q: 'How do I start an evaluation?', a: 'Go to Start Evaluation, choose a program (1-Step, 2-Step, or Instant), select your account size, and pay the fee from your wallet.' },
             { q: 'What happens after I pass?', a: 'You receive a funded account with real profit-sharing. Your certificate is issued and visible on the Certificates page.' },
             { q: 'Can I have multiple evaluations?', a: 'Yes, you can purchase and run multiple evaluations simultaneously.' },
             { q: 'How do withdrawals work?', a: 'Once funded, your profits are split according to the challenge terms. You can withdraw from your funded account dashboard.' },

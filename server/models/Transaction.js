@@ -4,10 +4,19 @@ const transactionSchema = new mongoose.Schema({
   oderId: { type: String, required: true }, // User ID
   
   // Transaction Type
-  type: { 
-    type: String, 
-    enum: ['deposit', 'withdrawal', 'admin_fund_request', 'admin_wallet_adjustment'], 
-    required: true 
+  type: {
+    type: String,
+    enum: ['deposit', 'withdrawal', 'admin_fund_request', 'admin_wallet_adjustment'],
+    required: true
+  },
+
+  // Wallet source — distinguishes a regular user-wallet deposit/withdrawal
+  // from an IB-earnings withdrawal so admin approval logic can debit the
+  // right pool. Defaults to 'main' for backwards compatibility.
+  source: {
+    type: String,
+    enum: ['main', 'ib'],
+    default: 'main'
   },
   
   // Amount

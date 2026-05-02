@@ -4,6 +4,7 @@ const ChallengeAccount = require('../models/ChallengeAccount');
 const PropSettings = require('../models/PropSettings');
 const Wallet = require('../models/Wallet');
 const User = require('../models/User');
+const ibCouponService = require('./ibCoupon.service');
 
 const ERROR_CODES = {
   CHALLENGE_MODE_DISABLED: 'CHALLENGE_MODE_DISABLED',
@@ -59,9 +60,11 @@ class PropTradingEngine {
   }
 
   /**
-   * Buy challenge — deduct from wallet and create ChallengeAccount
+   * Buy challenge — deduct from wallet and create ChallengeAccount.
+   * Optionally applies an IB coupon to discount the fee and credit the
+   * IB's wallet with the configured commission percentage.
    */
-  async buyChallenge(userId, challengeId, tierIndex) {
+  async buyChallenge(userId, challengeId, tierIndex, couponCode = null) {
     const challenge = await Challenge.findById(challengeId);
     if (!challenge || !challenge.isActive) {
       throw new Error('Challenge not found or inactive');
@@ -94,16 +97,51 @@ class PropTradingEngine {
       throw new Error('Challenge pricing is misconfigured');
     }
 
-    // Check user's wallet balance (stored on User.wallet embedded field)
-    const userBalance = Number(user.wallet?.balance) || 0;
-    if (userBalance < challengeFee) {
-      throw new Error(`Insufficient balance. Need ₹${challengeFee}, available: ₹${userBalance.toFixed(2)}`);
+    const originalFee = challengeFee;
+
+    // Apply IB coupon if provided. Throws on any invalid state — message
+    // is bubbled straight to the API response.
+    let couponContext = null;
+    let reservedCouponId = null;
+    if (couponCode) {
+      // 1) Read-only pre-flight validation (self-redemption, expiry,
+      //    suspended IB, etc).
+      couponContext = await ibCouponService.validateCouponForPurchase(couponCode, userId, originalFee);
+      // 2) Atomically reserve a redemption slot. This is the cap-safety
+      //    gate — concurrent buyers (e.g. user double-clicks Buy) cannot
+      //    both pass this step.
+      const reserved = await ibCouponService.reserveCouponSlot(couponCode);
+      reservedCouponId = reserved._id;
+      // Refresh context with the post-increment doc so couponSnapshot
+      // reflects the actual count after this redemption.
+      couponContext.coupon = reserved;
+      challengeFee = couponContext.finalFee;
     }
 
-    // Deduct fee from user's wallet
-    user.wallet.balance = userBalance - challengeFee;
-    await user.save();
+    try {
+      // Check user's wallet balance (stored on User.wallet embedded field)
+      const userBalance = Number(user.wallet?.balance) || 0;
+      if (userBalance < challengeFee) {
+        throw new Error(`Insufficient balance. Need ₹${challengeFee}, available: ₹${userBalance.toFixed(2)}`);
+      }
 
+      // Deduct (discounted) fee from user's wallet
+      user.wallet.balance = userBalance - challengeFee;
+      await user.save();
+    } catch (err) {
+      // Roll back the reserved slot so the cap is intact for the next
+      // buyer.
+      if (reservedCouponId) {
+        try { await ibCouponService.releaseCouponSlot(reservedCouponId); } catch (e) { /* swallow */ }
+      }
+      throw err;
+    }
+
+    // From here on, any failure must release the coupon slot reserved above
+    // AND refund the user's wallet (we already debited it).
+    let account;
+    let couponResult = null;
+    try {
     // Create challenge account
     const accountId = await ChallengeAccount.generateAccountId('CH');
     const totalPhases = challenge.stepsCount === 0 ? 0 : challenge.stepsCount;
@@ -116,7 +154,7 @@ class PropTradingEngine {
       && Number(challenge.rules?.profitTargetInstantPercent) > 0;
     const instantStatus = hasInstantTarget ? 'ACTIVE' : 'FUNDED';
 
-    const account = await ChallengeAccount.create({
+    account = await ChallengeAccount.create({
       userId,
       challengeId: challenge._id,
       accountId,
@@ -144,7 +182,65 @@ class PropTradingEngine {
       expiresAt
     });
 
-    return { account, challenge };
+    // If a coupon was applied, record the redemption: create the
+    // IBCommission ledger row, credit the IB's wallet, and snapshot the
+    // full coupon state onto the ChallengeAccount for audit.
+    if (couponContext) {
+      const commission = await ibCouponService.redeemCoupon({
+        ib: couponContext.ib,
+        coupon: couponContext.coupon,
+        challengeAccount: account,
+        buyerUserId: userId,
+        originalFee: couponContext.originalFee,
+        discountAmount: couponContext.discountAmount,
+        finalFee: couponContext.finalFee,
+        commissionAmount: couponContext.commissionAmount
+      });
+      account.couponSnapshot = {
+        code: couponContext.coupon.code,
+        ibId: couponContext.ib._id,
+        ibUserId: couponContext.ib.userId,
+        discountPercent: couponContext.discountPercent,
+        originalFee: couponContext.originalFee,
+        discountAmount: couponContext.discountAmount,
+        finalFee: couponContext.finalFee,
+        challengePurchaseCommissionPercent: couponContext.commissionPercent,
+        ibCommissionAmount: couponContext.commissionAmount,
+        ibCommissionId: commission._id,
+        redeemedAt: new Date()
+      };
+      await account.save();
+
+      couponResult = {
+        applied: true,
+        code: couponContext.coupon.code,
+        discountPercent: couponContext.discountPercent,
+        originalFee: couponContext.originalFee,
+        discountAmount: couponContext.discountAmount,
+        finalFee: couponContext.finalFee,
+        ibCommissionAmount: couponContext.commissionAmount
+      };
+    }
+    } catch (err) {
+      // Rollback: refund wallet, release coupon slot, drop the partial
+      // ChallengeAccount if it was created.
+      try {
+        const u = await User.findById(userId);
+        if (u) {
+          u.wallet.balance = (Number(u.wallet?.balance) || 0) + Number(challengeFee);
+          await u.save();
+        }
+      } catch (e) { /* swallow */ }
+      if (reservedCouponId) {
+        try { await ibCouponService.releaseCouponSlot(reservedCouponId); } catch (e) { /* swallow */ }
+      }
+      if (account && account._id) {
+        try { await ChallengeAccount.deleteOne({ _id: account._id }); } catch (e) { /* swallow */ }
+      }
+      throw err;
+    }
+
+    return { account, challenge, coupon: couponResult };
   }
 
   /**

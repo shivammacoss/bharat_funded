@@ -200,6 +200,24 @@ const challengeAccountSchema = new mongoose.Schema({
     default: 'PENDING'
   },
 
+  // IB coupon snapshot — populated only when this challenge was bought
+  // with a coupon code. Captures all the params at the moment of redemption
+  // so admin/IB dashboards can audit historical purchases even after the
+  // IB's coupon is re-issued or revoked.
+  couponSnapshot: {
+    code: { type: String, default: null, uppercase: true },
+    ibId: { type: mongoose.Schema.Types.ObjectId, ref: 'IB', default: null },
+    ibUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    discountPercent: { type: Number, default: 0 },
+    originalFee: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    finalFee: { type: Number, default: 0 },
+    challengePurchaseCommissionPercent: { type: Number, default: 0 },
+    ibCommissionAmount: { type: Number, default: 0 },
+    ibCommissionId: { type: mongoose.Schema.Types.ObjectId, ref: 'IBCommission', default: null },
+    redeemedAt: { type: Date, default: null }
+  },
+
   // Funded account specific
   fundedAccountId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -233,6 +251,10 @@ const challengeAccountSchema = new mongoose.Schema({
     default: Date.now
   }
 });
+
+// Indexes for IB coupon redemption queries
+challengeAccountSchema.index({ 'couponSnapshot.ibId': 1, createdAt: -1 });
+challengeAccountSchema.index({ 'couponSnapshot.code': 1 });
 
 // Generate unique account ID
 challengeAccountSchema.statics.generateAccountId = async function (type = 'CH') {

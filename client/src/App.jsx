@@ -24,7 +24,8 @@ import {
   Settings,
   BonusManagement,
   ActivityLogs,
-  PropTrading
+  PropTrading,
+  IBManagement
 } from './pages/Admin/pages';
 import UserLayout from './pages/User/UserLayout';
 import {
@@ -45,6 +46,7 @@ import {
   DashboardPage,
   BillingPage,
   ContactPage,
+  IBPage,
 } from './pages/User/pages';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
@@ -4584,6 +4586,8 @@ function AppRouter() {
             <Route path="settings" element={<Settings />} />
             <Route path="prop-trading" element={<PropTrading />} />
             <Route path="prop-trading/:tab" element={<PropTrading />} />
+            <Route path="ib" element={<IBManagement />} />
+            <Route path="ib/:tab" element={<IBManagement />} />
           </Route>
           {/* Fallback - redirect any unmatched routes to admin dashboard */}
           <Route path="*" element={<Navigate to="/admin" replace />} />
@@ -4707,6 +4711,8 @@ function AppRouter() {
           <Route path="settings" element={<UserSettingsPage />} />
           <Route path="billing" element={<BillingPage />} />
           <Route path="contact" element={<ContactPage />} />
+          <Route path="ib" element={<IBPage />} />
+          <Route path="ib/:section" element={<IBPage />} />
         </Route>
         {/* Fallback */}
         <Route path="/*" element={<NewLandingPage />} />

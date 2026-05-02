@@ -2183,6 +2183,56 @@ app.put('/api/admin/transactions/:id', async (req, res) => {
     // Find user for wallet update and activity logging
     const user = await User.findOne({ oderId: transaction.oderId });
 
+    // ── IB-source withdrawal branch ────────────────────────────────────
+    // IB earnings live in a separate Wallet doc (type='ib') and the IB
+    // record's wallet sub-doc — they must NOT touch user.walletINR.
+    // When the request was created, the amount was frozen on the IB
+    // wallet; we either drain it (approve) or release it (reject).
+    if (transaction.source === 'ib' && transaction.type === 'withdrawal') {
+      const Wallet = require('./models/Wallet');
+      const IB = require('./models/IB');
+      const amount = transaction.amount;
+
+      if (status === 'approved' || status === 'completed') {
+        if (user) {
+          const ibWallet = await Wallet.findOne({ userId: user._id, type: 'ib' });
+          if (ibWallet) {
+            ibWallet.frozenBalance = Math.max(0, (ibWallet.frozenBalance || 0) - amount);
+            ibWallet.pendingWithdrawal = Math.max(0, (ibWallet.pendingWithdrawal || 0) - amount);
+            ibWallet.balance = Math.max(0, (ibWallet.balance || 0) - amount);
+            ibWallet.totalWithdrawn = (ibWallet.totalWithdrawn || 0) + amount;
+            ibWallet.lastTransactionAt = new Date();
+            await ibWallet.save();
+          }
+          const ib = await IB.findOne({ userId: user._id });
+          if (ib) {
+            ib.wallet.balance = Math.max(0, (ib.wallet.balance || 0) - amount);
+            ib.wallet.pendingWithdrawal = Math.max(0, (ib.wallet.pendingWithdrawal || 0) - amount);
+            ib.wallet.totalWithdrawn = (ib.wallet.totalWithdrawn || 0) + amount;
+            await ib.save();
+          }
+        }
+      } else if (status === 'rejected') {
+        // Release the frozen funds back so the IB can request again.
+        if (user) {
+          const ibWallet = await Wallet.findOne({ userId: user._id, type: 'ib' });
+          if (ibWallet) {
+            ibWallet.frozenBalance = Math.max(0, (ibWallet.frozenBalance || 0) - amount);
+            ibWallet.pendingWithdrawal = Math.max(0, (ibWallet.pendingWithdrawal || 0) - amount);
+            await ibWallet.save();
+          }
+          const ib = await IB.findOne({ userId: user._id });
+          if (ib) {
+            ib.wallet.pendingWithdrawal = Math.max(0, (ib.wallet.pendingWithdrawal || 0) - amount);
+            await ib.save();
+          }
+        }
+      }
+      // Skip the main-wallet branch below; the IB flow is self-contained.
+      await transaction.save();
+      return res.json({ success: true, transaction });
+    }
+
     if (status === 'approved' || status === 'completed') {
       if (user) {
         const amount = transaction.amount;

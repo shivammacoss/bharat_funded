@@ -37,6 +37,10 @@ function PropChallengePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
+  // IB coupon state — shared by the summary panel and the confirm modal.
+  const [couponInput, setCouponInput] = useState('');
+  const [couponState, setCouponState] = useState({ status: 'idle', applied: null, error: null });
+
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
@@ -82,15 +86,20 @@ function PropChallengePage() {
       const res = await fetch(`${API_URL}/api/prop/buy`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ challengeId: id, tierIndex: Number(tierIndex) || 0 })
+        body: JSON.stringify({
+          challengeId: id,
+          tierIndex: Number(tierIndex) || 0,
+          couponCode: couponState.applied?.code || null
+        })
       });
       const d = await res.json();
       if (d.success) {
         setSelectedId(null);
         setAgreeTerms(false);
+        // Clear coupon state so the next purchase starts fresh.
+        setCouponInput('');
+        setCouponState({ status: 'idle', applied: null, error: null });
         showToast(`${d.message} - Account ID: ${d.account.accountId}`, 'success');
-        // Patch the accounts list in place so the banner updates without
-        // blanking the page again.
         if (d.account) setMyAccounts(prev => [d.account, ...prev]);
         refetchMyAccounts();
       } else {
@@ -101,6 +110,41 @@ function PropChallengePage() {
     }
     setBuying(null);
   };
+
+  const validateCoupon = async () => {
+    const code = String(couponInput || '').trim().toUpperCase();
+    if (!code) return;
+    if (!selectedTier?.challengeFee) return;
+    setCouponState({ status: 'checking', applied: null, error: null });
+    try {
+      const res = await fetch(
+        `${API_URL}/api/ib/coupon/validate/${encodeURIComponent(code)}?challengeFee=${Number(selectedTier.challengeFee)}`,
+        { headers: getAuthHeaders() }
+      );
+      const d = await res.json();
+      if (d.success && d.data?.valid) {
+        setCouponState({ status: 'applied', applied: d.data, error: null });
+      } else {
+        setCouponState({ status: 'error', applied: null, error: d.error || 'Invalid coupon' });
+      }
+    } catch (e) {
+      setCouponState({ status: 'error', applied: null, error: 'Network error' });
+    }
+  };
+
+  const clearCoupon = () => {
+    setCouponInput('');
+    setCouponState({ status: 'idle', applied: null, error: null });
+  };
+
+  // If user changes plan/tier after applying a coupon, re-validate against
+  // the new fee (or just clear so the discount math doesn't go stale).
+  useEffect(() => {
+    if (couponState.applied) {
+      setCouponState({ status: 'idle', applied: null, error: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedTierIndex]);
 
   const grouped = useMemo(() => {
     const m = {};
@@ -421,9 +465,71 @@ function PropChallengePage() {
                   border: pm.steps === 0 ? '1px solid #fde68a' : '1px solid rgba(59,130,246,0.12)'
                 }}>
                   <div style={{ fontSize: '9px', fontWeight: '700', color: pm.steps === 0 ? '#92400e' : '#3b82f6', letterSpacing: '1px', marginBottom: '4px' }}>TOTAL PAYABLE</div>
-                  <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                    ₹ {Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}
-                  </div>
+                  {couponState.applied ? (
+                    <>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', textDecoration: 'line-through' }}>
+                        ₹ {Number(couponState.applied.originalFee || 0).toLocaleString('en-IN')}
+                      </div>
+                      <div style={{ fontSize: '26px', fontWeight: '800', color: '#10b981' }}>
+                        ₹ {Number(couponState.applied.finalFee || 0).toLocaleString('en-IN')}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#10b981', marginTop: 2 }}>
+                        You save ₹ {Number(couponState.applied.discountAmount || 0).toLocaleString('en-IN')} ({couponState.applied.discountPercent}% off)
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                      ₹ {Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}
+                    </div>
+                  )}
+                </div>
+
+                {/* Coupon input */}
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--text-secondary)', letterSpacing: '0.5px', marginBottom: '4px' }}>HAVE A COUPON?</div>
+                  {couponState.applied ? (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 12px', borderRadius: '8px',
+                      background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)'
+                    }}>
+                      <div style={{ fontSize: 12 }}>
+                        <strong style={{ color: '#10b981' }}>{couponState.applied.code}</strong>
+                        {couponState.applied.ibName && <span style={{ color: 'var(--text-secondary)' }}> · {couponState.applied.ibName}</span>}
+                      </div>
+                      <button
+                        onClick={clearCoupon}
+                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                      >Remove</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        placeholder="e.g. PRAVIN24"
+                        style={{
+                          flex: 1, padding: '8px 10px', borderRadius: 8,
+                          border: '1px solid var(--border-color)', background: 'var(--bg-primary)',
+                          color: 'var(--text-primary)', fontSize: 13, textTransform: 'uppercase'
+                        }}
+                      />
+                      <button
+                        onClick={validateCoupon}
+                        disabled={!couponInput.trim() || couponState.status === 'checking'}
+                        style={{
+                          padding: '8px 14px', borderRadius: 8, border: 'none',
+                          background: couponInput.trim() ? '#3b82f6' : 'var(--border-color)',
+                          color: '#fff', fontWeight: 700, fontSize: 12,
+                          cursor: couponInput.trim() ? 'pointer' : 'not-allowed'
+                        }}
+                      >{couponState.status === 'checking' ? '…' : 'Apply'}</button>
+                    </div>
+                  )}
+                  {couponState.error && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#ef4444' }}>❌ {couponState.error}</div>
+                  )}
                 </div>
 
                 {/* Badges */}
@@ -470,7 +576,9 @@ function PropChallengePage() {
                     opacity: agreeTerms ? 1 : 0.5, transition: 'all 0.2s'
                   }}
                 >
-                  {buying ? 'Processing...' : `Pay ₹ ${Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}`}
+                  {buying
+                    ? 'Processing...'
+                    : `Pay ₹ ${Number((couponState.applied?.finalFee != null ? couponState.applied.finalFee : selectedTier.challengeFee) || 0).toLocaleString('en-IN')}`}
                 </button>
 
                 <div style={{ textAlign: 'center', fontSize: '9px', color: 'var(--text-secondary)', marginTop: '8px' }}>
@@ -512,7 +620,21 @@ function PropChallengePage() {
               </div>
               <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>EVALUATION FEE</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#f59e0b' }}>₹ {Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}</div>
+                {couponState.applied ? (
+                  <>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'line-through' }}>
+                      ₹ {Number(couponState.applied.originalFee || 0).toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#10b981' }}>
+                      ₹ {Number(couponState.applied.finalFee || 0).toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#10b981' }}>
+                      Coupon {couponState.applied.code} · −{couponState.applied.discountPercent}%
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#f59e0b' }}>₹ {Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}</div>
+                )}
               </div>
             </div>
 
@@ -584,7 +706,9 @@ function PropChallengePage() {
                   cursor: buying ? 'not-allowed' : 'pointer', fontWeight: 700
                 }}
               >
-                {buying ? 'Processing…' : `Confirm & Pay ₹ ${Number(selectedTier.challengeFee || 0).toLocaleString('en-IN')}`}
+                {buying
+                  ? 'Processing…'
+                  : `Confirm & Pay ₹ ${Number((couponState.applied?.finalFee != null ? couponState.applied.finalFee : selectedTier.challengeFee) || 0).toLocaleString('en-IN')}`}
               </button>
             </div>
           </div>

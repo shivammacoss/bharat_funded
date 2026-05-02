@@ -9,15 +9,19 @@ const ibCommissionSchema = new mongoose.Schema({
   ibId: { type: mongoose.Schema.Types.ObjectId, ref: 'IB', required: true },
   
   // Source of commission
-  sourceType: { 
-    type: String, 
-    enum: ['trade', 'sub_ib', 'bonus', 'adjustment', 'withdrawal'], 
-    default: 'trade' 
+  sourceType: {
+    type: String,
+    enum: ['trade', 'sub_ib', 'bonus', 'adjustment', 'withdrawal', 'challenge_purchase'],
+    default: 'trade'
   },
-  
+
   // Trade reference (if from trade)
   tradeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trade', default: null },
   positionId: { type: String, default: null },
+
+  // Challenge purchase reference (if sourceType === 'challenge_purchase')
+  challengeAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChallengeAccount', default: null },
+  couponCode: { type: String, default: null, uppercase: true },
   
   // Referred user who generated this commission
   referredUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -28,10 +32,10 @@ const ibCommissionSchema = new mongoose.Schema({
   levelDepth: { type: Number, default: 1 }, // 1 = direct, 2+ = sub-IB levels
   
   // Commission Details
-  commissionType: { 
-    type: String, 
-    enum: ['per_lot', 'revenue_percent', 'spread_share', 'multi_level'], 
-    required: true 
+  commissionType: {
+    type: String,
+    enum: ['per_lot', 'revenue_percent', 'spread_share', 'multi_level', 'challenge_purchase_percent'],
+    required: true
   },
   
   // Trade details for calculation reference
@@ -76,6 +80,7 @@ ibCommissionSchema.index({ tradeId: 1 });
 ibCommissionSchema.index({ referredUserId: 1 });
 ibCommissionSchema.index({ status: 1 });
 ibCommissionSchema.index({ createdAt: -1 });
+ibCommissionSchema.index({ challengeAccountId: 1 });
 
 // Generate idempotency key
 ibCommissionSchema.statics.generateIdempotencyKey = function(ibId, tradeId, type) {

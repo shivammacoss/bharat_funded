@@ -5,14 +5,17 @@ import {
   LuBriefcase, LuSettings, LuBell, LuSun, LuMoon,
   LuX, LuChartColumn, LuZap, LuUser,
   LuCircleUser, LuLogOut, LuPlus, LuEllipsisVertical, LuMenu,
-  LuChevronLeft, LuChevronRight, LuTrophy
+  LuChevronLeft, LuChevronRight, LuTrophy, LuShare2
 } from 'react-icons/lu';
-// Theme-aware logos. Filenames describe the mode they're designed FOR:
-//   "...logo light.png" → designed for LIGHT mode (dark-coloured logo)
-//   "...logo dark.png"  → designed for DARK mode (white / inverted logo)
-// Variable names mirror that intent so the ternary below reads correctly.
-import logoForLightMode from '../../assets/bharat funded trader new logo light.png';
-import logoForDarkMode from '../../assets/bharat funded trader new logo dark.png';
+// Theme-aware logos. NOTE: the source filenames are misleading —
+//   "...logo light.png" actually contains the WHITE-coloured BHARAT text
+//     (visible only on dark backgrounds → use in dark mode)
+//   "...logo dark.png"  actually contains the DARK-BLUE BHARAT text
+//     (visible only on light backgrounds → use in light mode)
+// Variable names below reflect WHICH MODE they should be displayed in,
+// not what the file is named.
+import logoForLightMode from '../../assets/bharat funded trader new logo dark.png';
+import logoForDarkMode from '../../assets/bharat funded trader new logo light.png';
 import { useMetaApiPrices } from '../../hooks/useMetaApiPrices';
 import { useZerodhaTicks } from '../../hooks/useZerodhaTicks';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
@@ -2354,6 +2357,7 @@ function UserLayout({ user, onLogout }) {
   const sidebarNav = [
     { key: 'home', label: 'Dashboard', icon: <LuHouse size={18} /> },
     { key: 'my-challenges', label: 'My Challenges', icon: <LuTrophy size={18} /> },
+    { key: 'ib', label: 'IB Program', icon: <LuShare2 size={18} /> },
     { key: 'orders', label: 'Orders', icon: <LuClipboardList size={18} /> },
     { key: 'wallet', label: 'Wallet', icon: <LuWallet size={18} /> },
     { key: 'billing', label: 'Billing', icon: <LuBriefcase size={18} /> },

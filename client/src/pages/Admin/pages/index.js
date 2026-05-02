@@ -15,3 +15,4 @@ export { default as Settings } from './Settings';
 export { default as BonusManagement } from './BonusManagement';
 export { default as ActivityLogs } from './ActivityLogs';
 export { default as PropTrading } from './PropTrading';
+export { default as IBManagement } from './IBManagement';

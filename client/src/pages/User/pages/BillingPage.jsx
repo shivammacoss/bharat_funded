@@ -32,19 +32,33 @@ function BillingPage() {
     setLoading(false);
   };
 
-  // Derive billing/purchase history from accounts
-  const purchases = myAccounts.map(a => ({
-    id: a._id,
-    name: a.challengeId?.name || 'Challenge',
-    fundSize: a.challengeId?.fundSize || a.initialBalance,
-    fee: a.challengeId?.challengeFee || 0,
-    accountId: a.accountId,
-    status: a.status,
-    paymentStatus: a.paymentStatus || 'COMPLETED',
-    date: a.createdAt,
-  }));
+  // Derive billing/purchase history from accounts. When a coupon was
+  // applied, prefer the snapshot's actual paid (finalFee) over the legacy
+  // challengeFee so the amount column reflects what the user actually paid.
+  const purchases = myAccounts.map(a => {
+    const snap = a.couponSnapshot && a.couponSnapshot.code ? a.couponSnapshot : null;
+    const originalFee = snap ? Number(snap.originalFee) : Number(a.challengeId?.challengeFee || 0);
+    const paidFee = snap ? Number(snap.finalFee) : originalFee;
+    return {
+      id: a._id,
+      name: a.challengeId?.name || 'Challenge',
+      fundSize: a.challengeId?.fundSize || a.initialBalance,
+      originalFee,
+      fee: paidFee,
+      coupon: snap ? {
+        code: snap.code,
+        discountPercent: snap.discountPercent,
+        discountAmount: Number(snap.discountAmount || 0)
+      } : null,
+      accountId: a.accountId,
+      status: a.status,
+      paymentStatus: a.paymentStatus || 'COMPLETED',
+      date: a.createdAt,
+    };
+  });
 
   const totalSpent = purchases.reduce((sum, p) => sum + (p.fee || 0), 0);
+  const totalSaved = purchases.reduce((sum, p) => sum + (p.coupon?.discountAmount || 0), 0);
 
   return (
     <div style={{ width: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
@@ -71,6 +85,12 @@ function BillingPage() {
             <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Active</div>
             <div style={{ fontSize: '22px', fontWeight: '800', color: '#10b981' }}>{myAccounts.filter(a => a.status === 'ACTIVE' || a.status === 'FUNDED').length}</div>
           </div>
+          {totalSaved > 0 && (
+            <div style={{ padding: '18px', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Saved via Coupons</div>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: '#10b981' }}>₹{totalSaved.toLocaleString('en-IN')}</div>
+            </div>
+          )}
         </div>
 
         {/* Purchase History */}
@@ -106,7 +126,21 @@ function BillingPage() {
                   <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{p.name}</div>
                   <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{p.accountId}</div>
                 </div>
-                <span style={{ fontWeight: '700', color: '#f59e0b' }}>₹{p.fee}</span>
+                <span style={{ fontWeight: '700', color: '#f59e0b' }}>
+                  {p.coupon ? (
+                    <>
+                      <span style={{ display: 'block', fontSize: 10, color: 'var(--text-secondary)', textDecoration: 'line-through', fontWeight: 500 }}>
+                        ₹{Number(p.originalFee || 0).toLocaleString('en-IN')}
+                      </span>
+                      <span style={{ color: '#10b981' }}>₹{Number(p.fee || 0).toLocaleString('en-IN')}</span>
+                      <span style={{ display: 'block', fontSize: 9, color: '#10b981', fontWeight: 600 }}>
+                        {p.coupon.code} · −{p.coupon.discountPercent}%
+                      </span>
+                    </>
+                  ) : (
+                    <>₹{Number(p.fee || 0).toLocaleString('en-IN')}</>
+                  )}
+                </span>
                 <span style={{ color: 'var(--text-secondary)' }}>₹{p.fundSize?.toLocaleString('en-IN')}</span>
                 <span style={{
                   padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '600',

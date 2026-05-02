@@ -17,6 +17,7 @@ export const sidebarMenu = [
   { id: 'risk-management', label: 'Risk Management', icon: 'shield', path: '/admin/risk-management' },
   { id: 'netting-segment-management', label: 'Netting Segments', icon: 'netting', path: '/admin/netting-segments' },
   { id: 'bonus-management', label: 'Bonus Management', icon: 'gift', path: '/admin/bonus-management' },
+  { id: 'ib-management', label: 'IB & Coupons', icon: 'users', path: '/admin/ib' },
   { id: 'zerodha-connect', label: 'Zerodha Connect', icon: 'radio', path: '/admin/zerodha' },
   { id: 'market-control', label: 'Market Control', icon: 'clock', path: '/admin/market-control' },
   { id: 'reports', label: 'Reports & Analytics', icon: 'reports', path: '/admin/reports' },
@@ -75,6 +76,15 @@ export const sectionTabs = {
   'notifications': [
     { id: 'push-notifications', label: 'Push Notifications', path: '' },
     { id: 'email-templates', label: 'Email Templates', path: 'email' }
+  ],
+  'ib-management': [
+    { id: 'applications', label: 'Applications', path: '' },
+    { id: 'active', label: 'Active IBs', path: 'active' },
+    { id: 'coupons', label: 'Coupons', path: 'coupons' },
+    { id: 'redemptions', label: 'Redemptions', path: 'redemptions' },
+    { id: 'withdrawals', label: 'Withdrawals', path: 'withdrawals' },
+    { id: 'commissions', label: 'Commissions', path: 'commissions' },
+    { id: 'settings', label: 'Settings', path: 'settings' }
   ],
   'settings': [
     { id: 'general-settings', label: 'General', path: '' },

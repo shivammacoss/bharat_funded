@@ -279,23 +279,6 @@ function Register({ onLogin }) {
                 </div>
               </div>
 
-              {/* Referral Code */}
-              <div className="form-group" style={{ gap: '5px' }}>
-                <label htmlFor="referralCode">Referral Code <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>(Optional)</span></label>
-                <input
-                  type="text" id="referralCode" name="referralCode" value={referralId}
-                  onChange={(e) => !referralFromLink && setReferralId(e.target.value)}
-                  placeholder="Enter referral code"
-                  readOnly={referralFromLink}
-                  style={referralFromLink ? { background: 'rgba(16,185,129,0.1)', borderColor: 'rgba(16,185,129,0.4)', color: '#34d399', cursor: 'not-allowed' } : {}}
-                />
-                {referralFromLink && (
-                  <span style={{ fontSize: '12px', color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                    ✓ Referral applied from link
-                  </span>
-                )}
-              </div>
-
               <button type="submit" className="auth-submit-btn" disabled={loading} style={{ marginTop: '6px' }}>
                 {loading ? 'Sending verification code…' : 'Send Verification Code'}
               </button>

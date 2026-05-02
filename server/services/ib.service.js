@@ -4,6 +4,7 @@ const IBCommission = require('../models/IBCommission');
 const Wallet = require('../models/Wallet');
 const IBCopySettings = require('../models/IBCopySettings');
 const User = require('../models/User');
+const ibCouponService = require('./ibCoupon.service');
 
 /**
  * IB (Introducing Broker) Service
@@ -41,8 +42,10 @@ class IBService {
       throw new Error('IB program is currently disabled');
     }
 
-    // Generate referral code
-    const referralCode = await IB.generateReferralCode();
+    // Generate referral code derived from user's name (e.g. "Pravin Kumar"
+    // → "PRAVIN24"). Falls back to legacy IB+6-random when the name has
+    // no usable Latin characters.
+    const referralCode = await IB.generateReferralCodeFromName(user.name);
 
     // Check if user was referred by another IB
     let parentIBId = null;
@@ -250,37 +253,76 @@ class IBService {
   }
 
   /**
-   * Request withdrawal from IB wallet
+   * Request a withdrawal of IB earnings.
+   *
+   * Creates a Transaction (type='withdrawal', source='ib') so the request
+   * lands in the existing admin Bank & Fund Management → Withdrawals
+   * queue alongside regular user withdrawals. UPI is the supported method
+   * for IB payouts; admin sees the upiId + holder name on the row.
    */
-  async requestWithdrawal(ibId, amount, withdrawalDetails) {
+  async requestWithdrawal(ibId, amount, withdrawalDetails = {}) {
+    const Transaction = require('../models/Transaction');
+
     const ib = await IB.findById(ibId);
     if (!ib) {
       throw new Error('IB not found');
     }
 
-    const settings = await IBCopySettings.getSettings();
-    if (amount < settings.ib.minWithdrawal) {
-      throw new Error(`Minimum withdrawal amount is ₹${settings.ib.minWithdrawal}`);
+    const numericAmount = Number(amount);
+    if (!(numericAmount > 0)) {
+      throw new Error('Amount must be greater than zero');
     }
+
+    const upiId = String(withdrawalDetails.upiId || '').trim();
+    if (!upiId) {
+      throw new Error('UPI ID is required');
+    }
+    const holderName = String(withdrawalDetails.holderName || withdrawalDetails.name || '').trim();
 
     const wallet = await Wallet.findOne({ userId: ib.userId, type: 'ib' });
-    if (!wallet || wallet.balance < amount) {
-      throw new Error('Insufficient balance');
+    if (!wallet || (wallet.balance - (wallet.frozenBalance || 0)) < numericAmount) {
+      throw new Error('Insufficient IB wallet balance');
     }
 
-    // Freeze the amount
-    wallet.frozenBalance += amount;
-    wallet.pendingWithdrawal += amount;
+    // Freeze the requested amount so it can't be double-spent while the
+    // request is awaiting admin approval.
+    wallet.frozenBalance = (wallet.frozenBalance || 0) + numericAmount;
+    wallet.pendingWithdrawal = (wallet.pendingWithdrawal || 0) + numericAmount;
     await wallet.save();
 
-    // Update IB wallet stats
-    ib.wallet.pendingWithdrawal += amount;
+    ib.wallet.pendingWithdrawal = (ib.wallet.pendingWithdrawal || 0) + numericAmount;
     await ib.save();
 
-    // Create withdrawal request (would integrate with your existing withdrawal system)
+    // Resolve a friendly user name for the admin queue display.
+    let userName = holderName;
+    if (!userName) {
+      try {
+        const owner = await User.findById(ib.userId).select('name');
+        userName = owner?.name || '';
+      } catch (e) { /* ignore */ }
+    }
+
+    const tx = await Transaction.create({
+      oderId: ib.oderId,
+      type: 'withdrawal',
+      source: 'ib',
+      amount: numericAmount,
+      currency: 'INR',
+      paymentMethod: 'upi',
+      paymentDetails: { upiId },
+      withdrawalInfo: {
+        method: 'upi',
+        upiDetails: { upiId, name: userName }
+      },
+      status: 'pending',
+      userName,
+      userNote: String(withdrawalDetails.note || '').slice(0, 500)
+    });
+
     return {
       status: 'pending',
-      amount,
+      amount: numericAmount,
+      transactionId: tx._id,
       message: 'Withdrawal request submitted for admin approval'
     };
   }
@@ -331,9 +373,14 @@ class IBService {
   }
 
   /**
-   * Approve IB application (admin)
+   * Approve IB application (admin).
+   *
+   * Accepts either the legacy positional `commissionSettings` object or a
+   * new options bag `{ commissionSettings, coupon }`. When a `coupon`
+   * payload is present, the IB is approved and the first coupon is
+   * issued in the same call (single-modal admin flow).
    */
-  async approveIB(ibId, adminId, commissionSettings = null) {
+  async approveIB(ibId, adminId, opts = null) {
     const ib = await IB.findById(ibId);
     if (!ib) {
       throw new Error('IB not found');
@@ -343,16 +390,49 @@ class IBService {
       throw new Error('IB is not in pending status');
     }
 
+    // Backwards-compatible argument shape: callers historically passed
+    // `commissionSettings` directly as the third arg.
+    let commissionSettings = null;
+    let coupon = null;
+    if (opts && typeof opts === 'object') {
+      if (opts.commissionSettings || opts.coupon) {
+        commissionSettings = opts.commissionSettings || null;
+        coupon = opts.coupon || null;
+      } else {
+        // Treat the whole object as a legacy commissionSettings payload.
+        commissionSettings = opts;
+      }
+    }
+
     ib.status = 'active';
     ib.approvedBy = adminId;
     ib.approvedAt = new Date();
 
     if (commissionSettings) {
-      ib.commissionSettings = { ...ib.commissionSettings, ...commissionSettings };
+      ib.commissionSettings = { ...ib.commissionSettings.toObject?.() || ib.commissionSettings, ...commissionSettings };
     }
 
     await ib.save();
-    return ib;
+
+    // If admin opted to issue a coupon at the moment of IB approval,
+    // create the IBCoupon row directly here. Coupons live in their own
+    // collection now, so we create+issue in one shot rather than going
+    // through the user-side request flow.
+    if (coupon) {
+      const IBCoupon = require('../models/IBCoupon');
+      const code = await IBCoupon.generateCodeForIB(ib.referralCode);
+      const draft = await IBCoupon.create({
+        ibId: ib._id,
+        ibUserId: ib.userId,
+        ibOderId: ib.oderId,
+        code,
+        status: 'pending_issue',
+        applicationNote: 'Auto-created at IB approval'
+      });
+      await ibCouponService.issueCoupon(draft._id, adminId, coupon);
+    }
+
+    return await IB.findById(ib._id).populate('userId', 'name email oderId');
   }
 
   /**

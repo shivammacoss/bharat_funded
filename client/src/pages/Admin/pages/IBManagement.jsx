@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../adminConfig';
+import { API_BASE_URL, API_URL } from '../adminConfig';
 
 const IBManagement = () => {
   const { tab } = useParams();
@@ -15,6 +15,12 @@ const IBManagement = () => {
   const [applications, setApplications] = useState([]);
   const [activeIBs, setActiveIBs] = useState([]);
   const [commissions, setCommissions] = useState([]);
+  const [activeCoupons, setActiveCoupons] = useState([]);
+  const [pendingCoupons, setPendingCoupons] = useState([]);
+  const [redemptions, setRedemptions] = useState([]);
+  const [redemptionSummary, setRedemptionSummary] = useState({ count: 0, totalDiscount: 0, totalCommission: 0, totalGross: 0, totalNet: 0 });
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [withdrawalSummary, setWithdrawalSummary] = useState({ pending: 0, approved: 0, rejected: 0, totalApproved: 0, totalPending: 0 });
   const [settings, setSettings] = useState({
     enabled: true,
     autoApprove: false,
@@ -24,18 +30,48 @@ const IBManagement = () => {
   });
   const [stats, setStats] = useState({ total: 0, active: 0, pending: 0, totalCommissionPaid: 0 });
   const [commissionSummary, setCommissionSummary] = useState({ totalAmount: 0, pendingAmount: 0, creditedAmount: 0, paidAmount: 0, count: 0 });
-  
+
   // Modal states
   const [selectedIB, setSelectedIB] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
+  const [modalError, setModalError] = useState(null);
+
+  // Coupon form state — used by Approve modal and the standalone Issue
+  // Coupon modal. Defaults match the most common offer (20% off, 30 days,
+  // 20% IB cut).
+  const [couponForm, setCouponForm] = useState({
+    code: '',
+    discountPercent: 20,
+    validityDays: 30,
+    challengePurchaseCommissionPercent: 20,
+    maxRedemptions: 0
+  });
 
   const tabs = [
     { id: 'applications', label: 'Applications', path: '' },
     { id: 'active', label: 'Active IBs', path: 'active' },
+    { id: 'coupons', label: 'Coupons', path: 'coupons' },
+    { id: 'redemptions', label: 'Redemptions', path: 'redemptions' },
+    { id: 'withdrawals', label: 'Withdrawals', path: 'withdrawals' },
     { id: 'commissions', label: 'Commissions', path: 'commissions' },
     { id: 'settings', label: 'Settings', path: 'settings' }
   ];
+
+  // Helper to compute days remaining for an active coupon.
+  const daysUntil = (date) => {
+    if (!date) return null;
+    const ms = new Date(date).getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / 86400000));
+  };
+
+  const couponPreview = (() => {
+    const fee = 1000;
+    const disc = (Number(couponForm.discountPercent) || 0) * fee / 100;
+    const finalFee = Math.max(0, fee - disc);
+    const ibCut = finalFee * (Number(couponForm.challengePurchaseCommissionPercent) || 0) / 100;
+    return { fee, disc, finalFee, ibCut };
+  })();
 
   useEffect(() => {
     const currentTab = tab || 'applications';
@@ -77,6 +113,39 @@ const IBManagement = () => {
           }
           break;
 
+        case 'coupons':
+          const [activeRes2, pendingRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/ib/admin/coupons/active`, { headers: { Authorization: `Bearer ${token}` } }),
+            fetch(`${API_BASE_URL}/ib/admin/coupons/pending-issue`, { headers: { Authorization: `Bearer ${token}` } })
+          ]);
+          const activeJson = await activeRes2.json();
+          const pendingJson = await pendingRes.json();
+          if (activeJson.success) setActiveCoupons(activeJson.data.rows || []);
+          if (pendingJson.success) setPendingCoupons(pendingJson.data.rows || []);
+          break;
+
+        case 'redemptions':
+          const redRes = await fetch(`${API_BASE_URL}/ib/admin/coupon-redemptions`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const redJson = await redRes.json();
+          if (redJson.success) {
+            setRedemptions(redJson.data.rows || []);
+            setRedemptionSummary(redJson.data.summary || { count: 0, totalDiscount: 0, totalCommission: 0 });
+          }
+          break;
+
+        case 'withdrawals':
+          const wdRes = await fetch(`${API_BASE_URL}/ib/admin/withdrawals`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const wdJson = await wdRes.json();
+          if (wdJson.success) {
+            setWithdrawals(wdJson.data.rows || []);
+            setWithdrawalSummary(wdJson.data.summary || { pending: 0, approved: 0, rejected: 0, totalApproved: 0, totalPending: 0 });
+          }
+          break;
+
         case 'settings':
           const settingsRes = await fetch(`${API_BASE_URL}/ib/admin/settings`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -115,7 +184,15 @@ const IBManagement = () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({
+          coupon: {
+            discountPercent: Number(couponForm.discountPercent) || 0,
+            validityDays: Number(couponForm.validityDays) || 30,
+            challengePurchaseCommissionPercent: Number(couponForm.challengePurchaseCommissionPercent) || 0,
+            maxRedemptions: Math.max(0, Number(couponForm.maxRedemptions) || 0)
+          }
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -127,6 +204,113 @@ const IBManagement = () => {
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const handleIssueCoupon = async (couponId) => {
+    const token = localStorage.getItem('bharatfunded-admin-token');
+    setModalError(null);
+    try {
+      const body = {
+        discountPercent: Number(couponForm.discountPercent) || 0,
+        validityDays: Number(couponForm.validityDays) || 30,
+        challengePurchaseCommissionPercent: Number(couponForm.challengePurchaseCommissionPercent) || 0,
+        maxRedemptions: Math.max(0, Number(couponForm.maxRedemptions) || 0)
+      };
+      // Only forward custom code if admin actually changed it from the
+      // existing one — empty/blank means "auto-generate or keep".
+      const customCode = String(couponForm.code || '').trim().toUpperCase();
+      if (customCode && customCode !== (selectedIB.code || '').toUpperCase()) {
+        body.code = customCode;
+      }
+      const res = await fetch(`${API_BASE_URL}/ib/admin/coupons/${couponId}/issue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData(activeTab);
+        setShowModal(false);
+      } else {
+        setModalError(data.error || 'Failed');
+      }
+    } catch (err) {
+      setModalError(err.message);
+    }
+  };
+
+  const handleRevokeCoupon = async (couponId) => {
+    const reason = window.prompt('Reason for revoking this coupon?');
+    if (reason === null) return;
+    const token = localStorage.getItem('bharatfunded-admin-token');
+    try {
+      const res = await fetch(`${API_BASE_URL}/ib/admin/coupons/${couponId}/revoke`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData(activeTab);
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleWithdrawalAction = async (txId, action) => {
+    let rejectionReason = '';
+    if (action === 'reject') {
+      rejectionReason = window.prompt('Reason for rejecting this withdrawal?') || '';
+      if (!rejectionReason.trim()) return;
+    } else {
+      if (!window.confirm('Approve this IB withdrawal? IB wallet will be debited.')) return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/admin/transactions/${txId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: action === 'approve' ? 'approved' : 'rejected',
+          adminNote: '',
+          rejectionReason,
+          processedBy: 'admin'
+        })
+      });
+      const data = await res.json();
+      if (data.success !== false) {
+        fetchData('withdrawals');
+      } else {
+        setError(data.error || 'Failed');
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // The Coupons tab now lists individual IBCoupon docs (not IBs). The
+  // modal uses `selectedIB` as a generic carrier for the row's identity
+  // — for coupon flows it's actually the coupon doc (with _id, code, ibUserId).
+  const openIssueCouponModal = (coupon) => {
+    setSelectedIB(coupon);
+    setCouponForm({
+      code: coupon.code || '',
+      discountPercent: coupon.discountPercent || 20,
+      validityDays: coupon.validityDays || 30,
+      challengePurchaseCommissionPercent: coupon.challengePurchaseCommissionPercent || 20,
+      maxRedemptions: coupon.maxRedemptions || 0
+    });
+    setModalError(null);
+    setModalType('issue-coupon');
+    setShowModal(true);
   };
 
   const handleReject = async (ibId, reason) => {
@@ -277,11 +461,8 @@ const IBManagement = () => {
           <thead>
             <tr>
               <th>User</th>
-              <th>Referral Code</th>
-              <th>Level</th>
-              <th>Referrals</th>
+              <th>Coupons</th>
               <th>Total Commission</th>
-              <th>Commission Type</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -294,28 +475,13 @@ const IBManagement = () => {
                     <small>{ib.oderId}</small>
                   </div>
                 </td>
-                <td><code>{ib.referralCode}</code></td>
-                <td><span className="badge">Level {ib.level}</span></td>
-                <td>{ib.stats?.totalReferrals || 0}</td>
+                <td>
+                  <small style={{ color: 'var(--text-secondary)' }}>See Coupons tab</small>
+                </td>
                 <td className="text-success">{fmtInr(ib.stats?.totalCommissionEarned)}</td>
                 <td>
-                  <span className="badge badge-info">
-                    {ib.commissionSettings?.type || 'per_lot'}
-                  </span>
-                </td>
-                <td>
                   <div className="action-buttons">
-                    <button 
-                      className="btn btn-primary btn-sm"
-                      onClick={() => {
-                        setSelectedIB(ib);
-                        setModalType('edit');
-                        setShowModal(true);
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button 
+                    <button
                       className="btn btn-warning btn-sm"
                       onClick={() => {
                         setSelectedIB(ib);
@@ -326,6 +492,297 @@ const IBManagement = () => {
                       Suspend
                     </button>
                   </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+
+  const renderCoupons = () => (
+    <div className="admin-table-container">
+      {pendingCoupons.length > 0 && (
+        <>
+          <div className="table-header">
+            <h3>Pending Coupon Requests</h3>
+            <span className="badge badge-warning">{pendingCoupons.length}</span>
+          </div>
+          <table className="admin-table" style={{ marginBottom: 24 }}>
+            <thead>
+              <tr>
+                <th>IB</th>
+                <th>Code</th>
+                <th>Requested</th>
+                <th>Note</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingCoupons.map(c => (
+                <tr key={c._id}>
+                  <td>
+                    <div className="user-info">
+                      <strong>{c.ibUserId?.name || 'N/A'}</strong>
+                      <small>{c.ibUserId?.email || c.ibOderId}</small>
+                    </div>
+                  </td>
+                  <td><code>{c.code}</code></td>
+                  <td>{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-'}</td>
+                  <td style={{ maxWidth: 240, fontSize: 12 }}>{c.applicationNote || '-'}</td>
+                  <td>
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={() => openIssueCouponModal(c)}
+                    >
+                      Approve &amp; Issue
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <div className="table-header">
+        <h3>Active Coupons</h3>
+        <span className="badge badge-success">{activeCoupons.length}</span>
+      </div>
+      {activeCoupons.length === 0 ? (
+        <div className="empty-state">
+          <span className="icon">🎟️</span>
+          <p>No active coupons</p>
+        </div>
+      ) : (
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>IB</th>
+              <th>Code</th>
+              <th>Discount %</th>
+              <th>IB Commission %</th>
+              <th>Expires In</th>
+              <th>Redemptions</th>
+              <th>Earned</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activeCoupons.map(c => {
+              const days = daysUntil(c.validUntil);
+              return (
+                <tr key={c._id}>
+                  <td>
+                    <div className="user-info">
+                      <strong>{c.ibUserId?.name || 'N/A'}</strong>
+                      <small>{c.ibUserId?.email || c.ibOderId}</small>
+                    </div>
+                  </td>
+                  <td><code>{c.code}</code></td>
+                  <td>{c.discountPercent}%</td>
+                  <td>{c.challengePurchaseCommissionPercent}%</td>
+                  <td>
+                    <span className={`badge ${days <= 3 ? 'badge-warning' : 'badge-info'}`}>
+                      {days} day{days === 1 ? '' : 's'}
+                    </span>
+                  </td>
+                  <td>
+                    {c.redemptionCount || 0}
+                    <small style={{ color: 'var(--text-secondary)' }}>
+                      {' / '}{c.maxRedemptions > 0 ? c.maxRedemptions : '∞'}
+                    </small>
+                  </td>
+                  <td className="text-success">{fmtInr(c.totalCommissionEarned)}</td>
+                  <td>
+                    <div className="action-buttons">
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => openIssueCouponModal(c)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleRevokeCoupon(c._id)}
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+
+  const renderRedemptions = () => (
+    <div className="admin-table-container">
+      <div className="stats-grid" style={{ marginBottom: 24 }}>
+        <div className="stat-card">
+          <span className="stat-value">{redemptionSummary.count || 0}</span>
+          <span className="stat-label">Total Redemptions</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: '#f59e0b' }}>{fmtInr(redemptionSummary.totalDiscount)}</span>
+          <span className="stat-label">Total Discount</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: '#10b981' }}>{fmtInr(redemptionSummary.totalCommission)}</span>
+          <span className="stat-label">Total IB Commission</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: '#3b82f6' }}>{fmtInr(redemptionSummary.totalNet)}</span>
+          <span className="stat-label">Net Revenue</span>
+        </div>
+      </div>
+
+      <div className="table-header">
+        <h3>Coupon Redemptions</h3>
+        <span className="badge">{redemptions.length} records</span>
+      </div>
+      {redemptions.length === 0 ? (
+        <div className="empty-state">
+          <span className="icon">💸</span>
+          <p>No redemptions yet</p>
+        </div>
+      ) : (
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Coupon</th>
+              <th>Buyer</th>
+              <th>Challenge</th>
+              <th>Original</th>
+              <th>Discount</th>
+              <th>Final</th>
+              <th>IB Commission</th>
+              <th>Account ID</th>
+            </tr>
+          </thead>
+          <tbody>
+            {redemptions.map(r => (
+              <tr key={r._id}>
+                <td>{new Date(r.createdAt).toLocaleString()}</td>
+                <td><code>{r.couponSnapshot?.code}</code></td>
+                <td>
+                  <div className="user-info">
+                    <strong>{r.userId?.name || 'N/A'}</strong>
+                    <small>{r.userId?.oderId}</small>
+                  </div>
+                </td>
+                <td>{r.challengeId?.name || '-'}</td>
+                <td>{fmtInr(r.couponSnapshot?.originalFee)}</td>
+                <td className="text-warning">−{fmtInr(r.couponSnapshot?.discountAmount)}</td>
+                <td>{fmtInr(r.couponSnapshot?.finalFee)}</td>
+                <td className="text-success">{fmtInr(r.couponSnapshot?.ibCommissionAmount)}</td>
+                <td><code>{r.accountId}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+
+  const renderWithdrawals = () => (
+    <div className="admin-table-container">
+      <div className="stats-grid" style={{ marginBottom: 24 }}>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: '#f59e0b' }}>{withdrawalSummary.pending || 0}</span>
+          <span className="stat-label">Pending</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: '#f59e0b' }}>{fmtInr(withdrawalSummary.totalPending)}</span>
+          <span className="stat-label">Pending Amount</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: '#10b981' }}>{withdrawalSummary.approved || 0}</span>
+          <span className="stat-label">Approved</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value" style={{ color: '#10b981' }}>{fmtInr(withdrawalSummary.totalApproved)}</span>
+          <span className="stat-label">Total Paid Out</span>
+        </div>
+      </div>
+
+      <div className="table-header">
+        <h3>IB Withdrawal Requests</h3>
+        <span className="badge">{withdrawals.length} records</span>
+      </div>
+
+      {withdrawals.length === 0 ? (
+        <div className="empty-state">
+          <span className="icon">💸</span>
+          <p>No IB withdrawal requests</p>
+        </div>
+      ) : (
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>IB</th>
+              <th>Amount</th>
+              <th>UPI ID</th>
+              <th>Holder</th>
+              <th>Note</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {withdrawals.map(w => (
+              <tr key={w._id}>
+                <td>{new Date(w.createdAt).toLocaleString()}</td>
+                <td>
+                  <div className="user-info">
+                    <strong>{w.userName || w.oderId}</strong>
+                    <small>{w.oderId}</small>
+                  </div>
+                </td>
+                <td className="text-success" style={{ fontWeight: 700 }}>{fmtInr(w.amount)}</td>
+                <td><code>{w.withdrawalInfo?.upiDetails?.upiId || w.paymentDetails?.upiId || '-'}</code></td>
+                <td>{w.withdrawalInfo?.upiDetails?.name || '-'}</td>
+                <td style={{ maxWidth: 220, fontSize: 12 }}>{w.userNote || '-'}</td>
+                <td>
+                  <span className={`badge ${
+                    w.status === 'approved' || w.status === 'completed' ? 'badge-success' :
+                    w.status === 'pending' ? 'badge-warning' :
+                    w.status === 'rejected' ? 'badge-danger' :
+                    'badge-secondary'
+                  }`}>
+                    {w.status}
+                  </span>
+                  {w.rejectionReason && (
+                    <div style={{ fontSize: 10, color: '#ef4444', marginTop: 4 }}>{w.rejectionReason}</div>
+                  )}
+                </td>
+                <td>
+                  {w.status === 'pending' ? (
+                    <div className="action-buttons">
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => handleWithdrawalAction(w._id, 'approve')}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleWithdrawalAction(w._id, 'reject')}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <small style={{ color: 'var(--text-secondary)' }}>
+                      {w.processedAt ? new Date(w.processedAt).toLocaleDateString() : '—'}
+                    </small>
+                  )}
                 </td>
               </tr>
             ))}
@@ -479,52 +936,6 @@ const IBManagement = () => {
               </label>
             </div>
 
-            <div className="form-group">
-              <label>Default Commission Type</label>
-              <select 
-                value={settings.defaultCommission?.type || 'per_lot'}
-                onChange={(e) => handleUpdateSettings({ 
-                  defaultCommission: { ...settings.defaultCommission, type: e.target.value }
-                })}
-              >
-                <option value="per_lot">Per Lot</option>
-                <option value="revenue_percent">Revenue Percent</option>
-                <option value="spread_share">Spread Share</option>
-                <option value="hybrid">Hybrid</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Default Per Lot Amount (₹)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={settings.defaultCommission?.perLotAmount || 0}
-                onChange={(e) => handleUpdateSettings({
-                  defaultCommission: { ...settings.defaultCommission, perLotAmount: parseFloat(e.target.value) || 0 }
-                })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Minimum Withdrawal (₹)</label>
-              <input
-                type="number"
-                value={settings.minWithdrawal || 50}
-                onChange={(e) => handleUpdateSettings({ minWithdrawal: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Max Multi-Level Depth</label>
-              <input 
-                type="number" 
-                min="1"
-                max="10"
-                value={settings.maxLevels || 5}
-                onChange={(e) => handleUpdateSettings({ maxLevels: parseInt(e.target.value) })}
-              />
-            </div>
           </div>
       </div>
     </div>
@@ -538,15 +949,158 @@ const IBManagement = () => {
         <div className="modal-content" onClick={e => e.stopPropagation()}>
           {modalType === 'approve' && (
             <>
-              <h3>Approve IB Application</h3>
-              <p>Approve {selectedIB.userId?.name} as an Introducing Broker?</p>
+              <h3>Approve IB &amp; Issue First Coupon</h3>
+              <p>Approve <strong>{selectedIB.userId?.name}</strong> as an Introducing Broker?</p>
               <div className="ib-details">
-                <p><strong>Referral Code:</strong> {selectedIB.referralCode}</p>
+                <p><strong>Referral Code:</strong> <code>{selectedIB.referralCode}</code></p>
                 <p><strong>Business:</strong> {selectedIB.applicationDetails?.businessName || 'N/A'}</p>
+              </div>
+              <h4 style={{ marginTop: 16, marginBottom: 8 }}>First Coupon Settings</h4>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 0, marginBottom: 12 }}>
+                Set the terms for this IB's first coupon. Code will auto-generate from the referral code (e.g. <code>{selectedIB.referralCode}-XX</code>). IB can request additional coupons later from their dashboard.
+              </p>
+              <div className="form-group">
+                <label>Buyer Discount %</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  value={couponForm.discountPercent}
+                  onChange={(e) => setCouponForm({ ...couponForm, discountPercent: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Validity (days)</label>
+                <input
+                  type="number" min="1" max="3650"
+                  value={couponForm.validityDays}
+                  onChange={(e) => setCouponForm({ ...couponForm, validityDays: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>IB Commission % on each purchase</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  value={couponForm.challengePurchaseCommissionPercent}
+                  onChange={(e) => setCouponForm({ ...couponForm, challengePurchaseCommissionPercent: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Max Redemptions (0 = unlimited)</label>
+                <input
+                  type="number" min="0" step="1"
+                  value={couponForm.maxRedemptions}
+                  onChange={(e) => setCouponForm({ ...couponForm, maxRedemptions: e.target.value })}
+                  placeholder="e.g. 10 — leave 0 for no cap"
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+                  Coupon auto-expires once this many uses are reached. IB can request a new one anytime.
+                </small>
+              </div>
+              <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '10px 12px', fontSize: 13 }}>
+                <strong>Code:</strong>{' '}
+                <code>{(selectedIB.referralCode || selectedIB.code || '').toUpperCase().replace(/[-_]?\d+[A-Z]*$/, '').replace(/[-_]+$/, '').replace(/[^A-Z0-9]/g, '') || 'IB'}{Math.round(Number(couponForm.discountPercent) || 0)}</code>
+                <br />
+                <strong>Preview (₹{couponPreview.fee} challenge):</strong>{' '}
+                Buyer pays <strong>{fmtInr(couponPreview.finalFee)}</strong> · IB earns <strong>{fmtInr(couponPreview.ibCut)}</strong>
+                {Number(couponForm.maxRedemptions) > 0 && (
+                  <> · Cap <strong>{couponForm.maxRedemptions}</strong> uses</>
+                )}
               </div>
               <div className="modal-actions">
                 <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="btn btn-success" onClick={() => handleApprove(selectedIB._id)}>Approve</button>
+                <button className="btn btn-success" onClick={() => handleApprove(selectedIB._id)}>Approve &amp; Issue Coupon</button>
+              </div>
+            </>
+          )}
+
+          {modalType === 'issue-coupon' && (
+            <>
+              <h3>{selectedIB.status === 'active' ? 'Edit' : 'Issue'} Coupon</h3>
+              <p>
+                For <strong>{selectedIB.ibUserId?.name || '—'}</strong>
+              </p>
+              {selectedIB.status === 'active' && (
+                <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '8px 12px', marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <strong>Note:</strong> Saving will reset the expiry to today + new validity days. Redemption count and earnings stay intact.
+                </div>
+              )}
+              {selectedIB.status === 'pending_issue' && selectedIB.applicationNote && (
+                <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 6, padding: '8px 12px', marginBottom: 12, fontSize: 13 }}>
+                  <strong>IB note:</strong> {selectedIB.applicationNote}
+                </div>
+              )}
+              <div className="form-group">
+                <label>Coupon Code</label>
+                <input
+                  type="text"
+                  value={couponForm.code}
+                  onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })}
+                  placeholder="e.g. VIBHOOTI20 — leave blank to auto-generate"
+                  style={{ textTransform: 'uppercase', fontFamily: 'monospace' }}
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+                  Edit if you want a custom code. Must be unique. Leave blank to auto-generate from name + discount %.
+                </small>
+              </div>
+              <div className="form-group">
+                <label>Buyer Discount %</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  value={couponForm.discountPercent}
+                  onChange={(e) => setCouponForm({ ...couponForm, discountPercent: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Validity (days)</label>
+                <input
+                  type="number" min="1" max="3650"
+                  value={couponForm.validityDays}
+                  onChange={(e) => setCouponForm({ ...couponForm, validityDays: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>IB Commission % on each purchase</label>
+                <input
+                  type="number" min="0" max="100" step="0.1"
+                  value={couponForm.challengePurchaseCommissionPercent}
+                  onChange={(e) => setCouponForm({ ...couponForm, challengePurchaseCommissionPercent: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Max Redemptions (0 = unlimited)</label>
+                <input
+                  type="number" min="0" step="1"
+                  value={couponForm.maxRedemptions}
+                  onChange={(e) => setCouponForm({ ...couponForm, maxRedemptions: e.target.value })}
+                  placeholder="e.g. 10 — leave 0 for no cap"
+                />
+                <small style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+                  Coupon auto-expires once this many uses are reached. IB can then request a new coupon.
+                </small>
+              </div>
+              <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '10px 12px', fontSize: 13 }}>
+                <strong>Code:</strong>{' '}
+                <code>{(selectedIB.referralCode || selectedIB.code || '').toUpperCase().replace(/[-_]?\d+[A-Z]*$/, '').replace(/[-_]+$/, '').replace(/[^A-Z0-9]/g, '') || 'IB'}{Math.round(Number(couponForm.discountPercent) || 0)}</code>
+                <br />
+                <strong>Preview (₹{couponPreview.fee} challenge):</strong>{' '}
+                Buyer pays <strong>{fmtInr(couponPreview.finalFee)}</strong> · IB earns <strong>{fmtInr(couponPreview.ibCut)}</strong>
+                {Number(couponForm.maxRedemptions) > 0 && (
+                  <> · Cap <strong>{couponForm.maxRedemptions}</strong> uses</>
+                )}
+              </div>
+              {modalError && (
+                <div style={{
+                  marginTop: 12, padding: '10px 12px', borderRadius: 6,
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
+                  color: '#ef4444', fontSize: 13
+                }}>
+                  ⚠ {modalError}
+                </div>
+              )}
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="btn btn-success" onClick={() => handleIssueCoupon(selectedIB._id)}>
+                  {selectedIB.status === 'active' ? 'Save Changes' : 'Issue Coupon'}
+                </button>
               </div>
             </>
           )}
@@ -665,6 +1219,9 @@ const IBManagement = () => {
         <div className="tab-content">
           {activeTab === 'applications' && renderApplications()}
           {activeTab === 'active' && renderActiveIBs()}
+          {activeTab === 'coupons' && renderCoupons()}
+          {activeTab === 'redemptions' && renderRedemptions()}
+          {activeTab === 'withdrawals' && renderWithdrawals()}
           {activeTab === 'commissions' && renderCommissions()}
           {activeTab === 'settings' && renderSettings()}
         </div>
