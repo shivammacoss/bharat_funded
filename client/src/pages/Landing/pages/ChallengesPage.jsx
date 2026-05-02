@@ -56,8 +56,9 @@ export default function ChallengesPage() {
       .then(r => r.json())
       .then(data => {
         if (data.success && Array.isArray(data.challenges)) {
-          // Display order: 1-Step, 2-Step, Instant (matches old marketing layout)
-          const order = { 1: 0, 2: 1, 0: 2 };
+          // Display order: Instant, 1-Step, 2-Step (Instant first as the
+          // headline product).
+          const order = { 0: 0, 1: 1, 2: 2 };
           const sorted = [...data.challenges].sort((a, b) => (order[a.stepsCount] ?? 9) - (order[b.stepsCount] ?? 9));
           setChallenges(sorted);
         }
