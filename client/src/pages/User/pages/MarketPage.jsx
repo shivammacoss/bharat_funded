@@ -3457,7 +3457,12 @@ function MarketPage() {
                 );
               })()}
               {selectedInstrument?.lotSize > 1 && (
-                <div className="charge-row"><span>Total Value</span><span>{formatMargin(volumeNum * selectedInstrument.lotSize * entryPrice)}</span></div>
+                <div className="charge-row">
+                  <span>Total Value</span>
+                  <span style={{ fontWeight: '600' }}>
+                    {formatMargin(calculateRequiredMargin('intraday'))}
+                  </span>
+                </div>
               )}
             </div>
             </div>
