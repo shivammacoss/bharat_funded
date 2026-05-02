@@ -120,13 +120,6 @@ export default function PricingPage() {
     return out;
   }, [challenges]);
 
-  // Pick a sensible default tab once data loads (in case Instant isn't available)
-  useEffect(() => {
-    if (!plans[tab] && Object.keys(plans).length > 0) {
-      setTab(Object.keys(plans)[0]);
-    }
-  }, [plans, tab]);
-
   const applyCoupon = () => {
     if (coupon.trim()) {
       setCouponApplied(true);
@@ -134,8 +127,11 @@ export default function PricingPage() {
     }
   };
 
+  // Always show all three tabs so users can see every plan type, even if the
+  // admin hasn't published a challenge for one yet (we render an empty-state
+  // message in that case instead of hiding the tab).
+  const tabOrder = ['Instant', '1-Step', '2-Step'];
   const activePlan = plans[tab];
-  const tabOrder = ['Instant', '1-Step', '2-Step'].filter(t => plans[t]);
 
   return (
     <div className="landing-page min-h-screen bg-white">
@@ -163,25 +159,19 @@ export default function PricingPage() {
             <div className="text-center text-[#6B7080] py-10">Loading pricing…</div>
           )}
 
-          {!loading && tabOrder.length === 0 && (
-            <div className="text-center text-[#6B7080] py-10">
-              No active plans. The team is adding new challenges — please check back soon.
-            </div>
-          )}
-
-          {!loading && tabOrder.length > 0 && activePlan && (
+          {!loading && (
             <>
-              {/* Tabs */}
+              {/* Tabs — always render all three */}
               <div className="flex justify-center mb-8 md:mb-10">
-                <div className="inline-flex bg-[#F0F2F8] rounded-full p-1 flex-wrap">
+                <div className="inline-flex bg-[#F0F2F8] border border-[#E8EAF0] rounded-full p-1 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
                   {tabOrder.map((t) => (
                     <button
                       key={t}
                       onClick={() => setTab(t)}
-                      className={`px-5 sm:px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                      className={`px-6 sm:px-7 py-2.5 rounded-full text-sm font-bold transition-all ${
                         tab === t
-                          ? 'bg-[#2B4EFF] text-white shadow-[0_4px_12px_rgba(43,78,255,0.3)]'
-                          : 'text-[#6B7080] hover:text-[#0D0F1A]'
+                          ? 'bg-[#2B4EFF] text-white shadow-[0_4px_12px_rgba(43,78,255,0.35)]'
+                          : 'text-[#0D0F1A] hover:text-[#2B4EFF]'
                       }`}
                     >
                       {t}
@@ -192,31 +182,42 @@ export default function PricingPage() {
 
               {/* Description */}
               <p className="text-center text-base text-[#6B7080] max-w-2xl mx-auto mb-10 md:mb-12">
-                {activePlan.description}
+                {activePlan?.description || DESC_BY_TAB[tab]}
               </p>
 
-              {/* Tier Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                {activePlan.tiers.map((tier) => (
-                  <PricingTierCard key={tier.capital + '-' + tier.price} tier={tier} plan={tab} />
-                ))}
-              </div>
+              {activePlan ? (
+                <>
+                  {/* Tier Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                    {activePlan.tiers.map((tier) => (
+                      <PricingTierCard key={tier.capital + '-' + tier.price} tier={tier} plan={tab} />
+                    ))}
+                  </div>
 
-              {/* What's included */}
-              <div className="bg-[#FAFBFD] border border-[#E8EAF0] rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto">
-                <h3 className="text-lg font-bold text-[#0D0F1A] mb-2">
-                  What you get with {tab}
-                </h3>
-                <p className="text-sm text-[#6B7080] mb-5">Same across every account size in this plan.</p>
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {activePlan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-3">
-                      <Check size={16} className="text-[#2B4EFF] shrink-0 mt-0.5" />
-                      <span className="text-sm text-[#6B7080]">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                  {/* What's included */}
+                  <div className="bg-[#FAFBFD] border border-[#E8EAF0] rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto">
+                    <h3 className="text-lg font-bold text-[#0D0F1A] mb-2">
+                      What you get with {tab}
+                    </h3>
+                    <p className="text-sm text-[#6B7080] mb-5">Same across every account size in this plan.</p>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {activePlan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-3">
+                          <Check size={16} className="text-[#2B4EFF] shrink-0 mt-0.5" />
+                          <span className="text-sm text-[#6B7080]">{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center bg-[#FAFBFD] border border-[#E8EAF0] rounded-2xl p-10 max-w-xl mx-auto">
+                  <h3 className="text-lg font-bold text-[#0D0F1A] mb-2">{tab} plans coming soon</h3>
+                  <p className="text-sm text-[#6B7080]">
+                    Our team is finalising the {tab} challenges. In the meantime, check the other plans above.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>

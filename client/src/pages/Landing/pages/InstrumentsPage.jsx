@@ -43,7 +43,7 @@ const instruments = [
 
 const rules = [
   'All trading is simulated — no real orders are placed on NSE or BSE.',
-  'Only buying is allowed. Options selling (writing) is not supported.',
+  'Options buying and selling are both allowed. Futures, copy trading and algo trading are not supported.',
   'All positions must be squared off before 3:15 PM IST every trading day.',
   'No overnight or positional holding permitted across any instrument.',
   'Max Daily Loss and Max Drawdown limits apply across all instruments equally.',

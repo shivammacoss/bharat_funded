@@ -62,15 +62,15 @@ export default function HomePricing() {
 
         {/* Tabs */}
         <div className="flex justify-center mb-8 md:mb-10">
-          <div className="inline-flex bg-[#F0F2F8] rounded-full p-1 flex-wrap">
+          <div className="inline-flex bg-[#F0F2F8] border border-[#E8EAF0] rounded-full p-1 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
             {Object.keys(plans).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`px-5 sm:px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                className={`px-6 sm:px-7 py-2.5 rounded-full text-sm font-bold transition-all ${
                   tab === t
-                    ? 'bg-[#2B4EFF] text-white shadow-[0_4px_12px_rgba(43,78,255,0.3)]'
-                    : 'text-[#6B7080] hover:text-[#0D0F1A]'
+                    ? 'bg-[#2B4EFF] text-white shadow-[0_4px_12px_rgba(43,78,255,0.35)]'
+                    : 'text-[#0D0F1A] hover:text-[#2B4EFF]'
                 }`}
               >
                 {t}

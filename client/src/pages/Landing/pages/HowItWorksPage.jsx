@@ -34,7 +34,7 @@ const rules = [
   { label: 'Intraday Square-off', value: '3:15 PM', desc: 'All positions must be closed before 3:15 PM IST. No overnight holding allowed.' },
   { label: 'Profit Target', value: '8% – 15%', desc: 'The profit percentage you need to achieve to pass the evaluation successfully.' },
   { label: 'Minimum Trading Days', value: '5 days', desc: 'You must trade for at least 5 separate days to qualify. This ensures consistency over time.' },
-  { label: 'Instruments Allowed', value: 'NIFTY, BANKNIFTY, SENSEX', desc: 'Futures and options buying only. Options selling is currently not supported.' },
+  { label: 'Instruments Allowed', value: 'NIFTY, BANKNIFTY, SENSEX', desc: 'Options buying and selling are both supported. Futures, overnight positions, copy trading and algo trading are not allowed.' },
 ];
 
 export default function HowItWorksPage() {

@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: 'Which instruments can I trade?',
-    a: 'You can trade NIFTY, BANKNIFTY, and SENSEX futures and options (buying only). Options selling is currently not supported.',
+    a: 'You can trade NIFTY, BANKNIFTY, and SENSEX options — both buying and selling are supported. Futures, overnight positions, copy trading and algo trading are not allowed.',
   },
   {
     q: 'What are the risk rules?',
