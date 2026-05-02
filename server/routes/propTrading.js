@@ -394,28 +394,49 @@ router.get('/challenges', async (req, res) => {
   }
 });
 
-// POST /api/prop/buy - User: buy a challenge
+// POST /api/prop/buy - DEPRECATED. The wallet-deduction flow has been
+// replaced by the direct-UPI buy-request flow at /api/prop/buy-request.
+// Kept here so any legacy client surfaces a clear migration message.
 router.post('/buy', verifyUserToken, async (req, res) => {
+  res.status(410).json({
+    success: false,
+    message: 'Wallet-based challenge purchase is no longer supported. Use POST /api/prop/buy-request with UPI payment proof.'
+  });
+});
+
+// POST /api/prop/buy-request - User: submit a challenge purchase request
+// with UPI payment proof. Creates a pending Transaction + ChallengeAccount
+// (status PENDING). Admin reviews + approves in Bank & Fund Management →
+// Challenge Buys tab to activate the account.
+router.post('/buy-request', verifyUserToken, async (req, res) => {
   try {
-    const { challengeId, tierIndex, couponCode } = req.body;
+    const {
+      challengeId, tierIndex, couponCode,
+      adminUpiId, transactionRef, screenshotBase64, note
+    } = req.body;
     if (!challengeId) return res.status(400).json({ success: false, message: 'challengeId required' });
+    if (!adminUpiId) return res.status(400).json({ success: false, message: 'adminUpiId required' });
+    if (!transactionRef) return res.status(400).json({ success: false, message: 'transactionRef required' });
 
-    const normalizedCoupon = couponCode ? String(couponCode).trim().toUpperCase() : null;
-
-    const result = await propTradingEngine.buyChallenge(
-      req.user._id,
+    const result = await propTradingEngine.requestChallengeBuy(req.user._id, {
       challengeId,
-      Number.isInteger(tierIndex) ? tierIndex : (tierIndex != null ? Number(tierIndex) : undefined),
-      normalizedCoupon
-    );
-    const baseMsg = result.coupon?.applied
-      ? `Challenge purchased! Coupon ${result.coupon.code} saved you ₹${Number(result.coupon.discountAmount || 0).toFixed(2)}`
-      : 'Challenge purchased successfully!';
-    res.json({
+      tierIndex: Number.isInteger(tierIndex) ? tierIndex : (tierIndex != null ? Number(tierIndex) : 0),
+      couponCode: couponCode ? String(couponCode).trim().toUpperCase() : null,
+      paymentProof: {
+        adminUpiId,
+        transactionRef,
+        screenshotBase64: screenshotBase64 || '',
+        note: note || ''
+      }
+    });
+    const msg = result.coupon?.applied
+      ? `Payment request submitted with coupon ${result.coupon.code} (₹${Number(result.coupon.discountAmount || 0).toFixed(2)} off). Admin will approve shortly.`
+      : 'Payment request submitted. Admin will approve shortly.';
+    res.status(201).json({
       success: true,
-      message: baseMsg,
-      account: result.account,
-      challenge: { name: result.challenge.name, fundSize: result.account.initialBalance },
+      message: msg,
+      accountId: result.account.accountId,
+      transactionId: result.transaction._id,
       coupon: result.coupon || null
     });
   } catch (error) {
@@ -1000,10 +1021,16 @@ router.post('/trade-closed', verifyUserToken, async (req, res) => {
 // until approval.
 router.post('/withdraw', verifyUserToken, async (req, res) => {
   try {
-    const { challengeAccountId } = req.body;
+    const { challengeAccountId, upiId, holderName, note } = req.body;
     if (!challengeAccountId) return res.status(400).json({ success: false, message: 'challengeAccountId required' });
+    if (!upiId) return res.status(400).json({ success: false, message: 'upiId required' });
+    if (!holderName) return res.status(400).json({ success: false, message: 'holderName required' });
 
-    const result = await propTradingEngine.withdrawProfit(challengeAccountId, req.user._id);
+    const result = await propTradingEngine.withdrawProfit(challengeAccountId, req.user._id, {
+      upiId,
+      holderName,
+      note: note || ''
+    });
     res.json({
       success: true,
       pending: true,
@@ -1023,6 +1050,60 @@ router.post('/withdraw', verifyUserToken, async (req, res) => {
 //  file — reusing those. Don't re-require or Node throws a "const already
 //  declared" error at module load and the server refuses to boot.)
 const Transaction = require('../models/Transaction');
+const challengeApprovalService = require('../services/challengeApproval.service');
+
+// (User-facing payment-methods are served by GET /api/admin-payment-details
+//  in server/index.js — that endpoint returns { bankAccounts, upiIds,
+//  cryptoWallets } and is what the deposit page already uses. No new
+//  route needed here.)
+
+// ============ ADMIN CHALLENGE BUYS QUEUE ============
+
+// GET /api/prop/admin/challenge-buys — list pending challenge_purchase
+// transactions for admin review.
+router.get('/admin/challenge-buys', async (req, res) => {
+  try {
+    const result = await challengeApprovalService.list({
+      status: req.query.status,
+      search: req.query.search,
+      page: req.query.page,
+      limit: req.query.limit
+    });
+    // Enrich each row with the buyer's display name.
+    const enriched = await Promise.all(result.rows.map(async (tx) => {
+      const user = await User.findOne({ oderId: tx.oderId }).select('name email oderId').lean().catch(() => null);
+      return { ...tx, user };
+    }));
+    res.json({
+      success: true,
+      data: { rows: enriched, summary: result.summary, pagination: result.pagination }
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/prop/admin/challenge-buys/:txId/approve
+router.post('/admin/challenge-buys/:txId/approve', async (req, res) => {
+  try {
+    const result = await challengeApprovalService.approveChallengeBuy(req.params.txId, req.body?.adminId || 'admin');
+    res.json({ success: true, message: 'Challenge purchase approved', ...result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/prop/admin/challenge-buys/:txId/reject
+router.post('/admin/challenge-buys/:txId/reject', async (req, res) => {
+  try {
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) return res.status(400).json({ success: false, message: 'reason required' });
+    const result = await challengeApprovalService.rejectChallengeBuy(req.params.txId, req.body?.adminId || 'admin', reason);
+    res.json({ success: true, message: 'Challenge purchase rejected', ...result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
 
 // GET /api/prop/admin/payouts — list pending prop-payout requests with
 // enriched user + challenge-account info so the admin dashboard can show
@@ -1113,19 +1194,11 @@ router.post('/admin/payouts/:id/approve', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid payout amount' });
     }
 
-    const user = await User.findById(tx.oderId);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    if (!user.walletINR) user.walletINR = { balance: 0, totalDeposits: 0, totalWithdrawals: 0 };
-    user.walletINR.balance += amountToPay;
-    user.wallet.balance = (user.wallet.balance || 0) + amountToPay;
-    user.wallet.equity = (user.wallet.equity || 0) + amountToPay;
-    user.wallet.freeMargin = (user.wallet.freeMargin || 0) + amountToPay;
-    await user.save();
-
-    // Reset the challenge account's wallet to initial so the next cycle
-    // starts fresh. We leave totalWithdrawn + lastWithdrawalDate as a
-    // historical record.
+    // NOTE: We no longer credit the user's wallet on payout approval.
+    // Admin transfers the amount manually via UPI to the user's
+    // withdrawalInfo.upiDetails.upiId. We just mark the Transaction
+    // approved and reset the challenge account's sub-wallet so the
+    // next payout cycle starts fresh.
     const initial = Number(account.initialBalance) || 0;
     account.walletBalance = initial;
     account.walletEquity = initial;
@@ -1148,9 +1221,8 @@ router.post('/admin/payouts/:id/approve', async (req, res) => {
 
     res.json({
       success: true,
-      message: `Payout ₹${amountToPay.toFixed(2)} approved and credited`,
-      transaction: tx,
-      userWalletINRBalance: user.walletINR.balance
+      message: `Payout ₹${amountToPay.toFixed(2)} approved. Transfer to user's UPI: ${tx.withdrawalInfo?.upiDetails?.upiId || tx.paymentDetails?.upiId || '(not set)'}`,
+      transaction: tx
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

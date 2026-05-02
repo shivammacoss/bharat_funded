@@ -37,7 +37,7 @@ const challengeAccountSchema = new mongoose.Schema({
   // Status
   status: {
     type: String,
-    enum: ['ACTIVE', 'PASSED', 'FAILED', 'FUNDED', 'EXPIRED'],
+    enum: ['PENDING', 'ACTIVE', 'PASSED', 'FAILED', 'FUNDED', 'EXPIRED', 'CANCELLED'],
     default: 'ACTIVE'
   },
   failReason: {
@@ -196,8 +196,17 @@ const challengeAccountSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ['PENDING', 'COMPLETED', 'REFUNDED'],
+    enum: ['PENDING', 'COMPLETED', 'REFUNDED', 'PAYMENT_PENDING', 'PAYMENT_REJECTED'],
     default: 'PENDING'
+  },
+
+  // Link to the pending challenge_purchase Transaction. Set when the
+  // user submits a buy-request via the UPI flow; the admin approval
+  // handler reads this back to activate the account.
+  pendingPurchaseTransactionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction',
+    default: null
   },
 
   // IB coupon snapshot — populated only when this challenge was bought
@@ -237,10 +246,12 @@ const challengeAccountSchema = new mongoose.Schema({
     default: null
   },
 
-  // Timestamps
+  // Timestamps. expiresAt is null while the account is in PENDING
+  // (buy-request awaiting admin approval) — clock starts ticking only
+  // when the admin activates the account.
   expiresAt: {
     type: Date,
-    required: true
+    default: null
   },
   createdAt: {
     type: Date,

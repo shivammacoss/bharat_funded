@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const SUPPORT_EMAIL = 'bharathfundedtradersupport@gmail.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const contactMethods = [
   {
@@ -28,20 +29,42 @@ const contactMethods = [
 export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const { ref: headerRef } = useScrollAnimation();
   const { ref: formRef } = useScrollAnimation(0.1);
 
-  const handleSubmit = (e) => {
+  // POSTs the form to /api/contact which emails the support inbox via the
+  // Hostinger SMTP creds in .env. The visitor's email is set as Reply-To
+  // so support can reply directly from their inbox.
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const subject = encodeURIComponent(
-      formData.subject ? `[Support] ${formData.subject}` : '[Support] New enquiry'
-    );
-    const body = encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\nSubject: ${formData.subject}\n\n${formData.message}`
-    );
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    setErrorMsg('');
+    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
+      setErrorMsg('Please fill in your name, email and message.');
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch(`${API_URL}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.error || `Could not send message (HTTP ${res.status}). Email us directly at ${SUPPORT_EMAIL}.`);
+        return;
+      }
+      setSubmitted(true);
+      setFormData({ name: '', email: '', subject: '', message: '' });
+      setTimeout(() => setSubmitted(false), 5000);
+    } catch (err) {
+      console.error('[Contact] submit failed:', err);
+      setErrorMsg(`Network error — please try again or email ${SUPPORT_EMAIL}.`);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -159,12 +182,19 @@ export default function Contact() {
                   />
                 </div>
 
+                {errorMsg && (
+                  <div className="px-4 py-3 rounded-xl bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-[#fca5a5] text-sm">
+                    {errorMsg}
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full py-4 rounded-full bg-[#2B4EFF] text-white font-bold text-sm hover:bg-[#4B6AFF] transition-all shadow-[0_6px_20px_rgba(43,78,255,0.3)] flex items-center justify-center gap-2"
+                  disabled={sending}
+                  className="w-full py-4 rounded-full bg-[#2B4EFF] text-white font-bold text-sm hover:bg-[#4B6AFF] transition-all shadow-[0_6px_20px_rgba(43,78,255,0.3)] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <Send size={16} />
-                  Send Message
+                  {sending ? 'Sending…' : 'Send Message'}
                 </button>
               </form>
             )}

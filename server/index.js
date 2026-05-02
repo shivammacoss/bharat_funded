@@ -303,6 +303,99 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Public contact form — landing-page "Contact Our Support Team" form posts here.
+// Sends the visitor's enquiry to the configured support inbox via the same
+// Hostinger SMTP that powers signup OTP and welcome emails. Reply-To is set
+// to the visitor's address so the support team can reply directly.
+app.post('/api/contact', async (req, res) => {
+  try {
+    const { name, email, subject, message } = req.body || {};
+    const safeName = String(name || '').trim();
+    const safeEmail = String(email || '').trim();
+    const safeSubject = String(subject || '').trim();
+    const safeMessage = String(message || '').trim();
+
+    if (!safeName || !safeEmail || !safeMessage) {
+      return res.status(400).json({ success: false, error: 'Name, email and message are required.' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(safeEmail)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+    }
+
+    const emailService = require('./services/email.service');
+    if (!emailService.isSmtpConfigured()) {
+      return res.status(503).json({ success: false, error: 'Email service is not available right now. Please email us directly.' });
+    }
+
+    // Where the enquiry lands. Falls back to SMTP_USER (the support inbox) so
+    // we never have to hard-code an address — set CONTACT_INBOX in .env to
+    // route enquiries somewhere different (e.g. sales@).
+    const supportInbox = (process.env.CONTACT_INBOX || process.env.SMTP_USER || '').trim();
+    if (!supportInbox) {
+      return res.status(500).json({ success: false, error: 'Support inbox not configured.' });
+    }
+
+    const mailSubject = safeSubject
+      ? `[Website Contact] ${safeSubject}`
+      : `[Website Contact] New enquiry from ${safeName}`;
+
+    const text = [
+      `New enquiry from the Bharat Funded Trader contact form:`,
+      ``,
+      `Name:    ${safeName}`,
+      `Email:   ${safeEmail}`,
+      `Subject: ${safeSubject || '(none)'}`,
+      ``,
+      `Message:`,
+      safeMessage,
+      ``,
+      `— Reply directly to this email to respond to ${safeName}.`
+    ].join('\n');
+
+    const html = `
+      <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0D0F1A;">
+        <div style="background:linear-gradient(135deg,#2B4EFF 0%,#4B6AFF 100%);padding:18px 22px;border-radius:10px 10px 0 0;color:#fff;">
+          <p style="margin:0;font-size:11px;font-weight:800;letter-spacing:2px;color:rgba(255,255,255,0.85);text-transform:uppercase;">Website Contact</p>
+          <h2 style="margin:4px 0 0 0;font-size:18px;font-weight:700;">New enquiry from ${safeName}</h2>
+        </div>
+        <div style="background:#FAFBFD;padding:20px 22px;border:1px solid #E8EAF0;border-top:none;border-radius:0 0 10px 10px;">
+          <table style="width:100%;font-size:14px;color:#4B5165;border-spacing:0;">
+            <tr><td style="padding:4px 0;width:90px;color:#6B7080;">Name</td><td style="padding:4px 0;font-weight:600;color:#0D0F1A;">${safeName}</td></tr>
+            <tr><td style="padding:4px 0;color:#6B7080;">Email</td><td style="padding:4px 0;font-weight:600;color:#0D0F1A;"><a href="mailto:${safeEmail}" style="color:#2B4EFF;text-decoration:none;">${safeEmail}</a></td></tr>
+            <tr><td style="padding:4px 0;color:#6B7080;">Subject</td><td style="padding:4px 0;font-weight:600;color:#0D0F1A;">${safeSubject || '<em style="color:#9AA0B4;font-weight:400;">(none)</em>'}</td></tr>
+          </table>
+          <div style="margin-top:14px;padding:14px 16px;background:#fff;border:1px solid #E8EAF0;border-radius:8px;font-size:14px;line-height:1.6;color:#0D0F1A;white-space:pre-wrap;">${safeMessage.replace(/[<>]/g, (c) => c === '<' ? '&lt;' : '&gt;')}</div>
+          <p style="margin:14px 0 0 0;font-size:12px;color:#6B7080;">Hit Reply to respond directly to ${safeName}.</p>
+        </div>
+      </div>
+    `;
+
+    // sendMail uses Hostinger SMTP. Adding replyTo so the support agent can
+    // hit Reply in their inbox and the response goes to the visitor, not back
+    // to the support inbox itself.
+    const transporter = emailService.createTransport();
+    if (!transporter) {
+      return res.status(503).json({ success: false, error: 'Email service is not available right now.' });
+    }
+    const fromName = (process.env.SMTP_FROM_NAME || 'Bharat Funded Trader');
+    const fromAddr = (process.env.SMTP_FROM || process.env.SMTP_USER);
+    await transporter.sendMail({
+      from: `"${fromName}" <${fromAddr}>`,
+      to: supportInbox,
+      replyTo: `"${safeName}" <${safeEmail}>`,
+      subject: mailSubject,
+      text,
+      html
+    });
+
+    res.json({ success: true, message: 'Thanks — your message has been sent. We typically reply within 2 hours.' });
+  } catch (error) {
+    console.error('[Contact] send failed:', error);
+    res.status(500).json({ success: false, error: 'Could not send your message. Please try again or email us directly.' });
+  }
+});
+
 // Get current live prices (for debugging)
 app.get('/api/live-prices', (req, res) => {
   if (metaApiStreaming && metaApiStreaming.prices) {
@@ -2171,6 +2264,29 @@ app.put('/api/admin/transactions/:id', async (req, res) => {
       }
     } catch (scopeErr) {
       console.warn('[PUT /transactions/:id] scope check skipped:', scopeErr.message);
+    }
+
+    // ── Challenge purchase branch ──────────────────────────────────────
+    // Challenge buys are exposed in the same Deposits queue but live in
+    // their own collection-of-truth (the linked ChallengeAccount). The
+    // wallet must NOT be touched on approval — instead the challenge
+    // account is activated. Delegate to the dedicated approval service
+    // which also handles coupon redemption finalisation.
+    if (transaction.type === 'challenge_purchase') {
+      const challengeApprovalService = require('./services/challengeApproval.service');
+      try {
+        if (status === 'approved' || status === 'completed') {
+          const result = await challengeApprovalService.approveChallengeBuy(transaction._id, processedBy || 'admin');
+          return res.json({ success: true, transaction: result.transaction, account: result.account });
+        }
+        if (status === 'rejected') {
+          const result = await challengeApprovalService.rejectChallengeBuy(transaction._id, processedBy || 'admin', rejectionReason || '');
+          return res.json({ success: true, transaction: result.transaction });
+        }
+        return res.status(400).json({ success: false, error: `Unsupported status '${status}' for challenge purchase` });
+      } catch (e) {
+        return res.status(400).json({ success: false, error: e.message });
+      }
     }
 
     // Update transaction
@@ -10228,68 +10344,73 @@ app.get('/api/admin/reports/financial-reports', async (req, res) => {
     const dateQuery = {};
     if (from) dateQuery.$gte = new Date(from);
     if (to) dateQuery.$lte = new Date(to);
-    
+
     const Transaction = require('./models/Transaction');
-    const User = require('./models/User');
-    
-    // Get deposits
-    const depositQuery = { type: 'deposit', status: 'approved' };
-    if (from || to) depositQuery.createdAt = dateQuery;
-    const deposits = await Transaction.aggregate([
-      { $match: depositQuery },
+    const ChallengeAccount = require('./models/ChallengeAccount');
+
+    // Pull every COMPLETED ChallengeAccount in the period and resolve
+    // each one's actual fee. Sources of truth, in order of preference:
+    //  1. linked challenge_purchase Transaction.amount (new UPI flow)
+    //  2. couponSnapshot.finalFee (coupon-redeemed accounts)
+    //  3. challenge.tiers[tierIndex].challengeFee
+    //  4. challenge.challengeFee (legacy single-tier)
+    // This way old wallet-flow purchases also count toward revenue.
+    const accountQuery = { paymentStatus: 'COMPLETED', status: { $ne: 'CANCELLED' } };
+    if (from || to) accountQuery.createdAt = dateQuery;
+    const accounts = await ChallengeAccount.find(accountQuery)
+      .populate('challengeId', 'name challengeFee tiers')
+      .lean();
+
+    let totalChallengeBuys = 0;
+    let challengeBuyCount = 0;
+    for (const a of accounts) {
+      let fee = 0;
+      if (a.pendingPurchaseTransactionId) {
+        try {
+          const tx = await Transaction.findById(a.pendingPurchaseTransactionId).select('amount').lean();
+          if (tx?.amount > 0) fee = Number(tx.amount);
+        } catch (e) { /* ignore */ }
+      }
+      if (!fee && a.couponSnapshot?.finalFee > 0) fee = Number(a.couponSnapshot.finalFee);
+      if (!fee) {
+        const ch = a.challengeId;
+        if (ch?.tiers?.length) fee = Number(ch.tiers[0]?.challengeFee || 0);
+        if (!fee && ch?.challengeFee) fee = Number(ch.challengeFee);
+      }
+      totalChallengeBuys += fee;
+      challengeBuyCount += 1;
+    }
+
+    // Total payouts — approved funded-account withdrawals
+    const payoutQuery = {
+      type: 'withdrawal',
+      status: { $in: ['approved', 'completed'] },
+      'paymentDetails.kind': 'prop_payout'
+    };
+    if (from || to) payoutQuery.createdAt = dateQuery;
+    const payouts = await Transaction.aggregate([
+      { $match: payoutQuery },
       { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
     ]);
-    
-    // Get withdrawals
-    const withdrawalQuery = { type: 'withdrawal', status: 'approved' };
-    if (from || to) withdrawalQuery.createdAt = dateQuery;
-    const withdrawals = await Transaction.aggregate([
-      { $match: withdrawalQuery },
-      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
-    ]);
-    
-    // Get total user balances
-    const userBalances = await User.aggregate([
-      { $group: { _id: null, totalBalance: { $sum: '$wallet.balance' } } }
-    ]);
-    
-    // Get trade P/L
-    const HedgingPosition = require('./models/Position').HedgingPosition;
-    const NettingPosition = require('./models/Position').NettingPosition;
-    const BinaryTrade = require('./models/Position').BinaryTrade;
-    
-    const tradeQuery = { status: 'closed' };
-    if (from || to) tradeQuery.closeTime = dateQuery;
-    
-    const hedgingPnL = await HedgingPosition.aggregate([
-      { $match: tradeQuery },
-      { $group: { _id: null, total: { $sum: '$profit' } } }
-    ]);
-    
-    const nettingPnL = await NettingPosition.aggregate([
-      { $match: tradeQuery },
-      { $group: { _id: null, total: { $sum: '$profit' } } }
-    ]);
-    
-    const binaryPnL = await BinaryTrade.aggregate([
-      { $match: { ...tradeQuery, result: { $exists: true } } },
-      { $group: { _id: null, total: { $sum: '$profit' } } }
-    ]);
-    
-    const totalDeposits = deposits[0]?.total || 0;
-    const totalWithdrawals = withdrawals[0]?.total || 0;
-    const netPnL = (hedgingPnL[0]?.total || 0) + (nettingPnL[0]?.total || 0) + (binaryPnL[0]?.total || 0);
-    
+
+    // Active / Funded counts (no date filter — point-in-time snapshot)
+    const activeCount = await ChallengeAccount.countDocuments({ status: 'ACTIVE' });
+    const fundedCount = await ChallengeAccount.countDocuments({ status: 'FUNDED' });
+    const passedCount = await ChallengeAccount.countDocuments({ status: 'PASSED' });
+
+    const totalPayouts = payouts[0]?.total || 0;
+
     res.json({
       success: true,
       report: {
-        totalRevenue: totalDeposits - totalWithdrawals,
-        totalDeposits,
-        totalWithdrawals,
-        depositCount: deposits[0]?.count || 0,
-        withdrawalCount: withdrawals[0]?.count || 0,
-        netPnL,
-        totalUserBalance: userBalances[0]?.totalBalance || 0
+        totalChallengeBuys,
+        totalPayouts,
+        challengeBuyCount,
+        payoutCount: payouts[0]?.count || 0,
+        netRevenue: totalChallengeBuys - totalPayouts,
+        activeAccounts: activeCount,
+        fundedAccounts: fundedCount,
+        passedAccounts: passedCount
       }
     });
   } catch (error) {
@@ -10297,66 +10418,140 @@ app.get('/api/admin/reports/financial-reports', async (req, res) => {
   }
 });
 
-// User Reports
+// User Reports — per-user prop activity breakdown.
+//
+// Source of truth for "challenge buys" is ChallengeAccount (NOT just
+// Transaction): old wallet-flow purchases never created a Transaction
+// record, so an aggregate over the Transaction collection misses them.
+// We resolve each account's fee from (in priority order):
+//   1. linked challenge_purchase Transaction.amount  (new UPI flow)
+//   2. couponSnapshot.finalFee                       (coupon redemptions)
+//   3. challenge.tiers[0].challengeFee               (multi-tier challenges)
+//   4. challenge.challengeFee                        (legacy single-tier)
 app.get('/api/admin/reports/user-reports', async (req, res) => {
   try {
     const { from, to } = req.query;
     const User = require('./models/User');
-    
+    const Transaction = require('./models/Transaction');
+    const ChallengeAccount = require('./models/ChallengeAccount');
+
     const dateQuery = {};
     if (from) dateQuery.$gte = new Date(from);
     if (to) dateQuery.$lte = new Date(to);
-    
-    // Total users
+
+    // Top-level totals (period-scoped)
     const totalUsers = await User.countDocuments({ role: { $ne: 'admin' } });
-    
-    // Active users (logged in within last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const activeUsers = await User.countDocuments({ 
-      role: { $ne: 'admin' },
-      lastLogin: { $gte: thirtyDaysAgo }
-    });
-    
-    // New users in period
     const newUsersQuery = { role: { $ne: 'admin' } };
     if (from || to) newUsersQuery.createdAt = dateQuery;
     const newUsers = await User.countDocuments(newUsersQuery);
-    
-    // KYC verified
-    const kycVerified = await User.countDocuments({ 
-      role: { $ne: 'admin' },
-      'kyc.status': 'verified'
+
+    // Pull every completed ChallengeAccount in the period.
+    const accountQuery = { paymentStatus: 'COMPLETED', status: { $ne: 'CANCELLED' } };
+    if (from || to) accountQuery.createdAt = dateQuery;
+    const accounts = await ChallengeAccount.find(accountQuery)
+      .populate('challengeId', 'name challengeFee tiers')
+      .lean();
+
+    // Build per-user buy aggregates by walking through the accounts and
+    // resolving each one's fee.
+    const buyMap = {};   // userId(string) → { count, amount }
+    for (const a of accounts) {
+      const uid = String(a.userId);
+      if (!buyMap[uid]) buyMap[uid] = { count: 0, amount: 0 };
+      let fee = 0;
+      if (a.pendingPurchaseTransactionId) {
+        try {
+          const tx = await Transaction.findById(a.pendingPurchaseTransactionId).select('amount').lean();
+          if (tx?.amount > 0) fee = Number(tx.amount);
+        } catch (e) { /* ignore */ }
+      }
+      if (!fee && a.couponSnapshot?.finalFee > 0) fee = Number(a.couponSnapshot.finalFee);
+      if (!fee) {
+        const ch = a.challengeId;
+        if (ch?.tiers?.length) fee = Number(ch.tiers[0]?.challengeFee || 0);
+        if (!fee && ch?.challengeFee) fee = Number(ch.challengeFee);
+      }
+      buyMap[uid].count += 1;
+      buyMap[uid].amount += fee;
+    }
+
+    // Per-user payouts (still Transaction-based since payouts are always
+    // created as Transactions in both old and new flows).
+    const payoutMatch = {
+      type: 'withdrawal',
+      status: { $in: ['approved', 'completed'] },
+      'paymentDetails.kind': 'prop_payout'
+    };
+    if (from || to) payoutMatch.createdAt = dateQuery;
+    const payoutByUser = await Transaction.aggregate([
+      { $match: payoutMatch },
+      { $group: { _id: '$oderId', totalPayoutAmount: { $sum: '$amount' }, payoutCount: { $sum: 1 } } }
+    ]);
+    const payoutMapByOder = {};
+    payoutByUser.forEach(r => { payoutMapByOder[r._id] = r; });
+
+    // Account status counts per user (passed / funded / active / failed / pending)
+    const accountAgg = await ChallengeAccount.aggregate([
+      { $match: {} },
+      {
+        $group: {
+          _id: { userId: '$userId', status: '$status' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    const accountMap = {};
+    accountAgg.forEach(r => {
+      const uid = String(r._id.userId);
+      if (!accountMap[uid]) accountMap[uid] = { ACTIVE: 0, PASSED: 0, FAILED: 0, FUNDED: 0, EXPIRED: 0, PENDING: 0, CANCELLED: 0 };
+      accountMap[uid][r._id.status] = r.count;
     });
-    
-    // Users by status
-    const blockedUsers = await User.countDocuments({ 
-      role: { $ne: 'admin' },
-      status: 'blocked'
+
+    // Pull users with any prop activity (buys OR payouts OR any
+    // accounts at all). Falls back to recent users when nothing exists.
+    const userIdsWithAccounts = new Set(Object.keys(buyMap));
+    const usersFiltered = userIdsWithAccounts.size > 0
+      ? await User.find({ _id: { $in: [...userIdsWithAccounts] }, role: { $ne: 'admin' } })
+          .select('name email oderId _id createdAt')
+          .lean()
+      : await User.find({ role: { $ne: 'admin' } })
+          .sort({ createdAt: -1 })
+          .limit(50)
+          .select('name email oderId _id createdAt')
+          .lean();
+
+    const userRows = usersFiltered.map(u => {
+      const buy = buyMap[String(u._id)] || { count: 0, amount: 0 };
+      const payout = payoutMapByOder[u.oderId] || {};
+      const acc = accountMap[String(u._id)] || {};
+      return {
+        _id: u._id,
+        name: u.name,
+        email: u.email,
+        oderId: u.oderId,
+        createdAt: u.createdAt,
+        challengeBuyCount: buy.count,
+        challengeBuyAmount: buy.amount,
+        payoutCount: payout.payoutCount || 0,
+        payoutAmount: payout.totalPayoutAmount || 0,
+        netSpent: buy.amount - (payout.totalPayoutAmount || 0),
+        accountsActive: acc.ACTIVE || 0,
+        accountsPassed: acc.PASSED || 0,
+        accountsFunded: acc.FUNDED || 0,
+        accountsFailed: acc.FAILED || 0,
+        accountsPending: acc.PENDING || 0
+      };
     });
-    
-    // Users with balance
-    const usersWithBalance = await User.countDocuments({
-      role: { $ne: 'admin' },
-      'wallet.balance': { $gt: 0 }
-    });
-    
-    // Top depositors
-    const topDepositors = await User.find({ role: { $ne: 'admin' } })
-      .sort({ 'wallet.balance': -1 })
-      .limit(10)
-      .select('name email oderId wallet.balance');
-    
+
+    // Sort by buy amount desc by default
+    userRows.sort((a, b) => b.challengeBuyAmount - a.challengeBuyAmount);
+
     res.json({
       success: true,
       report: {
         totalUsers,
-        activeUsers,
         newUsers: from || to ? newUsers : totalUsers,
-        kycVerified,
-        blockedUsers,
-        usersWithBalance,
-        topDepositors
+        userRows
       }
     });
   } catch (error) {

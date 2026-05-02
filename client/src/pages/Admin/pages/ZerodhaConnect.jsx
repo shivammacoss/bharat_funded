@@ -416,7 +416,29 @@ function ZerodhaConnect() {
         
         <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
           {!settings.isConnected || settings.isTokenExpired ? (
-            <button onClick={connectZerodha} className="btn-primary" disabled={!settings.apiKey} style={{ background: settings.isTokenExpired ? '#f59e0b' : undefined }}>
+            <button
+              onClick={connectZerodha}
+              disabled={!settings.apiKey}
+              style={{
+                // Explicit colours so it stays readable in both light and
+                // dark admin themes — the .btn-primary class was being
+                // overridden somewhere and the text was vanishing into the
+                // background.
+                background: settings.isTokenExpired ? '#f59e0b' : '#2B4EFF',
+                color: '#ffffff',
+                border: 'none',
+                padding: '10px 22px',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: settings.apiKey ? 'pointer' : 'not-allowed',
+                opacity: settings.apiKey ? 1 : 0.55,
+                boxShadow: '0 4px 12px rgba(43,78,255,0.25)',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => { if (settings.apiKey) e.currentTarget.style.opacity = '0.9'; }}
+              onMouseLeave={(e) => { if (settings.apiKey) e.currentTarget.style.opacity = '1'; }}
+            >
               {settings.isTokenExpired ? '🔄 Reconnect to Zerodha' : 'Connect to Zerodha'}
             </button>
           ) : (

@@ -254,7 +254,7 @@ function ConsistencyGauge({ score, daysTraded }) {
 /* Main component                                                            */
 /* ────────────────────────────────────────────────────────────────────────── */
 function ChallengeDashboard() {
-  const { setActiveChallengeAccountId } = useOutletContext();
+  const { setActiveChallengeAccountId, user } = useOutletContext();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -266,6 +266,39 @@ function ChallengeDashboard() {
   const [showObjectivesOnChart, setShowObjectivesOnChart] = useState(true);
   const [journalTab, setJournalTab] = useState('calendar'); // calendar | closed | charts
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  // FUNDED-account profit withdrawal flow.
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawForm, setWithdrawForm] = useState({ upiId: '', holderName: '', note: '' });
+  const [withdrawBusy, setWithdrawBusy] = useState(false);
+  const [withdrawMsg, setWithdrawMsg] = useState(null);
+
+  const submitWithdrawProfit = async () => {
+    setWithdrawMsg(null);
+    if (!withdrawForm.upiId.trim()) { setWithdrawMsg({ type: 'err', text: 'UPI ID required' }); return; }
+    if (!withdrawForm.holderName.trim()) { setWithdrawMsg({ type: 'err', text: 'Holder name required' }); return; }
+    setWithdrawBusy(true);
+    try {
+      const res = await fetch(`${API_URL}/api/prop/withdraw`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          challengeAccountId: id,
+          upiId: withdrawForm.upiId.trim(),
+          holderName: withdrawForm.holderName.trim(),
+          note: withdrawForm.note.trim()
+        })
+      });
+      const d = await res.json();
+      if (d.success) {
+        setWithdrawMsg({ type: 'ok', text: `Request submitted. Admin will transfer ₹${Number(d.requestedAmount || 0).toFixed(2)} to your UPI.` });
+        setTimeout(() => { setWithdrawOpen(false); setWithdrawForm({ upiId: '', holderName: '', note: '' }); fetchAll(); }, 1500);
+      } else {
+        setWithdrawMsg({ type: 'err', text: d.message || 'Failed' });
+      }
+    } catch (e) { setWithdrawMsg({ type: 'err', text: e.message }); }
+    setWithdrawBusy(false);
+  };
 
   useEffect(() => {
     if (id && setActiveChallengeAccountId) setActiveChallengeAccountId(id);
@@ -473,9 +506,14 @@ function ChallengeDashboard() {
               >
                 {account.status === 'FUNDED' && (
                   <button
-                    onClick={() => { setMoreMenuOpen(false); navigate(`/app/wallet`); }}
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      setWithdrawForm({ upiId: '', holderName: user?.name || '', note: '' });
+                      setWithdrawMsg(null);
+                      setWithdrawOpen(true);
+                    }}
                     style={menuItemStyle}
-                  >Request Payout</button>
+                  >💸 Withdraw Profit</button>
                 )}
                 <button
                   onClick={() => { setMoreMenuOpen(false); navigate('/app/my-challenges'); }}
@@ -842,6 +880,92 @@ function ChallengeDashboard() {
               : `Account ${sc.label.toLowerCase()}`}
         </div>
       </div>
+
+      {/* ── Withdraw Profit modal (FUNDED accounts) ─────────────────── */}
+      {withdrawOpen && (
+        <div
+          onClick={() => !withdrawBusy && setWithdrawOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
+              borderRadius: 14, width: '100%', maxWidth: 460, padding: 22,
+              color: 'var(--text-primary)'
+            }}
+          >
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>💸 Withdraw Profit</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
+              Profit split: <strong>{funded?.profitSplitPercent || 80}%</strong> · Available profit: <strong>{formatINR(Math.max(0, (Number(account.walletBalance) || Number(account.currentBalance) || 0) - Number(account.initialBalance || 0)))}</strong>
+              <br />Admin will transfer the payout amount to the UPI ID below.
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600 }}>UPI ID *</label>
+              <input
+                type="text"
+                value={withdrawForm.upiId}
+                onChange={(e) => setWithdrawForm(p => ({ ...p, upiId: e.target.value }))}
+                placeholder="yourname@upi"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 13 }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600 }}>Account Holder Name *</label>
+              <input
+                type="text"
+                value={withdrawForm.holderName}
+                onChange={(e) => setWithdrawForm(p => ({ ...p, holderName: e.target.value }))}
+                placeholder="As per UPI account"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 13 }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600 }}>Note (optional)</label>
+              <textarea
+                value={withdrawForm.note}
+                onChange={(e) => setWithdrawForm(p => ({ ...p, note: e.target.value }))}
+                style={{ width: '100%', minHeight: 50, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 13 }}
+              />
+            </div>
+
+            {withdrawMsg && (
+              <div style={{
+                padding: '10px 12px', borderRadius: 8, marginBottom: 12, fontSize: 13,
+                background: withdrawMsg.type === 'err' ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
+                border: `1px solid ${withdrawMsg.type === 'err' ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                color: withdrawMsg.type === 'err' ? '#ef4444' : '#10b981'
+              }}>{withdrawMsg.text}</div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setWithdrawOpen(false)}
+                disabled={withdrawBusy}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 10,
+                  background: 'var(--bg-tertiary)', color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)', cursor: withdrawBusy ? 'not-allowed' : 'pointer',
+                  fontWeight: 600
+                }}
+              >Cancel</button>
+              <button
+                onClick={submitWithdrawProfit}
+                disabled={withdrawBusy}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 10,
+                  background: '#10b981', color: '#fff', border: 'none',
+                  cursor: withdrawBusy ? 'not-allowed' : 'pointer', fontWeight: 700
+                }}
+              >{withdrawBusy ? 'Submitting…' : 'Request Withdrawal'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

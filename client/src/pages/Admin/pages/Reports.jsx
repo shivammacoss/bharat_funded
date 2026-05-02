@@ -216,101 +216,121 @@ function Reports() {
         <div className="admin-loading">Generating report...</div>
       ) : (
         <>
-          {/* Financial Reports */}
+          {/* Financial Reports — prop-only model */}
           {activeTab === 'financial-reports' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20, marginBottom: 24 }}>
                 <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Total Deposits</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#10b981', margin: '12px 0 8px' }}>{fmtC(reportData?.totalDeposits)}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{reportData?.depositCount || 0} transactions</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Total Challenge Buys</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#10b981', margin: '12px 0 8px' }}>{fmtC(reportData?.totalChallengeBuys)}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Total revenue collected</p>
                 </div>
                 <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Total Withdrawals</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#ef4444', margin: '12px 0 8px' }}>{fmtC(reportData?.totalWithdrawals)}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{reportData?.withdrawalCount || 0} transactions</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>No. of Challenge Buys</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, color: '#3b82f6', margin: '12px 0 8px' }}>{reportData?.challengeBuyCount || 0}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Approved purchases</p>
                 </div>
                 <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Net Flow</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: (reportData?.totalRevenue || 0) >= 0 ? '#10b981' : '#ef4444', margin: '12px 0 8px' }}>
-                    {fmtCSigned(reportData?.totalRevenue)}
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Total Payouts</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#ef4444', margin: '12px 0 8px' }}>{fmtC(reportData?.totalPayouts)}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{reportData?.payoutCount || 0} funded withdrawals</p>
+                </div>
+                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Net Revenue</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: (reportData?.netRevenue || 0) >= 0 ? '#10b981' : '#ef4444', margin: '12px 0 8px' }}>
+                    {fmtCSigned(reportData?.netRevenue)}
                   </p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Deposits - Withdrawals</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Buys − Payouts</p>
                 </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>User Net P/L</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: (reportData?.netPnL || 0) >= 0 ? '#10b981' : '#ef4444', margin: '12px 0 8px' }}>
-                    {fmtCSigned(reportData?.netPnL)}
-                  </p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Closed trades P/L</p>
+              </div>
+
+              {/* Account status snapshot */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+                <div style={{ background: 'var(--bg-secondary)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Active Accounts</p>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: '#3b82f6', margin: '8px 0 0' }}>{reportData?.activeAccounts || 0}</p>
                 </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Total User Balances</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#3b82f6', margin: '12px 0 8px' }}>{fmtC(reportData?.totalUserBalance)}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>All user wallets</p>
+                <div style={{ background: 'var(--bg-secondary)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Funded Accounts</p>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: '#f59e0b', margin: '8px 0 0' }}>{reportData?.fundedAccounts || 0}</p>
+                </div>
+                <div style={{ background: 'var(--bg-secondary)', padding: 16, borderRadius: 12, border: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Passed Accounts</p>
+                  <p style={{ fontSize: 22, fontWeight: 700, color: '#10b981', margin: '8px 0 0' }}>{reportData?.passedAccounts || 0}</p>
                 </div>
               </div>
             </>
           )}
 
-          {/* User Reports */}
+          {/* User Reports — per-user prop activity breakdown */}
           {activeTab === 'user-reports' && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20, marginBottom: 24 }}>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20, marginBottom: 24 }}>
+                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0 }}>
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Total Users</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#3b82f6', margin: '12px 0 0' }}>{reportData?.totalUsers || 0}</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, color: '#3b82f6', margin: '12px 0 0' }}>{reportData?.totalUsers || 0}</p>
                 </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Active Users (30d)</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#10b981', margin: '12px 0 0' }}>{reportData?.activeUsers || 0}</p>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
+                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0 }}>
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>New Users (Period)</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#f59e0b', margin: '12px 0 0' }}>{reportData?.newUsers || 0}</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, color: '#f59e0b', margin: '12px 0 0' }}>{reportData?.newUsers || 0}</p>
                 </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>KYC Verified</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#8b5cf6', margin: '12px 0 0' }}>{reportData?.kycVerified || 0}</p>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Blocked Users</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#ef4444', margin: '12px 0 0' }}>{reportData?.blockedUsers || 0}</p>
-                </div>
-                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0, overflow: 'hidden' }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Users with Balance</p>
-                  <p style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#10b981', margin: '12px 0 0' }}>{reportData?.usersWithBalance || 0}</p>
+                <div style={{ background: 'var(--bg-secondary)', padding: 20, borderRadius: 12, border: '1px solid var(--border)', minWidth: 0 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Active Buyers</p>
+                  <p style={{ fontSize: 26, fontWeight: 700, color: '#10b981', margin: '12px 0 0' }}>{(reportData?.userRows || []).filter(u => u.challengeBuyCount > 0).length}</p>
                 </div>
               </div>
 
-              {/* Top Depositors */}
-              {reportData?.topDepositors?.length > 0 && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
-                  <h4 style={{ marginTop: 0, marginBottom: 16 }}>Top Users by Balance</h4>
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Order ID</th>
-                        <th>Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportData.topDepositors.map((user, idx) => (
-                        <tr key={user._id || idx}>
-                          <td>{idx + 1}</td>
-                          <td><strong>{user.name}</strong></td>
-                          <td>{user.email}</td>
-                          <td><code>{user.oderId}</code></td>
-                          <td style={{ color: '#10b981', fontWeight: 600 }}>{fmt(user.wallet?.balance)}</td>
+              {/* Per-user prop activity */}
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 12, padding: 20, border: '1px solid var(--border)' }}>
+                <h4 style={{ marginTop: 0, marginBottom: 16 }}>User Activity (Prop Trading)</h4>
+                {(reportData?.userRows || []).length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)' }}>No prop activity in selected period.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table" style={{ minWidth: 900 }}>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>User</th>
+                          <th>Order ID</th>
+                          <th>Challenge Buys</th>
+                          <th>Buy Amount</th>
+                          <th>Payouts</th>
+                          <th>Payout Amount</th>
+                          <th>Net Spent</th>
+                          <th>Active</th>
+                          <th>Funded</th>
+                          <th>Passed</th>
+                          <th>Failed</th>
+                          <th>Pending</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody>
+                        {reportData.userRows.map((u, idx) => (
+                          <tr key={u._id || idx}>
+                            <td>{idx + 1}</td>
+                            <td>
+                              <strong>{u.name || '—'}</strong>
+                              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{u.email}</div>
+                            </td>
+                            <td><code style={{ fontSize: 11 }}>{u.oderId}</code></td>
+                            <td>{u.challengeBuyCount}</td>
+                            <td style={{ color: '#10b981', fontWeight: 600 }}>{fmt(u.challengeBuyAmount)}</td>
+                            <td>{u.payoutCount}</td>
+                            <td style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(u.payoutAmount)}</td>
+                            <td style={{ color: u.netSpent >= 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>{fmtSigned(u.netSpent)}</td>
+                            <td><span className="badge badge-info">{u.accountsActive}</span></td>
+                            <td><span className="badge badge-success">{u.accountsFunded}</span></td>
+                            <td><span className="badge badge-success">{u.accountsPassed}</span></td>
+                            <td><span className="badge badge-danger">{u.accountsFailed}</span></td>
+                            <td><span className="badge badge-warning">{u.accountsPending}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </>
           )}
 

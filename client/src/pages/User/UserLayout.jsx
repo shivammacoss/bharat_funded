@@ -2354,7 +2354,6 @@ function UserLayout({ user, onLogout }) {
     { key: 'my-challenges', label: 'My Challenges', icon: <LuTrophy size={18} /> },
     { key: 'ib', label: 'IB Program', icon: <LuShare2 size={18} /> },
     { key: 'orders', label: 'Orders', icon: <LuClipboardList size={18} /> },
-    { key: 'wallet', label: 'Wallet', icon: <LuWallet size={18} /> },
     { key: 'billing', label: 'Billing', icon: <LuBriefcase size={18} /> },
     { key: 'contact', label: 'Contact', icon: <LuBell size={18} /> },
     { key: 'settings', label: 'Profile', icon: <LuUser size={18} /> },
@@ -3034,18 +3033,6 @@ function UserLayout({ user, onLogout }) {
             <span className="mobi-bnav-dot" aria-hidden />
             <span className="mobi-bnav-icon" aria-hidden><LuClipboardList size={22} /></span>
             <span className="mobi-bnav-label">Orders</span>
-          </button>
-          <button
-            type="button"
-            className={`mobi-bnav-item ${activePage === 'wallet' ? 'mobi-active' : ''}`}
-            onClick={() => {
-              navigateToPage('wallet');
-              setMobileMenuOpen(false);
-            }}
-          >
-            <span className="mobi-bnav-dot" aria-hidden />
-            <span className="mobi-bnav-icon" aria-hidden><LuWallet size={22} /></span>
-            <span className="mobi-bnav-label">Wallet</span>
           </button>
           <button
             type="button"

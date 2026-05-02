@@ -154,7 +154,13 @@ const PropTrading = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'accounts') fetchAccounts();
+    if (activeTab !== 'accounts') return;
+    fetchAccounts();
+    // Auto-refresh every 8 seconds while admin is on the accounts tab so
+    // status flips (e.g. PENDING → ACTIVE after admin approves a buy
+    // request from the Deposits tab) propagate without manual reload.
+    const id = setInterval(fetchAccounts, 8000);
+    return () => clearInterval(id);
   }, [activeTab, accountFilter.status]);
 
   const fetchPayouts = async () => {
@@ -683,12 +689,19 @@ const PropTrading = () => {
                 style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
               >
                 <option value="">All Status</option>
+                <option value="PENDING">Pending</option>
                 <option value="ACTIVE">Active</option>
                 <option value="PASSED">Passed</option>
                 <option value="FAILED">Failed</option>
                 <option value="FUNDED">Funded</option>
                 <option value="EXPIRED">Expired</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
+              <button
+                onClick={fetchAccounts}
+                title="Refresh now"
+                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+              >🔄 Refresh</button>
             </div>
           </div>
 

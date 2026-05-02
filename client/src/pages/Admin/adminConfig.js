@@ -16,7 +16,6 @@ export const sidebarMenu = [
   { id: 'binary-settings', label: 'Binary Mode Settings', icon: 'timer', path: '/admin/binary-settings' },
   { id: 'risk-management', label: 'Risk Management', icon: 'shield', path: '/admin/risk-management' },
   { id: 'netting-segment-management', label: 'Netting Segments', icon: 'netting', path: '/admin/netting-segments' },
-  { id: 'bonus-management', label: 'Bonus Management', icon: 'gift', path: '/admin/bonus-management' },
   { id: 'ib-management', label: 'IB & Coupons', icon: 'users', path: '/admin/ib' },
   { id: 'zerodha-connect', label: 'Zerodha Connect', icon: 'radio', path: '/admin/zerodha' },
   { id: 'market-control', label: 'Market Control', icon: 'clock', path: '/admin/market-control' },
@@ -45,6 +44,7 @@ export const sectionTabs = {
   ],
   'bank-fund-management': [
     { id: 'deposit-requests', label: 'Deposits', path: '' },
+    { id: 'challenge-buys', label: 'Challenge Buys', path: 'challenge-buys' },
     { id: 'withdrawal-requests', label: 'Withdrawals', path: 'withdrawals' },
     { id: 'bank-accounts', label: 'Bank Accounts', path: 'banks' },
     { id: 'upi-management', label: 'UPI', path: 'upi' },
@@ -69,9 +69,7 @@ export const sectionTabs = {
     { id: 'financial-reports', label: 'Financial Reports', path: '' },
     { id: 'user-reports', label: 'User Reports', path: 'users' },
     { id: 'trade-reports', label: 'Trade Reports', path: 'trades' },
-    { id: 'commission-reports', label: 'Commission Reports', path: 'commissions' },
-    { id: 'broker-reports', label: 'Broker Reports', path: 'brokers' },
-    { id: 'subadmin-reports', label: 'Sub-Admin Reports', path: 'subadmins' }
+    { id: 'commission-reports', label: 'Commission Reports', path: 'commissions' }
   ],
   'notifications': [
     { id: 'push-notifications', label: 'Push Notifications', path: '' },

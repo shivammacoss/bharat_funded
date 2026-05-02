@@ -18,25 +18,19 @@ function FundStatValue({ children, style }) {
 // Default column configuration for deposit tables
 const DEFAULT_DEPOSIT_COLUMNS = [
   { id: 'createdAt', label: 'Created / Updated Time', visible: true },
-  { id: 'hierarchy', label: 'Hierarchy', visible: true },
   { id: 'userId', label: 'UserID', visible: true },
   { id: 'amount', label: 'Amount / Type', visible: true },
-  { id: 'bonus', label: 'Bonus', visible: true },
   { id: 'status', label: 'Status', visible: true },
   { id: 'remark', label: 'Remark', visible: true },
-  { id: 'orderRef', label: 'Order Ref', visible: true },
   { id: 'showImage', label: 'Show Image', visible: true },
   { id: 'accept', label: 'Accept', visible: true },
   { id: 'reject', label: 'Reject', visible: true },
-  { id: 'position', label: 'Position', visible: true },
-  { id: 'ledger', label: 'Ledger', visible: true },
   { id: 'delete', label: 'Delete', visible: true },
 ];
 
 // Default column configuration for withdrawal tables (includes bank details)
 const DEFAULT_WITHDRAWAL_COLUMNS = [
   { id: 'createdAt', label: 'Created / Updated Time', visible: true },
-  { id: 'hierarchy', label: 'Hierarchy', visible: true },
   { id: 'userId', label: 'UserID', visible: true },
   { id: 'amount', label: 'Amount / Type', visible: true },
   { id: 'status', label: 'Status', visible: true },
@@ -45,11 +39,8 @@ const DEFAULT_WITHDRAWAL_COLUMNS = [
   { id: 'ifsc', label: 'IFSC', visible: true },
   { id: 'upiId', label: 'UPI ID', visible: true },
   { id: 'remark', label: 'Remark', visible: true },
-  { id: 'orderRef', label: 'Order Ref', visible: true },
   { id: 'accept', label: 'Accept', visible: true },
   { id: 'reject', label: 'Reject', visible: true },
-  { id: 'position', label: 'Position', visible: true },
-  { id: 'ledger', label: 'Ledger', visible: true },
   { id: 'delete', label: 'Delete', visible: true },
 ];
 
@@ -69,8 +60,13 @@ function FundManagement() {
   // the DEFAULT array so its position is intuitive.
   const mergeWithDefaults = (saved, defaults) => {
     if (!Array.isArray(saved)) return defaults;
-    const savedIds = new Set(saved.map((c) => c.id));
-    const merged = [...saved];
+    const defaultIds = new Set(defaults.map((c) => c.id));
+    // Drop any saved column that's no longer in the current DEFAULTs (e.g.
+    // admin removed hierarchy/orderRef/position/ledger). Without this any
+    // user's saved localStorage config will keep showing the dropped cols.
+    const filtered = saved.filter((c) => defaultIds.has(c.id));
+    const savedIds = new Set(filtered.map((c) => c.id));
+    const merged = [...filtered];
     defaults.forEach((defCol, defIdx) => {
       if (!savedIds.has(defCol.id)) {
         // Insert at the same index as DEFAULT, clamped to current length
@@ -137,6 +133,7 @@ function FundManagement() {
   // Get active tab to determine which columns to use
   const getActiveTab = () => {
     const path = location.pathname;
+    if (path.includes('/challenge-buys')) return 'challenge-buys';
     if (path.includes('/withdrawals')) return 'withdrawal-requests';
     if (path.includes('/banks')) return 'bank-accounts';
     if (path.includes('/upi')) return 'upi-management';
@@ -218,18 +215,38 @@ function FundManagement() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filter.search) params.set('search', filter.search);
-      if (filter.status) params.set('status', filter.status);
-      
-      const type = activeTab === 'deposit-requests' ? 'deposit' : 
-                   activeTab === 'withdrawal-requests' ? 'withdrawal' : '';
-      if (type) params.set('type', type);
+      const buildParams = (type) => {
+        const p = new URLSearchParams();
+        if (filter.search) p.set('search', filter.search);
+        if (filter.status) p.set('status', filter.status);
+        if (type) p.set('type', type);
+        return p;
+      };
 
-      const res = await fetch(`${API_URL}/api/admin/transactions?${params}`);
-      const data = await res.json();
-      if (data.success) {
-        setTransactions(data.transactions || []);
+      if (activeTab === 'deposit-requests') {
+        // The Deposits tab is the single inbox for both regular UPI/bank
+        // deposits AND direct-UPI challenge purchase requests. Fetch both
+        // in parallel and merge by createdAt so admin sees one queue.
+        const [depRes, chRes] = await Promise.all([
+          fetch(`${API_URL}/api/admin/transactions?${buildParams('deposit')}`),
+          fetch(`${API_URL}/api/admin/transactions?${buildParams('challenge_purchase')}`)
+        ]);
+        const depData = await depRes.json();
+        const chData = await chRes.json();
+        const a = depData.success ? (depData.transactions || []) : [];
+        const b = chData.success ? (chData.transactions || []) : [];
+        const merged = [...a, ...b].sort(
+          (x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime()
+        );
+        setTransactions(merged);
+      } else if (activeTab === 'withdrawal-requests') {
+        const res = await fetch(`${API_URL}/api/admin/transactions?${buildParams('withdrawal')}`);
+        const data = await res.json();
+        if (data.success) setTransactions(data.transactions || []);
+      } else {
+        const res = await fetch(`${API_URL}/api/admin/transactions?${buildParams('')}`);
+        const data = await res.json();
+        if (data.success) setTransactions(data.transactions || []);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -1129,6 +1146,11 @@ function FundManagement() {
     }
   };
 
+  // Challenge Buys tab — early return with its own self-contained panel.
+  if (activeTab === 'challenge-buys') {
+    return <ChallengeBuysPanel apiUrl={API_URL} />;
+  }
+
   return (
     <div className="admin-page-container">
       <div className="admin-page-header">
@@ -1824,3 +1846,254 @@ function FundManagement() {
 }
 
 export default FundManagement;
+
+// =================================================================
+// Challenge Buys panel — admin queue for direct-UPI challenge purchase
+// requests submitted by users via PropChallengePage. Lives in this file
+// to keep all bank-fund-management tabs co-located.
+// =================================================================
+
+function ChallengeBuysPanel({ apiUrl }) {
+  const [rows, setRows] = useState([]);
+  const [summary, setSummary] = useState({ pending: 0, approved: 0, rejected: 0, totalApproved: 0, totalPending: 0 });
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [proofPreview, setProofPreview] = useState(null);
+
+  const fmtInr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ status: statusFilter });
+      const res = await fetch(`${apiUrl}/api/prop/admin/challenge-buys?${params}`);
+      const data = await res.json();
+      if (data.success) {
+        setRows(data.data.rows || []);
+        setSummary(data.data.summary || {});
+      }
+    } catch (e) { /* ignore */ }
+    setLoading(false);
+  }, [apiUrl, statusFilter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleApprove = async (txId) => {
+    if (!window.confirm('Approve this challenge purchase? The challenge will activate for the user.')) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/prop/admin/challenge-buys/${txId}/approve`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        load();
+      } else {
+        alert(`Approval failed: ${data.message || 'unknown error'}`);
+      }
+    } catch (e) { alert('Network error: ' + e.message); }
+  };
+
+  const handleReject = async (txId) => {
+    const reason = window.prompt('Reason for rejection?');
+    if (reason === null || !reason.trim()) return;
+    try {
+      const res = await fetch(`${apiUrl}/api/prop/admin/challenge-buys/${txId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        load();
+      } else {
+        alert(`Rejection failed: ${data.message || 'unknown error'}`);
+      }
+    } catch (e) { alert('Network error: ' + e.message); }
+  };
+
+  return (
+    <div className="admin-page-container">
+      <div className="admin-page-header">
+        <h2>Challenge Buy Requests</h2>
+      </div>
+
+      {/* Summary cards */}
+      <div className="fund-stats-row" style={{ marginBottom: 18 }}>
+        <div className="fund-stat-card">
+          <div className="fund-stat-card__top">
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', color: '#f59e0b' }}><LuClock size={17} /></div>
+            <div className="fund-stat-card__meta">
+              <div className="fund-stat-card__label">Pending</div>
+              <FundStatValue>{summary.pending || 0}</FundStatValue>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>{fmtInr(summary.totalPending)} awaiting</div>
+        </div>
+        <div className="fund-stat-card">
+          <div className="fund-stat-card__top">
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.35)', color: '#4ade80' }}><LuArrowDownToLine size={17} /></div>
+            <div className="fund-stat-card__meta">
+              <div className="fund-stat-card__label">Approved</div>
+              <FundStatValue>{summary.approved || 0}</FundStatValue>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>{fmtInr(summary.totalApproved)} total</div>
+        </div>
+        <div className="fund-stat-card">
+          <div className="fund-stat-card__top">
+            <div className="fund-stat-card__icon" style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171' }}><LuArrowUpFromLine size={17} /></div>
+            <div className="fund-stat-card__meta">
+              <div className="fund-stat-card__label">Rejected</div>
+              <FundStatValue>{summary.rejected || 0}</FundStatValue>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>Last 30d</div>
+        </div>
+      </div>
+
+      {/* Filter bar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {['pending', 'approved', 'rejected', 'all'].map(s => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            style={{
+              padding: '6px 14px', borderRadius: 6, border: '1px solid var(--border-color)',
+              background: statusFilter === s ? '#3b82f6' : 'transparent',
+              color: statusFilter === s ? '#fff' : 'var(--text-primary)',
+              cursor: 'pointer', fontSize: 13, fontWeight: 600, textTransform: 'capitalize'
+            }}
+          >{s}</button>
+        ))}
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <p style={{ color: 'var(--text-secondary)', padding: 20 }}>Loading…</p>
+      ) : rows.length === 0 ? (
+        <div className="empty-state" style={{ padding: 40, textAlign: 'center' }}>
+          <span style={{ fontSize: 36 }}>🛒</span>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>No {statusFilter !== 'all' ? statusFilter : ''} challenge buy requests</p>
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12 }}>
+          <table className="admin-table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>User</th>
+                <th>Challenge</th>
+                <th>Fee</th>
+                <th>Coupon</th>
+                <th>UPI Paid To</th>
+                <th>Txn Ref</th>
+                <th>Screenshot</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(tx => {
+                const info = tx.challengePurchaseInfo || {};
+                const original = Number(info.originalFee || 0);
+                const final = Number(info.finalFee || tx.amount || 0);
+                const hasDiscount = original > final;
+                return (
+                  <tr key={tx._id}>
+                    <td style={{ fontSize: 12 }}>{new Date(tx.createdAt).toLocaleString()}</td>
+                    <td>
+                      <div className="user-info">
+                        <strong>{tx.user?.name || tx.userName || 'N/A'}</strong>
+                        <small>{tx.oderId}</small>
+                      </div>
+                    </td>
+                    <td>
+                      <strong>{info.challengeName || '—'}</strong>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        ₹{Number(info.fundSize || 0).toLocaleString('en-IN')} fund
+                      </div>
+                    </td>
+                    <td>
+                      {hasDiscount ? (
+                        <>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', textDecoration: 'line-through' }}>{fmtInr(original)}</div>
+                          <div style={{ fontWeight: 700, color: '#10b981' }}>{fmtInr(final)}</div>
+                        </>
+                      ) : (
+                        <span style={{ fontWeight: 700 }}>{fmtInr(final)}</span>
+                      )}
+                    </td>
+                    <td>
+                      {info.couponCode ? (
+                        <code style={{ fontSize: 11 }}>{info.couponCode}</code>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>—</span>
+                      )}
+                    </td>
+                    <td><code style={{ fontSize: 11 }}>{tx.paymentDetails?.upiId || '—'}</code></td>
+                    <td><code style={{ fontSize: 11 }}>{tx.paymentDetails?.referenceNumber || '—'}</code></td>
+                    <td>
+                      {tx.proofImage ? (
+                        <button
+                          onClick={() => setProofPreview(tx.proofImage)}
+                          style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer', fontSize: 11 }}
+                        >🔍 View</button>
+                      ) : (
+                        <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>none</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        tx.status === 'approved' || tx.status === 'completed' ? 'badge-success' :
+                        tx.status === 'pending' ? 'badge-warning' :
+                        tx.status === 'rejected' ? 'badge-danger' :
+                        'badge-secondary'
+                      }`}>{tx.status}</span>
+                      {tx.rejectionReason && (
+                        <div style={{ fontSize: 10, color: '#ef4444', marginTop: 4, maxWidth: 180 }}>{tx.rejectionReason}</div>
+                      )}
+                    </td>
+                    <td>
+                      {tx.status === 'pending' ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => handleApprove(tx._id)}
+                            style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#10b981', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                          >Approve</button>
+                          <button
+                            onClick={() => handleReject(tx._id)}
+                            style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#ef4444', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                          >Reject</button>
+                        </div>
+                      ) : (
+                        <small style={{ color: 'var(--text-secondary)' }}>
+                          {tx.processedAt ? new Date(tx.processedAt).toLocaleDateString() : '—'}
+                        </small>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Screenshot lightbox */}
+      {proofPreview && (
+        <div
+          onClick={() => setProofPreview(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 2000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out', padding: 20
+          }}
+        >
+          <img
+            src={proofPreview}
+            alt="Payment proof"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 0 60px rgba(0,0,0,0.5)' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </div>
+  );
+}

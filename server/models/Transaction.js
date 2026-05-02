@@ -6,7 +6,7 @@ const transactionSchema = new mongoose.Schema({
   // Transaction Type
   type: {
     type: String,
-    enum: ['deposit', 'withdrawal', 'admin_fund_request', 'admin_wallet_adjustment'],
+    enum: ['deposit', 'withdrawal', 'admin_fund_request', 'admin_wallet_adjustment', 'challenge_purchase'],
     required: true
   },
 
@@ -109,7 +109,24 @@ const transactionSchema = new mongoose.Schema({
       address: { type: String }
     }
   },
-  
+
+  // Challenge purchase info — populated for type='challenge_purchase'
+  // transactions only. The buyer paid the admin's UPI directly; this
+  // record drives the admin approval queue and links to the
+  // ChallengeAccount that gets activated on approval.
+  challengePurchaseInfo: {
+    challengeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Challenge', default: null },
+    challengeAccountId: { type: mongoose.Schema.Types.ObjectId, ref: 'ChallengeAccount', default: null },
+    challengeName: { type: String, default: '' },
+    tierIndex: { type: Number, default: 0 },
+    fundSize: { type: Number, default: 0 },
+    originalFee: { type: Number, default: 0 },
+    finalFee: { type: Number, default: 0 },
+    couponCode: { type: String, default: null, uppercase: true },
+    couponDiscountAmount: { type: Number, default: 0 },
+    ibCouponId: { type: mongoose.Schema.Types.ObjectId, ref: 'IBCoupon', default: null }
+  },
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });

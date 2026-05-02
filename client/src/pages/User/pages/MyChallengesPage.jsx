@@ -13,11 +13,13 @@ function getAuthHeaders() {
 }
 
 const statusConfig = {
-  ACTIVE:  { color: '#3b82f6', bg: '#3b82f620', label: 'Active',  icon: '🔵' },
-  PASSED:  { color: '#10b981', bg: '#10b98120', label: 'Passed',  icon: '✅' },
-  FAILED:  { color: '#ef4444', bg: '#ef444420', label: 'Failed',  icon: '❌' },
-  FUNDED:  { color: '#f59e0b', bg: '#f59e0b20', label: 'Funded',  icon: '💰' },
-  EXPIRED: { color: '#6b7280', bg: '#6b728020', label: 'Expired', icon: '⏰' }
+  PENDING:   { color: '#f59e0b', bg: '#f59e0b20', label: 'Awaiting Approval', icon: '⏳' },
+  ACTIVE:    { color: '#3b82f6', bg: '#3b82f620', label: 'Active',  icon: '🔵' },
+  PASSED:    { color: '#10b981', bg: '#10b98120', label: 'Passed',  icon: '✅' },
+  FAILED:    { color: '#ef4444', bg: '#ef444420', label: 'Failed',  icon: '❌' },
+  FUNDED:    { color: '#f59e0b', bg: '#f59e0b20', label: 'Funded',  icon: '💰' },
+  EXPIRED:   { color: '#6b7280', bg: '#6b728020', label: 'Expired', icon: '⏰' },
+  CANCELLED: { color: '#ef4444', bg: '#ef444420', label: 'Payment Rejected', icon: '🚫' }
 };
 
 function formatINR(n) {
@@ -81,6 +83,7 @@ function MyChallengesPage() {
 
   const statCounts = {
     ALL: accounts.length,
+    PENDING: accounts.filter(a => a.status === 'PENDING').length,
     ACTIVE: accounts.filter(a => a.status === 'ACTIVE').length,
     PASSED: accounts.filter(a => a.status === 'PASSED').length,
     FAILED: accounts.filter(a => a.status === 'FAILED').length,
@@ -196,7 +199,7 @@ function MyChallengesPage() {
 
       {/* Filter Tabs */}
       <div className="bft-mc-filters" style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        {['ALL', 'ACTIVE', 'FUNDED', 'PASSED', 'FAILED'].map(f => (
+        {['ALL', 'PENDING', 'ACTIVE', 'FUNDED', 'PASSED', 'FAILED'].map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}

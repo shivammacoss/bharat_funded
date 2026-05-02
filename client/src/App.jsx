@@ -22,7 +22,6 @@ import {
   Reports,
   Notifications,
   Settings,
-  BonusManagement,
   ActivityLogs,
   PropTrading,
   IBManagement
@@ -4557,7 +4556,6 @@ function AppRouter() {
             <Route path="risk-management" element={<RiskManagement />} />
             <Route path="netting-segments" element={<NettingSegmentSettings />} />
             <Route path="netting-segments/:tab" element={<NettingSegmentSettings />} />
-            <Route path="bonus-management" element={<BonusManagement />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
             <Route path="market-control" element={<MarketControl />} />
             <Route path="zerodha" element={<ZerodhaConnect />} />

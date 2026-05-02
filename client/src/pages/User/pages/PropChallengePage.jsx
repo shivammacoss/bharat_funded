@@ -35,11 +35,41 @@ function PropChallengePage() {
   const [selectedTierIndex, setSelectedTierIndex] = useState(0);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmStage, setConfirmStage] = useState(1); // 1 = rules summary, 2 = UPI payment
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   // IB coupon state — shared by the summary panel and the confirm modal.
   const [couponInput, setCouponInput] = useState('');
   const [couponState, setCouponState] = useState({ status: 'idle', applied: null, error: null });
+
+  // Admin payment methods (UPI list) for the buy-request UPI dialog.
+  const [adminUpiList, setAdminUpiList] = useState([]);
+  const [selectedAdminUpiId, setSelectedAdminUpiId] = useState('');
+  const [paymentForm, setPaymentForm] = useState({ transactionRef: '', screenshotBase64: '', note: '' });
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
+
+  // Lightbox for QR enlargement.
+  const [qrPreview, setQrPreview] = useState(null);
+
+  // Fetch admin's active UPI list when the payment stage opens.
+  useEffect(() => {
+    if (!confirmOpen || confirmStage !== 2) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/admin-payment-details`);
+        const data = await res.json();
+        if (!cancelled && data.success) {
+          const list = data.upiIds || [];
+          setAdminUpiList(list);
+          if (list.length > 0 && !selectedAdminUpiId) setSelectedAdminUpiId(list[0]._id);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmOpen, confirmStage]);
 
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
@@ -80,34 +110,67 @@ function PropChallengePage() {
       .catch(() => {});
   };
 
-  const buyChallenge = async (id, tierIndex) => {
+  // Convert a screenshot file to a data URL (base64). Mirror of the
+  // existing deposit-page pattern.
+  const handleScreenshotChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setPaymentError('Screenshot too large (max 5 MB)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPaymentForm(p => ({ ...p, screenshotBase64: String(reader.result || '') }));
+      setPaymentError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const submitBuyRequest = async (id, tierIndex) => {
+    setPaymentError(null);
+    if (!selectedAdminUpiId) { setPaymentError('Pick a UPI option to pay'); return; }
+    const upi = adminUpiList.find(u => u._id === selectedAdminUpiId);
+    if (!upi) { setPaymentError('Selected UPI not found'); return; }
+    if (!paymentForm.transactionRef.trim()) { setPaymentError('Transaction reference number required'); return; }
+    if (!paymentForm.screenshotBase64) { setPaymentError('Payment screenshot required'); return; }
+
+    setPaymentSubmitting(true);
     setBuying(id);
     try {
-      const res = await fetch(`${API_URL}/api/prop/buy`, {
+      const res = await fetch(`${API_URL}/api/prop/buy-request`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
           challengeId: id,
           tierIndex: Number(tierIndex) || 0,
-          couponCode: couponState.applied?.code || null
+          couponCode: couponState.applied?.code || null,
+          adminUpiId: upi.upiId,
+          transactionRef: paymentForm.transactionRef.trim(),
+          screenshotBase64: paymentForm.screenshotBase64,
+          note: paymentForm.note.trim()
         })
       });
       const d = await res.json();
       if (d.success) {
         setSelectedId(null);
         setAgreeTerms(false);
-        // Clear coupon state so the next purchase starts fresh.
         setCouponInput('');
         setCouponState({ status: 'idle', applied: null, error: null });
-        showToast(`${d.message} - Account ID: ${d.account.accountId}`, 'success');
-        if (d.account) setMyAccounts(prev => [d.account, ...prev]);
+        setPaymentForm({ transactionRef: '', screenshotBase64: '', note: '' });
+        setSelectedAdminUpiId('');
+        setConfirmStage(1);
+        setConfirmOpen(false);
+        showToast(`${d.message} Check My Challenges.`, 'success');
         refetchMyAccounts();
+        setTimeout(() => navigate('/app/my-challenges'), 600);
       } else {
-        showToast(d.message || 'Purchase failed', 'error');
+        setPaymentError(d.message || 'Submission failed');
       }
     } catch (e) {
-      showToast('Error purchasing challenge', 'error');
+      setPaymentError('Network error: ' + e.message);
     }
+    setPaymentSubmitting(false);
     setBuying(null);
   };
 
@@ -564,9 +627,9 @@ function PropChallengePage() {
                   <span><strong style={{ color: 'var(--text-primary)' }}>I agree to the payment & service terms.</strong> This is a digital evaluation service. Fees are non-refundable except for verified payment errors. Refund benefits may apply on success as per Refund Policy.</span>
                 </label>
 
-                {/* Pay Button — opens confirm modal first */}
+                {/* Pay Button — opens UPI payment modal directly */}
                 <button
-                  onClick={() => setConfirmOpen(true)}
+                  onClick={() => { setConfirmStage(2); setConfirmOpen(true); }}
                   disabled={!agreeTerms || buying}
                   style={{
                     width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
@@ -608,11 +671,16 @@ function PropChallengePage() {
               padding: '24px 24px 20px'
             }}
           >
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Confirm Purchase</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
+              {confirmStage === 1 ? 'Confirm Purchase' : `Pay ₹${Number((couponState.applied?.finalFee != null ? couponState.applied.finalFee : selectedTier.challengeFee) || 0).toLocaleString('en-IN')} via UPI`}
+            </div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Please review the rules before paying the non-refundable evaluation fee.
+              {confirmStage === 1
+                ? 'Please review the rules before continuing to payment.'
+                : 'Pay using any UPI app to the admin\'s UPI ID below, then enter your transaction reference + screenshot.'}
             </div>
 
+            {confirmStage === 1 && (<>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
               <div style={{ padding: 12, borderRadius: 10, background: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>FUND SIZE</div>
@@ -687,31 +755,156 @@ function PropChallengePage() {
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button
                 onClick={() => setConfirmOpen(false)}
-                disabled={buying}
                 style={{
                   flex: 1, padding: '12px', borderRadius: 10,
                   background: 'var(--bg-tertiary)', color: 'var(--text-primary)',
-                  border: '1px solid var(--border-color)', cursor: buying ? 'not-allowed' : 'pointer',
+                  border: '1px solid var(--border-color)', cursor: 'pointer',
                   fontWeight: 600
                 }}
-              >
-                Cancel
-              </button>
+              >Cancel</button>
               <button
-                onClick={async () => { await buyChallenge(selectedPlan._id, selectedTierIndex); setConfirmOpen(false); }}
-                disabled={buying}
+                onClick={() => setConfirmStage(2)}
                 style={{
                   flex: 1, padding: '12px', borderRadius: 10,
-                  background: '#10b981', color: '#fff', border: 'none',
-                  cursor: buying ? 'not-allowed' : 'pointer', fontWeight: 700
+                  background: '#3b82f6', color: '#fff', border: 'none',
+                  cursor: 'pointer', fontWeight: 700
                 }}
-              >
-                {buying
-                  ? 'Processing…'
-                  : `Confirm & Pay ₹ ${Number((couponState.applied?.finalFee != null ? couponState.applied.finalFee : selectedTier.challengeFee) || 0).toLocaleString('en-IN')}`}
-              </button>
+              >Continue to Payment →</button>
             </div>
+            </>)}
+
+            {confirmStage === 2 && (<>
+              {/* UPI list */}
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: 0.5, marginBottom: 6 }}>SELECT ADMIN UPI</div>
+              {adminUpiList.length === 0 ? (
+                <div style={{ padding: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 12, color: '#ef4444', marginBottom: 14 }}>
+                  ⚠ Admin has not set up any UPI yet. Please contact support.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                  {adminUpiList.map(upi => {
+                    const sel = selectedAdminUpiId === upi._id;
+                    // Build a UPI deep-link with the payee + amount pre-filled.
+                    // Any UPI app scanning this QR will open with the
+                    // recipient + amount already populated. Falls back to
+                    // admin's uploaded QR image if present (preferred).
+                    const amount = Number((couponState.applied?.finalFee != null ? couponState.applied.finalFee : selectedTier.challengeFee) || 0);
+                    const upiDeepLink = `upi://pay?pa=${encodeURIComponent(upi.upiId)}&pn=${encodeURIComponent(upi.name || 'Bharat Funded Trader')}&am=${amount}&cu=INR`;
+                    const qrSrc = upi.qrImage
+                      || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiDeepLink)}`;
+                    return (
+                      <div
+                        key={upi._id}
+                        onClick={() => setSelectedAdminUpiId(upi._id)}
+                        style={{
+                          padding: 12, borderRadius: 10, cursor: 'pointer',
+                          border: sel ? '2px solid #3b82f6' : '1px solid var(--border-color)',
+                          background: sel ? 'rgba(59,130,246,0.06)' : 'var(--bg-primary)',
+                          display: 'flex', alignItems: 'center', gap: 12
+                        }}
+                      >
+                        <img
+                          src={qrSrc}
+                          alt="QR"
+                          onClick={(e) => { e.stopPropagation(); setQrPreview(qrSrc); }}
+                          style={{ width: 80, height: 80, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--border-color)', cursor: 'zoom-in', background: '#fff' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>{upi.name}</div>
+                          <div style={{ fontFamily: 'monospace', fontSize: 13 }}>{upi.upiId}</div>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(upi.upiId); showToast('UPI ID copied', 'success'); }}
+                              style={{ padding: '3px 10px', fontSize: 10, borderRadius: 4, border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}
+                            >📋 Copy ID</button>
+                            <a
+                              href={upiDeepLink}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ padding: '3px 10px', fontSize: 10, borderRadius: 4, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer', textDecoration: 'none' }}
+                            >📱 Pay in App</a>
+                          </div>
+                          {!upi.qrImage && (
+                            <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginTop: 2 }}>QR auto-generated · ₹{amount} included</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Payment proof form */}
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: 0.5, marginBottom: 6 }}>YOUR PAYMENT DETAILS</div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600 }}>Transaction Reference / UTR *</label>
+                <input
+                  type="text"
+                  value={paymentForm.transactionRef}
+                  onChange={(e) => setPaymentForm(p => ({ ...p, transactionRef: e.target.value }))}
+                  placeholder="From your UPI app"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 13 }}
+                />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600 }}>Payment Screenshot *</label>
+                <input type="file" accept="image/*" onChange={handleScreenshotChange} style={{ fontSize: 12 }} />
+                {paymentForm.screenshotBase64 && (
+                  <img src={paymentForm.screenshotBase64} alt="preview" style={{ marginTop: 8, maxHeight: 120, borderRadius: 6, border: '1px solid var(--border-color)' }} />
+                )}
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 600 }}>Note (optional)</label>
+                <textarea
+                  value={paymentForm.note}
+                  onChange={(e) => setPaymentForm(p => ({ ...p, note: e.target.value }))}
+                  placeholder="Anything you want admin to know"
+                  style={{ width: '100%', minHeight: 60, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 13 }}
+                />
+              </div>
+
+              {paymentError && (
+                <div style={{ padding: '10px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 13, color: '#ef4444', marginBottom: 12 }}>
+                  ⚠ {paymentError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={paymentSubmitting}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, height: 38,
+                    background: 'var(--bg-tertiary)', color: 'var(--text-primary)',
+                    border: '1px solid var(--border-color)', cursor: paymentSubmitting ? 'not-allowed' : 'pointer',
+                    fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap'
+                  }}
+                >Cancel</button>
+                <button
+                  onClick={() => submitBuyRequest(selectedPlan._id, selectedTierIndex)}
+                  disabled={paymentSubmitting || adminUpiList.length === 0}
+                  style={{
+                    padding: '8px 18px', borderRadius: 8, height: 38,
+                    background: '#10b981', color: '#fff', border: 'none',
+                    cursor: paymentSubmitting ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13,
+                    opacity: paymentSubmitting ? 0.7 : 1, whiteSpace: 'nowrap'
+                  }}
+                >{paymentSubmitting ? 'Submitting…' : 'Submit Request'}</button>
+              </div>
+            </>)}
           </div>
+        </div>
+      )}
+
+      {/* QR enlargement lightbox */}
+      {qrPreview && (
+        <div
+          onClick={() => setQrPreview(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 2000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, cursor: 'zoom-out'
+          }}
+        >
+          <img src={qrPreview} alt="QR" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8 }} onClick={(e) => e.stopPropagation()} />
         </div>
       )}
 

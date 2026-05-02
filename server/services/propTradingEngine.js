@@ -244,6 +244,157 @@ class PropTradingEngine {
   }
 
   /**
+   * Request a challenge purchase via direct UPI payment.
+   *
+   * The user pays admin's UPI externally and submits the txn reference +
+   * screenshot through the buy-request modal. We:
+   *   1. validate the challenge + tier + (optional) coupon (read-only)
+   *   2. reserve the coupon slot atomically (so cap can't overflow even
+   *      under double-submit) — released on rejection
+   *   3. create a ChallengeAccount in PENDING / PAYMENT_PENDING state
+   *      (wallet sub-fields populated so activation is just a status flip)
+   *   4. create a Transaction (type='challenge_purchase', status='pending')
+   *      that is what the admin sees in the Bank & Fund Management →
+   *      Challenge Buys queue
+   * No money is moved. The user's main wallet is never touched.
+   */
+  async requestChallengeBuy(userId, { challengeId, tierIndex, couponCode, paymentProof }) {
+    const Transaction = require('../models/Transaction');
+
+    if (!paymentProof || !paymentProof.adminUpiId || !paymentProof.transactionRef) {
+      throw new Error('Admin UPI ID and transaction reference are required');
+    }
+
+    const challenge = await Challenge.findById(challengeId);
+    if (!challenge || !challenge.isActive) {
+      throw new Error('Challenge not found or inactive');
+    }
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    const enabled = await this.isChallengeEnabled(challenge.adminId);
+    if (!enabled) throw new Error('Challenge mode is currently disabled');
+
+    // Resolve tier
+    let fundSize, challengeFee;
+    if (Array.isArray(challenge.tiers) && challenge.tiers.length > 0) {
+      const idx = Number.isInteger(tierIndex) ? tierIndex : 0;
+      if (idx < 0 || idx >= challenge.tiers.length) throw new Error('Invalid tier selection');
+      const tier = challenge.tiers[idx];
+      fundSize = Number(tier.fundSize);
+      challengeFee = Number(tier.challengeFee);
+    } else {
+      fundSize = Number(challenge.fundSize);
+      challengeFee = Number(challenge.challengeFee);
+    }
+    if (!(fundSize > 0) || !(challengeFee >= 0)) {
+      throw new Error('Challenge pricing is misconfigured');
+    }
+
+    const originalFee = challengeFee;
+    let couponContext = null;
+    let reservedCouponId = null;
+    if (couponCode) {
+      couponContext = await ibCouponService.validateCouponForPurchase(couponCode, userId, originalFee);
+      const reserved = await ibCouponService.reserveCouponSlot(couponCode);
+      reservedCouponId = reserved._id;
+      couponContext.coupon = reserved;
+      challengeFee = couponContext.finalFee;
+    }
+
+    let account = null;
+    let tx = null;
+    try {
+      // Pre-populate the challenge account so activation is just a status flip.
+      const accountId = await ChallengeAccount.generateAccountId('CH');
+      const totalPhases = challenge.stepsCount === 0 ? 0 : challenge.stepsCount;
+
+      account = await ChallengeAccount.create({
+        userId,
+        challengeId: challenge._id,
+        accountId,
+        accountType: 'CHALLENGE',
+        currentPhase: challenge.stepsCount === 0 ? 0 : 1,
+        totalPhases,
+        status: 'PENDING',
+        initialBalance: fundSize,
+        currentBalance: fundSize,
+        currentEquity: fundSize,
+        phaseStartBalance: fundSize,
+        dayStartEquity: fundSize,
+        lowestEquityToday: fundSize,
+        lowestEquityOverall: fundSize,
+        highestEquity: fundSize,
+        walletBalance: fundSize,
+        walletEquity: fundSize,
+        walletCredit: 0,
+        walletMargin: 0,
+        walletFreeMargin: fundSize,
+        walletMarginLevel: 0,
+        profitSplitPercent: challenge.fundedSettings?.profitSplitPercent || 80,
+        paymentStatus: 'PAYMENT_PENDING',
+        expiresAt: null
+      });
+
+      tx = await Transaction.create({
+        oderId: user.oderId,
+        type: 'challenge_purchase',
+        amount: challengeFee,
+        currency: 'INR',
+        paymentMethod: 'upi',
+        paymentDetails: {
+          upiId: String(paymentProof.adminUpiId).trim(),
+          referenceNumber: String(paymentProof.transactionRef).trim()
+        },
+        proofImage: paymentProof.screenshotBase64 || '',
+        status: 'pending',
+        userName: user.name || '',
+        userNote: String(paymentProof.note || '').slice(0, 500),
+        challengePurchaseInfo: {
+          challengeId: challenge._id,
+          challengeAccountId: account._id,
+          challengeName: challenge.name || '',
+          tierIndex: Number.isInteger(tierIndex) ? tierIndex : 0,
+          fundSize,
+          originalFee,
+          finalFee: challengeFee,
+          couponCode: couponContext ? couponContext.coupon.code : null,
+          couponDiscountAmount: couponContext ? couponContext.discountAmount : 0,
+          ibCouponId: couponContext ? couponContext.coupon._id : null
+        }
+      });
+
+      account.pendingPurchaseTransactionId = tx._id;
+      await account.save();
+
+      return {
+        account,
+        transaction: tx,
+        coupon: couponContext ? {
+          applied: true,
+          code: couponContext.coupon.code,
+          discountPercent: couponContext.discountPercent,
+          originalFee: couponContext.originalFee,
+          discountAmount: couponContext.discountAmount,
+          finalFee: couponContext.finalFee
+        } : null
+      };
+    } catch (err) {
+      // Rollback: release coupon slot, drop the partial account / tx.
+      if (reservedCouponId) {
+        try { await ibCouponService.releaseCouponSlot(reservedCouponId); } catch (e) { /* swallow */ }
+      }
+      if (account?._id) {
+        try { await ChallengeAccount.deleteOne({ _id: account._id }); } catch (e) { /* swallow */ }
+      }
+      if (tx?._id) {
+        try { await Transaction.deleteOne({ _id: tx._id }); } catch (e) { /* swallow */ }
+      }
+      throw err;
+    }
+  }
+
+  /**
    * Validate trade open request against challenge rules
    */
   async validateTradeOpen(challengeAccountId, tradeParams) {
@@ -691,7 +842,12 @@ class PropTradingEngine {
   /**
    * Withdraw profit from funded account
    */
-  async withdrawProfit(challengeAccountId, userId) {
+  async withdrawProfit(challengeAccountId, userId, payoutDetails = {}) {
+    const upiId = String(payoutDetails.upiId || '').trim();
+    const holderName = String(payoutDetails.holderName || '').trim();
+    if (!upiId) throw new Error('UPI ID is required');
+    if (!holderName) throw new Error('Account holder name is required');
+
     const account = await ChallengeAccount.findById(challengeAccountId).populate('challengeId');
     if (!account) throw new Error('Account not found');
     if (account.status !== 'FUNDED') throw new Error('Only funded accounts can withdraw');
@@ -741,15 +897,21 @@ class PropTradingEngine {
       type: 'withdrawal',
       amount: withdrawable,
       currency: 'INR',
-      paymentMethod: 'admin_transfer',
+      paymentMethod: 'upi',
       status: 'pending',
-      userNote: `Prop profit payout · ${splitPercent}% of ₹${profit.toFixed(2)} profit · challenge ${account.accountId}`,
+      userName: holderName,
+      userNote: String(payoutDetails.note || `Prop profit payout · ${splitPercent}% of ₹${profit.toFixed(2)} profit · challenge ${account.accountId}`).slice(0, 500),
       paymentDetails: {
+        upiId,
         challengeAccountId: String(account._id),
         challengeAccountCode: account.accountId,
         profit,
         splitPercent,
         kind: 'prop_payout'
+      },
+      withdrawalInfo: {
+        method: 'upi',
+        upiDetails: { upiId, name: holderName }
       }
     });
 
