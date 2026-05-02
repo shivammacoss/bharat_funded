@@ -22,9 +22,8 @@ function buildPhases(c) {
     target ? { key: 'Profit Target', value: target } : null,
     fmtPct(r.maxDailyDrawdownPercent) && { key: 'Daily Drawdown', value: fmtPct(r.maxDailyDrawdownPercent) },
     fmtPct(r.maxOverallDrawdownPercent) && { key: 'Max Drawdown', value: fmtPct(r.maxOverallDrawdownPercent) },
-    fmtDays(r.tradingDaysRequired) && { key: 'Minimum Trading Days', value: fmtDays(r.tradingDaysRequired) },
     r.maxOneDayProfitPercentOfTarget != null && { key: 'Max one-day profit', value: `${r.maxOneDayProfitPercentOfTarget}% of target` },
-    r.consistencyRulePercent != null && { key: 'Consistency Rule', value: `${r.consistencyRulePercent}%` },
+    fmtDays(r.tradingDaysRequired) && { key: 'Min Trading Days', value: fmtDays(r.tradingDaysRequired) },
     { key: 'News trading', value: fmtBool(r.allowNewsTrading) }
   ].filter(Boolean);
 
