@@ -1129,8 +1129,37 @@ class ZerodhaService {
     const symU = String(symbol || '').trim().toUpperCase();
     if (!symU) return null;
 
-    const match = (i) =>
-      i && String(i.symbol || '').trim().toUpperCase() === symU;
+    // Build a list of candidate symbols to try. Frontend uses TradingView-
+    // style names (NIFTY50, BANKNIFTY, SENSEX) which don't match Zerodha's
+    // raw instrument names (NIFTY 50, NIFTY BANK, SENSEX). Also strip
+    // whitespace / underscores for fuzzy matching.
+    const SYMBOL_ALIASES = {
+      NIFTY50: ['NIFTY 50', 'NIFTY'],
+      NIFTY: ['NIFTY 50'],
+      BANKNIFTY: ['NIFTY BANK', 'BANKNIFTY'],
+      FINNIFTY: ['NIFTY FIN SERVICE', 'FINNIFTY'],
+      MIDCPNIFTY: ['NIFTY MID SELECT', 'MIDCPNIFTY'],
+      SENSEX: ['SENSEX', 'BSE SENSEX'],
+      BANKEX: ['BANKEX', 'BSE BANKEX']
+    };
+    const candidates = new Set([symU]);
+    if (SYMBOL_ALIASES[symU]) {
+      SYMBOL_ALIASES[symU].forEach((s) => candidates.add(s.toUpperCase()));
+    }
+    // Also try with spaces stripped + with underscores → spaces, since
+    // Zerodha CSV has names like "NIFTY 50" but frontends often send
+    // "NIFTY50" or "NIFTY_50".
+    candidates.add(symU.replace(/[\s_]/g, ''));
+    candidates.add(symU.replace(/_/g, ' '));
+
+    const match = (i) => {
+      if (!i || !i.symbol) return false;
+      const norm = String(i.symbol).trim().toUpperCase();
+      if (candidates.has(norm)) return true;
+      // Last-ditch: compare with all whitespace stripped both sides
+      const stripped = norm.replace(/[\s_]/g, '');
+      return candidates.has(stripped);
+    };
 
     const sub = (settings.subscribedInstruments || []).find(match);
     if (sub) return sub;
@@ -1143,7 +1172,9 @@ class ZerodhaService {
 
     if (!settings.accessToken || !settings.apiKey) return null;
 
-    const exchanges = ['NSE', 'BSE', 'NFO', 'MCX', 'BFO'];
+    // NSE_INDICES / BSE_INDICES carry NIFTY 50, BANK NIFTY, SENSEX etc.
+    // The historical API needs their tokens just like equities.
+    const exchanges = ['NSE', 'BSE', 'NFO', 'MCX', 'BFO', 'NSE_INDICES', 'BSE_INDICES'];
     for (const ex of exchanges) {
       try {
         const list = await this.getInstruments(ex);
