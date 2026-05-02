@@ -1085,34 +1085,47 @@ class ZerodhaService {
       interval === 'day' ? formatKiteISTDateOnly(fromSec) : formatKiteISTDateTime(fromSec);
     const toParam = interval === 'day' ? formatKiteISTDateOnly(toSec) : formatKiteISTDateTime(toSec);
 
-    try {
+    // Inner helper so we can retry with a wider window if the first response
+    // comes back empty. TradingView's first chart request asks for ~24h of
+    // data; on weekends / holidays Indian markets are closed, that window
+    // returns nothing, and the chart shows a blank pane. Expanding to the
+    // full Kite-allowed span on miss guarantees the user sees the last few
+    // trading days of candles instead of an empty chart.
+    const fetchCandles = async (fSec, tSec) => {
+      const fParam = interval === 'day' ? formatKiteISTDateOnly(fSec) : formatKiteISTDateTime(fSec);
+      const tParam = interval === 'day' ? formatKiteISTDateOnly(tSec) : formatKiteISTDateTime(tSec);
       const response = await axios.get(
         `${this.baseUrl}/instruments/historical/${instrumentToken}/${interval}`,
         {
-          params: {
-            from: fromParam,
-            to: toParam
-          },
+          params: { from: fParam, to: tParam },
           headers: {
             'X-Kite-Version': '3',
             'Authorization': `token ${settings.apiKey}:${settings.accessToken}`
           }
         }
       );
+      if (response.data.status !== 'success') return [];
+      return response.data.data.candles.map((candle) => ({
+        time: Math.floor(new Date(candle[0]).getTime() / 1000),
+        open: candle[1],
+        high: candle[2],
+        low: candle[3],
+        close: candle[4],
+        volume: candle[5]
+      }));
+    };
 
-      if (response.data.status === 'success') {
-        // Transform data to candlestick format for lightweight-charts
-        const candles = response.data.data.candles.map(candle => ({
-          time: Math.floor(new Date(candle[0]).getTime() / 1000),
-          open: candle[1],
-          high: candle[2],
-          low: candle[3],
-          close: candle[4],
-          volume: candle[5]
-        }));
-        return candles;
+    try {
+      let candles = await fetchCandles(fromSec, toSec);
+
+      // Empty? Expand the lookback to the maximum Kite span and retry once.
+      if (candles.length === 0) {
+        const wideFrom = toSec - maxSpan;
+        if (wideFrom < fromSec) {
+          candles = await fetchCandles(wideFrom, toSec);
+        }
       }
-      return [];
+      return candles;
     } catch (error) {
       console.error('Error fetching historical data:', error.response?.data || error.message);
       // Return empty array instead of throwing - chart will show no data
