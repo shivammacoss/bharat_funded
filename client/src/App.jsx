@@ -1224,11 +1224,12 @@ function MarketNews() {
 }
 
 function App({ user, onLogout }) {
+  // Light theme is the only mode now. Force the data-theme attribute to light
+  // and ignore any previously saved dark preference.
   const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('bharatfunded-dark-mode');
-    const dark = saved === null ? true : saved === 'true';
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    return dark;
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('bharatfunded-dark-mode', 'false');
+    return false;
   });
   const [activePage, setActivePage] = useState(() => {
     return localStorage.getItem('bharatfunded-active-page') || 'market';
@@ -2303,11 +2304,11 @@ function App({ user, onLogout }) {
   };
 
 
+  // Toggle is now a no-op — the app is light-only.
   const toggleTheme = () => {
-    const newDark = !isDark;
-    setIsDark(newDark);
-    document.documentElement.setAttribute('data-theme', newDark ? 'dark' : 'light');
-    localStorage.setItem('bharatfunded-dark-mode', String(newDark));
+    setIsDark(false);
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('bharatfunded-dark-mode', 'false');
   };
 
   const getTVSymbol = (symbol) => {
@@ -4520,11 +4521,10 @@ function AppRouter() {
     return { isAuthenticated: false, user: null };
   });
 
-  // Initialize theme on mount (before any component renders)
+  // Initialize theme on mount — light-only now, ignore any saved dark pref.
   useEffect(() => {
-    const saved = localStorage.getItem('bharatfunded-dark-mode');
-    const isDark = saved === null ? true : saved === 'true';
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('bharatfunded-dark-mode', 'false');
   }, []);
 
   const handleLogin = (authData) => {

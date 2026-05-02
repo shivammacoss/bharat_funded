@@ -1,17 +1,19 @@
 import { create } from 'zustand';
 
 const useStore = create((set, get) => ({
-  // Theme
-  theme: 'tomorrow-night-blue',
-  setTheme: (theme) => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('bharatfunded-theme', theme);
-    set({ theme });
+  // Theme — light is the only mode now. setTheme/initTheme are kept so existing
+  // call-sites still compile, but they always force 'light' regardless of input
+  // or any value previously persisted in localStorage.
+  theme: 'light',
+  setTheme: () => {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('bharatfunded-theme', 'light');
+    set({ theme: 'light' });
   },
   initTheme: () => {
-    const saved = localStorage.getItem('bharatfunded-theme') || 'tomorrow-night-blue';
-    document.documentElement.setAttribute('data-theme', saved);
-    set({ theme: saved });
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('bharatfunded-theme', 'light');
+    set({ theme: 'light' });
   },
 
   // Selected Instrument (no mock prices - will be populated from live feed)

@@ -56,17 +56,12 @@ function AdminLayout() {
   const [expandedMenus, setExpandedMenus] = useState([]);
   const adminCurrency = 'INR';
   const usdInrRate = 1;
-  const [adminTheme, setAdminTheme] = useState(() => {
-    const stored = localStorage.getItem('bharatfunded-admin-theme');
-    return stored === 'light' ? 'light' : 'dark';
-  });
+  // Admin panel is light-only now.
+  const [adminTheme, setAdminTheme] = useState('light');
 
   const toggleAdminTheme = () => {
-    setAdminTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('bharatfunded-admin-theme', next);
-      return next;
-    });
+    setAdminTheme('light');
+    localStorage.setItem('bharatfunded-admin-theme', 'light');
   };
 
   const totalRate = 1;

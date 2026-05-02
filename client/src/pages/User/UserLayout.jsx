@@ -86,20 +86,16 @@ function UserLayout({ user, onLogout }) {
     synced: preferencesSynced
   } = useUserPreferences(user);
 
-  // Theme state - synced with database preferences
+  // Theme state — light-only now. Always force light regardless of saved
+  // preference or what the user-prefs API returns.
   const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('bharatfunded-dark-mode');
-    const dark = saved === null ? true : saved === 'true';
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    return dark;
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('bharatfunded-dark-mode', 'false');
+    return false;
   });
 
-  // Sync dark mode with database preferences
   useEffect(() => {
-    if (userPrefs.darkMode !== undefined) {
-      setIsDark(userPrefs.darkMode);
-      document.documentElement.setAttribute('data-theme', userPrefs.darkMode ? 'dark' : 'light');
-    }
+    document.documentElement.setAttribute('data-theme', 'light');
   }, [userPrefs.darkMode]);
 
   // Active page state
@@ -1023,13 +1019,12 @@ function UserLayout({ user, onLogout }) {
     }
   }, [user?.id]);
 
-  // Toggle theme - saves to database and localStorage immediately
+  // Light-only — toggle is a no-op kept to satisfy existing call-sites.
   const toggleTheme = () => {
-    const newDark = !isDark;
-    setIsDark(newDark);
-    document.documentElement.setAttribute('data-theme', newDark ? 'dark' : 'light');
-    localStorage.setItem('bharatfunded-dark-mode', String(newDark));
-    updatePreference('darkMode', newDark);
+    setIsDark(false);
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('bharatfunded-dark-mode', 'false');
+    updatePreference('darkMode', false);
   };
 
   // Fetch USD/INR rate - use live price if available, fallback to API
