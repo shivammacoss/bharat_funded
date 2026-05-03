@@ -79,7 +79,7 @@ export default function PricingTierCard({ tier, plan }) {
           to={registerHref}
           className="w-full block text-center py-2.5 rounded-full bg-[#2B4EFF] text-white font-semibold text-sm hover:bg-[#4B6AFF] transition-all shadow-[0_4px_12px_rgba(43,78,255,0.25)]"
         >
-          Select Platform
+          Select Challenge
         </Link>
       </div>
     </div>
