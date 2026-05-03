@@ -5,7 +5,7 @@ import {
   LuBriefcase, LuSettings, LuBell, LuSun, LuMoon,
   LuX, LuChartColumn, LuZap, LuUser,
   LuCircleUser, LuLogOut, LuPlus, LuEllipsisVertical, LuMenu,
-  LuChevronLeft, LuChevronRight, LuTrophy, LuShare2
+  LuChevronLeft, LuChevronRight, LuTrophy, LuShare2, LuAward
 } from 'react-icons/lu';
 // Theme-aware logos. NOTE: the source filenames are misleading —
 //   "...logo light.png" actually contains the WHITE-coloured BHARAT text
@@ -179,7 +179,7 @@ function UserLayout({ user, onLogout }) {
     }
   };
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  const [mobileMarketTab, setMobileMarketTab] = useState('instruments'); // 'instruments', 'chart', 'history'
+  const [mobileMarketTab, setMobileMarketTab] = useState('chart'); // 'chart' (default) | 'history' — 'instruments' tab was removed from the bottom bar; symbol picking moved to the option-chain modal.
   const [mobileShowChartBelow, setMobileShowChartBelow] = useState(false);
   const [mobileStatusOpen, setMobileStatusOpen] = useState(false);
 
@@ -3023,6 +3023,18 @@ function UserLayout({ user, onLogout }) {
             <span className="mobi-bnav-dot" aria-hidden />
             <span className="mobi-bnav-icon" aria-hidden><LuTrophy size={22} /></span>
             <span className="mobi-bnav-label">Challenges</span>
+          </button>
+          <button
+            type="button"
+            className={`mobi-bnav-item ${activePage === 'passed-challenges' ? 'mobi-active' : ''}`}
+            onClick={() => {
+              navigateToPage('passed-challenges');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <span className="mobi-bnav-dot" aria-hidden />
+            <span className="mobi-bnav-icon" aria-hidden><LuAward size={22} /></span>
+            <span className="mobi-bnav-label">Passed</span>
           </button>
           <button
             type="button"

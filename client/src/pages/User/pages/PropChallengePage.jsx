@@ -823,11 +823,6 @@ function PropChallengePage() {
                               onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(upi.upiId); showToast('UPI ID copied', 'success'); }}
                               style={{ padding: '3px 10px', fontSize: 10, borderRadius: 4, border: '1px solid var(--border-color)', background: 'transparent', cursor: 'pointer' }}
                             >📋 Copy ID</button>
-                            <a
-                              href={upiDeepLink}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{ padding: '3px 10px', fontSize: 10, borderRadius: 4, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer', textDecoration: 'none' }}
-                            >📱 Pay in App</a>
                           </div>
                           {!upi.qrImage && (
                             <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginTop: 2 }}>QR auto-generated · ₹{amount} included</div>

@@ -3622,16 +3622,10 @@ function MarketPage() {
 
   return (
     <div className="market-page-root">
-      {/* Mobile Market Tabs */}
+      {/* Mobile Market Tabs — Symbols tab removed per request; users pick
+          instruments via the option-chain modal (top-bar + button) instead. */}
       <div className="mobile-market-tabs">
-        <button 
-          className={`mobile-market-tab ${mobileMarketTab === 'instruments' ? 'active' : ''}`}
-          onClick={() => setMobileMarketTab('instruments')}
-        >
-          <span className="tab-icon">📑</span>
-          <span>Symbols</span>
-        </button>
-        <button 
+        <button
           className={`mobile-market-tab ${mobileMarketTab === 'chart' ? 'active' : ''}`}
           onClick={() => {
             setMobileMarketTab('chart');
@@ -3641,7 +3635,7 @@ function MarketPage() {
           <span className="tab-icon"><LuChartColumn size={14} /></span>
           <span>Chart</span>
         </button>
-        <button 
+        <button
           className={`mobile-market-tab ${mobileMarketTab === 'history' ? 'active' : ''}`}
           onClick={() => {
             setMobileMarketTab('history');
