@@ -150,28 +150,8 @@ function DashboardPage() {
             </p>
           </div>
 
-          {/* Wallet */}
-          <div
-            onClick={() => navigate('/app/wallet')}
-            className="bft-dash-quick-card"
-            style={{
-              padding: '24px', borderRadius: '14px', cursor: 'pointer',
-              background: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
-              transition: 'border-color 0.2s'
-            }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-                &#x1F4B0;
-              </div>
-              <span style={{ fontWeight: '700', fontSize: '15px', color: 'var(--text-primary)' }}>Wallet & Deposits</span>
-            </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '12px', margin: 0, lineHeight: '1.5' }}>
-              Add funds to your wallet to purchase evaluations. Deposit via UPI, Bank Transfer, or Crypto.
-            </p>
-          </div>
+          {/* Wallet & Deposits card removed per request — wallet is still
+              reachable from the sidebar so the page itself stays accessible. */}
         </div>
 
         {/* Active Accounts */}

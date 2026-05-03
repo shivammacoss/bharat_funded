@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
+import { compressImage, base64ByteSize } from '../../../utils/compressImage';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -110,21 +111,26 @@ function PropChallengePage() {
       .catch(() => {});
   };
 
-  // Convert a screenshot file to a data URL (base64). Mirror of the
-  // existing deposit-page pattern.
-  const handleScreenshotChange = (e) => {
+  // Convert a screenshot file to a base64 data URL with client-side
+  // compression. Mobile cameras produce 4-15 MB photos which break the
+  // upload — compress to ~1600px / 80% JPEG so the payload stays
+  // comfortably under the API limit (typical output: 200-500 KB).
+  const handleScreenshotChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setPaymentError('Screenshot too large (max 5 MB)');
+    if (file.size > 25 * 1024 * 1024) {
+      setPaymentError('Screenshot too large (max 25 MB)');
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPaymentForm(p => ({ ...p, screenshotBase64: String(reader.result || '') }));
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.8 });
+      const sizeKb = Math.round(base64ByteSize(compressed) / 1024);
+      console.log(`[ProofUpload] original=${(file.size / 1024).toFixed(0)} KB → compressed=${sizeKb} KB`);
+      setPaymentForm(p => ({ ...p, screenshotBase64: compressed }));
       setPaymentError(null);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setPaymentError('Could not process image — try a different file');
+    }
   };
 
   const submitBuyRequest = async (id, tierIndex) => {

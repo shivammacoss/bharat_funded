@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { LuTrophy, LuWallet, LuClock, LuCheck } from 'react-icons/lu';
+import { compressImage } from '../../../utils/compressImage';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -76,19 +77,20 @@ function PassedChallengesPage() {
     setWithdrawMsg(null);
   };
 
-  const handleQrUpload = (e) => {
+  const handleQrUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      setWithdrawMsg({ type: 'err', text: 'QR image too large (max 3 MB)' });
+    if (file.size > 25 * 1024 * 1024) {
+      setWithdrawMsg({ type: 'err', text: 'QR image too large (max 25 MB)' });
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setWithdrawForm(p => ({ ...p, qrImage: String(reader.result || '') }));
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.85 });
+      setWithdrawForm(p => ({ ...p, qrImage: compressed }));
       setWithdrawMsg(null);
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setWithdrawMsg({ type: 'err', text: 'Could not process image — try a different file' });
+    }
   };
 
   const submitWithdraw = async () => {

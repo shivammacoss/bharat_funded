@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { compressImage, base64ByteSize } from '../../../utils/compressImage';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -223,22 +224,25 @@ function WalletPage() {
 
   const handleProofUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size should be less than 5MB');
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      alert('Image size should be less than 25 MB');
+      return;
+    }
+    try {
+      // Mobile cameras produce huge files; compress to a manageable size
+      // before sending so the upload doesn't fail with "Failed to fetch".
+      const base64 = await compressImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.8 });
+      const sizeKb = Math.round(base64ByteSize(base64) / 1024);
+      console.log(`[ProofUpload] original=${(file.size / 1024).toFixed(0)} KB → compressed=${sizeKb} KB`);
+      const hash = await generateHash(base64);
+      if (uploadedHashes.includes(hash)) {
+        alert('This screenshot has already been used. Please upload a new payment proof.');
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result;
-        const hash = await generateHash(base64);
-        if (uploadedHashes.includes(hash)) {
-          alert('This screenshot has already been used. Please upload a new payment proof.');
-          return;
-        }
-        setProofImage(base64);
-      };
-      reader.readAsDataURL(file);
+      setProofImage(base64);
+    } catch (err) {
+      alert('Could not process image — try a different file.');
     }
   };
 
