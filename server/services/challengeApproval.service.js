@@ -5,6 +5,8 @@ const Challenge = require('../models/Challenge');
 const IBCoupon = require('../models/IBCoupon');
 const IB = require('../models/IB');
 const ibCouponService = require('./ibCoupon.service');
+const globalCouponService = require('./globalCoupon.service');
+const GlobalCoupon = require('../models/GlobalCoupon');
 
 /**
  * Challenge Approval Service
@@ -51,11 +53,16 @@ class ChallengeApprovalService {
 
     // Finalise coupon redemption if a coupon was applied. The slot was
     // already reserved at request time; this writes the IBCommission
-    // ledger row, credits the IB wallet, and writes couponSnapshot.
+    // ledger row (IB coupon only), credits the IB wallet, and writes
+    // couponSnapshot. Global coupons skip the IB ledger entirely — only
+    // discount totals are updated for analytics.
     let commission = null;
-    const couponId = tx.challengePurchaseInfo?.ibCouponId;
-    if (couponId) {
-      const coupon = await IBCoupon.findById(couponId);
+    const couponType = tx.challengePurchaseInfo?.couponType;
+    const ibCouponId = tx.challengePurchaseInfo?.ibCouponId;
+    const globalCouponId = tx.challengePurchaseInfo?.globalCouponId;
+
+    if (couponType === 'ib' && ibCouponId) {
+      const coupon = await IBCoupon.findById(ibCouponId);
       if (!coupon) throw new Error('Coupon record vanished — cannot finalise');
       const ib = await IB.findById(coupon.ibId);
       if (!ib) throw new Error('IB record vanished — cannot finalise');
@@ -88,6 +95,25 @@ class ChallengeApprovalService {
         ibCommissionId: commission._id,
         redeemedAt: new Date()
       };
+    } else if (couponType === 'global' && globalCouponId) {
+      const coupon = await GlobalCoupon.findById(globalCouponId);
+      if (coupon) {
+        const discountAmount = Number(tx.challengePurchaseInfo.couponDiscountAmount || 0);
+        await globalCouponService.finalize(coupon, discountAmount);
+        account.couponSnapshot = {
+          code: coupon.code,
+          ibId: null,
+          ibUserId: null,
+          discountPercent: coupon.discountPercent,
+          originalFee: Number(tx.challengePurchaseInfo.originalFee || 0),
+          discountAmount,
+          finalFee: Number(tx.challengePurchaseInfo.finalFee || 0),
+          challengePurchaseCommissionPercent: 0,
+          ibCommissionAmount: 0,
+          ibCommissionId: null,
+          redeemedAt: new Date()
+        };
+      }
     }
 
     // Flip the account live.
@@ -127,9 +153,13 @@ class ChallengeApprovalService {
       }
     }
 
-    const couponId = tx.challengePurchaseInfo?.ibCouponId;
-    if (couponId) {
-      try { await ibCouponService.releaseCouponSlot(couponId); } catch (e) { /* swallow */ }
+    const rejCouponType = tx.challengePurchaseInfo?.couponType;
+    const rejIbCouponId = tx.challengePurchaseInfo?.ibCouponId;
+    const rejGlobalCouponId = tx.challengePurchaseInfo?.globalCouponId;
+    if (rejCouponType === 'global' && rejGlobalCouponId) {
+      try { await globalCouponService.releaseSlot(rejGlobalCouponId); } catch (e) { /* swallow */ }
+    } else if (rejIbCouponId) {
+      try { await ibCouponService.releaseCouponSlot(rejIbCouponId); } catch (e) { /* swallow */ }
     }
 
     tx.status = 'rejected';

@@ -5,6 +5,7 @@ const PropSettings = require('../models/PropSettings');
 const Wallet = require('../models/Wallet');
 const User = require('../models/User');
 const ibCouponService = require('./ibCoupon.service');
+const globalCouponService = require('./globalCoupon.service');
 
 const ERROR_CODES = {
   CHALLENGE_MODE_DISABLED: 'CHALLENGE_MODE_DISABLED',
@@ -293,12 +294,35 @@ class PropTradingEngine {
 
     const originalFee = challengeFee;
     let couponContext = null;
+    let couponType = null;       // 'ib' or 'global'
     let reservedCouponId = null;
     if (couponCode) {
-      couponContext = await ibCouponService.validateCouponForPurchase(couponCode, userId, originalFee);
-      const reserved = await ibCouponService.reserveCouponSlot(couponCode);
-      reservedCouponId = reserved._id;
-      couponContext.coupon = reserved;
+      // Try IB coupon first; if not found, fall back to GlobalCoupon
+      let ibError = null;
+      try {
+        couponContext = await ibCouponService.validateCouponForPurchase(couponCode, userId, originalFee);
+        const reserved = await ibCouponService.reserveCouponSlot(couponCode);
+        reservedCouponId = reserved._id;
+        couponContext.coupon = reserved;
+        couponType = 'ib';
+      } catch (e) {
+        ibError = e;
+      }
+      if (!couponContext) {
+        try {
+          couponContext = await globalCouponService.validate(couponCode, userId, originalFee);
+          const reserved = await globalCouponService.reserveSlot(couponCode);
+          reservedCouponId = reserved._id;
+          couponContext.coupon = reserved;
+          couponType = 'global';
+        } catch (e) {
+          // Surface global error if it's a meaningful one (first-time block, expired);
+          // otherwise surface the IB error (which is most likely "Invalid coupon code")
+          const msg = String(e.message || '');
+          if (/first|expired|disabled|limit reached/i.test(msg)) throw e;
+          throw ibError || e;
+        }
+      }
       challengeFee = couponContext.finalFee;
     }
 
@@ -360,7 +384,9 @@ class PropTradingEngine {
           finalFee: challengeFee,
           couponCode: couponContext ? couponContext.coupon.code : null,
           couponDiscountAmount: couponContext ? couponContext.discountAmount : 0,
-          ibCouponId: couponContext ? couponContext.coupon._id : null
+          ibCouponId: couponContext && couponType === 'ib' ? couponContext.coupon._id : null,
+          globalCouponId: couponContext && couponType === 'global' ? couponContext.coupon._id : null,
+          couponType: couponContext ? couponType : null
         }
       });
 
@@ -382,7 +408,10 @@ class PropTradingEngine {
     } catch (err) {
       // Rollback: release coupon slot, drop the partial account / tx.
       if (reservedCouponId) {
-        try { await ibCouponService.releaseCouponSlot(reservedCouponId); } catch (e) { /* swallow */ }
+        try {
+          if (couponType === 'global') await globalCouponService.releaseSlot(reservedCouponId);
+          else await ibCouponService.releaseCouponSlot(reservedCouponId);
+        } catch (e) { /* swallow */ }
       }
       if (account?._id) {
         try { await ChallengeAccount.deleteOne({ _id: account._id }); } catch (e) { /* swallow */ }

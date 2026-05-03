@@ -194,6 +194,7 @@ router.post('/withdraw', authMiddleware, async (req, res) => {
       const emailService = require('../services/email.service');
       const wd = withdrawalDetails || {};
       const wdBank = wd.bankDetails || wd;
+      console.log('[IB-Withdraw-Email] firing for IB', ib.referralCode || ib._id, '₹' + amount);
       emailService.sendAdminNotification({
         type: 'ib_withdrawal',
         title: `New IB withdrawal request — ${ib.name || ib.referralCode || 'IB'}`,
@@ -211,13 +212,20 @@ router.post('/withdraw', authMiddleware, async (req, res) => {
           wdBank.bankName && { label: 'Bank', value: wdBank.bankName },
           wdBank.accountNumber && { label: 'Account', value: `****${String(wdBank.accountNumber).slice(-4)}` },
           wdBank.ifsc && { label: 'IFSC', value: wdBank.ifsc },
-          wdBank.accountHolder && { label: 'Holder', value: wdBank.accountHolder },
-          wdBank.upiId && { label: 'UPI', value: wdBank.upiId }
+          (wdBank.accountHolder || wd.holderName) && { label: 'Holder', value: wdBank.accountHolder || wd.holderName },
+          wdBank.upiId && { label: 'UPI', value: wdBank.upiId },
+          wd.note && { label: 'Note', value: String(wd.note).slice(0, 200) }
         ].filter(Boolean),
         actionUrl: `${process.env.ADMIN_URL || 'https://admin.bharathfundedtrader.com'}/admin/ib/withdrawals`,
         actionLabel: 'Review & Approve'
-      }).catch(() => {});
-    } catch (_) { /* notification is best-effort */ }
+      }).then(() => {
+        console.log('[IB-Withdraw-Email] sent OK');
+      }).catch((err) => {
+        console.error('[IB-Withdraw-Email] failed:', err && err.message);
+      });
+    } catch (e) {
+      console.error('[IB-Withdraw-Email] sync error:', e && e.message);
+    }
 
     res.json({ success: true, data: result });
   } catch (error) {
@@ -258,29 +266,64 @@ router.get('/validate/:code', async (req, res) => {
 router.get('/coupon/validate/:code', authMiddleware, async (req, res) => {
   try {
     const fee = Number(req.query.challengeFee || 0);
-    const result = await ibCouponService.validateCouponForPurchase(
-      req.params.code,
-      req.user._id,
-      fee
-    );
-    let ibName = 'IB Partner';
+    const code = req.params.code;
+    const userId = req.user._id;
+
+    // Try IB coupon first
+    let ibError = null;
     try {
-      const owner = await User.findById(result.ib.userId).select('name');
-      if (owner?.name) ibName = owner.name;
-    } catch (e) { /* ignore */ }
-    res.json({
-      success: true,
-      data: {
-        valid: true,
-        code: result.coupon.code,
-        ibName,
-        discountPercent: result.discountPercent,
-        originalFee: result.originalFee,
-        discountAmount: result.discountAmount,
-        finalFee: result.finalFee,
-        validUntil: result.coupon.validUntil
+      const result = await ibCouponService.validateCouponForPurchase(code, userId, fee);
+      let ibName = 'IB Partner';
+      try {
+        const owner = await User.findById(result.ib.userId).select('name');
+        if (owner?.name) ibName = owner.name;
+      } catch (e) { /* ignore */ }
+      return res.json({
+        success: true,
+        data: {
+          valid: true,
+          code: result.coupon.code,
+          ibName,
+          discountPercent: result.discountPercent,
+          originalFee: result.originalFee,
+          discountAmount: result.discountAmount,
+          finalFee: result.finalFee,
+          validUntil: result.coupon.validUntil,
+          source: 'ib'
+        }
+      });
+    } catch (e) {
+      ibError = e;
+    }
+
+    // Fall back to global coupon
+    try {
+      const globalCouponService = require('../services/globalCoupon.service');
+      const result = await globalCouponService.validate(code, userId, fee);
+      return res.json({
+        success: true,
+        data: {
+          valid: true,
+          code: result.coupon.code,
+          ibName: 'Promo',
+          discountPercent: result.discountPercent,
+          originalFee: result.originalFee,
+          discountAmount: result.discountAmount,
+          finalFee: result.finalFee,
+          validUntil: result.coupon.validUntil,
+          source: 'global',
+          firstTimeOnly: !!result.coupon.firstTimeOnly
+        }
+      });
+    } catch (e) {
+      // Surface global-specific error if it's meaningful (first-time block, expired, limit)
+      const msg = String(e.message || '');
+      if (/first|expired|disabled|limit reached/i.test(msg)) {
+        return res.status(400).json({ success: false, error: e.message });
       }
-    });
+      // Otherwise surface the IB error (typically "Invalid coupon code")
+      return res.status(400).json({ success: false, error: (ibError || e).message });
+    }
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }

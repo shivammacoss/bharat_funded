@@ -124,7 +124,9 @@ const transactionSchema = new mongoose.Schema({
     finalFee: { type: Number, default: 0 },
     couponCode: { type: String, default: null, uppercase: true },
     couponDiscountAmount: { type: Number, default: 0 },
-    ibCouponId: { type: mongoose.Schema.Types.ObjectId, ref: 'IBCoupon', default: null }
+    ibCouponId: { type: mongoose.Schema.Types.ObjectId, ref: 'IBCoupon', default: null },
+    globalCouponId: { type: mongoose.Schema.Types.ObjectId, ref: 'GlobalCoupon', default: null },
+    couponType: { type: String, enum: ['ib', 'global', null], default: null }
   },
 
   createdAt: { type: Date, default: Date.now },

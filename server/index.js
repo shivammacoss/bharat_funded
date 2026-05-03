@@ -236,6 +236,10 @@ app.use('/api/ib', ibRouter);
 app.use('/api/wallet', walletRouter);
 app.use('/api/prop', propTradingRouter);
 
+// Global promo coupons (admin-issued, applies to any user)
+const globalCouponRouter = require('./routes/globalCoupon');
+app.use('/api/global-coupons', globalCouponRouter);
+
 // Import execution engines
 const HedgingEngine = require('./engines/HedgingEngine');
 const NettingEngine = require('./engines/NettingEngine');

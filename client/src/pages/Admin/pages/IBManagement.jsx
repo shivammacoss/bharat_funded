@@ -52,11 +52,242 @@ const IBManagement = () => {
     { id: 'applications', label: 'Applications', path: '' },
     { id: 'active', label: 'Active IBs', path: 'active' },
     { id: 'coupons', label: 'Coupons', path: 'coupons' },
+    { id: 'global-coupons', label: 'Global Coupons', path: 'global-coupons' },
     { id: 'redemptions', label: 'Redemptions', path: 'redemptions' },
     { id: 'withdrawals', label: 'Withdrawals', path: 'withdrawals' },
     { id: 'commissions', label: 'Commissions', path: 'commissions' },
     { id: 'settings', label: 'Settings', path: 'settings' }
   ];
+
+  // ─── Global coupons state ───────────────────────────────────────
+  const [globalCoupons, setGlobalCoupons] = useState([]);
+  const [globalForm, setGlobalForm] = useState({
+    code: 'WELCOME10',
+    discountPercent: 10,
+    validityDays: 30,
+    maxRedemptions: 0,
+    firstTimeOnly: true,
+    showOnBanner: true,
+    bannerText: ''
+  });
+  const [editingGlobalId, setEditingGlobalId] = useState(null);
+  const [globalMsg, setGlobalMsg] = useState(null);
+
+  const fetchGlobalCoupons = async () => {
+    const token = localStorage.getItem('bharatfunded-admin-token');
+    try {
+      const res = await fetch(`${API_URL}/api/global-coupons/admin/list`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const d = await res.json();
+      if (d.success) setGlobalCoupons(d.rows || []);
+    } catch (e) { /* ignore */ }
+  };
+
+  const saveGlobalCoupon = async () => {
+    setGlobalMsg(null);
+    const token = localStorage.getItem('bharatfunded-admin-token');
+    const url = editingGlobalId
+      ? `${API_URL}/api/global-coupons/admin/${editingGlobalId}`
+      : `${API_URL}/api/global-coupons/admin/create`;
+    const method = editingGlobalId ? 'PUT' : 'POST';
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(globalForm)
+      });
+      const d = await res.json();
+      if (d.success) {
+        setGlobalMsg({ type: 'ok', text: editingGlobalId ? 'Updated' : 'Created' });
+        setEditingGlobalId(null);
+        setGlobalForm({
+          code: 'WELCOME10', discountPercent: 10, validityDays: 30,
+          maxRedemptions: 0, firstTimeOnly: true, showOnBanner: true, bannerText: ''
+        });
+        fetchGlobalCoupons();
+      } else {
+        setGlobalMsg({ type: 'err', text: d.message || 'Failed' });
+      }
+    } catch (e) { setGlobalMsg({ type: 'err', text: e.message }); }
+  };
+
+  const editGlobalCoupon = (c) => {
+    setEditingGlobalId(c._id);
+    setGlobalForm({
+      code: c.code,
+      discountPercent: c.discountPercent,
+      validityDays: c.validityDays || 0,
+      maxRedemptions: c.maxRedemptions || 0,
+      firstTimeOnly: !!c.firstTimeOnly,
+      showOnBanner: !!c.showOnBanner,
+      bannerText: c.bannerText || ''
+    });
+    setGlobalMsg(null);
+    // Scroll the form into view so admin clearly sees what they're editing.
+    setTimeout(() => {
+      const el = document.getElementById('global-coupon-form');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  const toggleGlobalStatus = async (c) => {
+    const token = localStorage.getItem('bharatfunded-admin-token');
+    try {
+      await fetch(`${API_URL}/api/global-coupons/admin/${c._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: c.status === 'active' ? 'admin_disabled' : 'active' })
+      });
+      fetchGlobalCoupons();
+    } catch (e) { /* ignore */ }
+  };
+
+  const deleteGlobalCoupon = async (id) => {
+    if (!window.confirm('Delete this coupon? This cannot be undone.')) return;
+    const token = localStorage.getItem('bharatfunded-admin-token');
+    try {
+      await fetch(`${API_URL}/api/global-coupons/admin/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchGlobalCoupons();
+    } catch (e) { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'global-coupons') fetchGlobalCoupons();
+  }, [activeTab]);
+
+  const renderGlobalCoupons = () => (
+    <div className="admin-table-container">
+      <div id="global-coupon-form" style={{
+        background: 'var(--bg-secondary)',
+        border: editingGlobalId ? '2px solid #3b82f6' : '1px solid var(--border-color)',
+        borderRadius: 12, padding: 18, marginBottom: 18,
+        boxShadow: editingGlobalId ? '0 0 0 4px rgba(59,130,246,0.12)' : 'none'
+      }}>
+        <h3 style={{ margin: '0 0 12px', color: editingGlobalId ? '#3b82f6' : 'var(--text-primary)' }}>
+          {editingGlobalId ? '✏️ Edit Global Coupon' : '➕ Create Global Coupon'}
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Code *</label>
+            <input
+              type="text" value={globalForm.code}
+              onChange={e => setGlobalForm(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+              placeholder="WELCOME10"
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Discount %</label>
+            <input type="number" min="1" max="100" value={globalForm.discountPercent}
+              onChange={e => setGlobalForm(p => ({ ...p, discountPercent: Number(e.target.value) }))}
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Validity (days, 0 = no expiry)</label>
+            <input type="number" min="0" value={globalForm.validityDays}
+              onChange={e => setGlobalForm(p => ({ ...p, validityDays: Number(e.target.value) }))}
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Max Redemptions (0 = unlimited)</label>
+            <input type="number" min="0" value={globalForm.maxRedemptions}
+              onChange={e => setGlobalForm(p => ({ ...p, maxRedemptions: Number(e.target.value) }))}
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+            />
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Banner Text (optional, leave blank for default)</label>
+          <input type="text" value={globalForm.bannerText}
+            onChange={e => setGlobalForm(p => ({ ...p, bannerText: e.target.value }))}
+            placeholder="e.g. Limited time offer — flat 10% off all challenges"
+            style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 18, marginTop: 12, flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontSize: 13 }}>
+            <input type="checkbox" checked={globalForm.firstTimeOnly}
+              onChange={e => setGlobalForm(p => ({ ...p, firstTimeOnly: e.target.checked }))}
+            /> First-time buyers only
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)', fontSize: 13 }}>
+            <input type="checkbox" checked={globalForm.showOnBanner}
+              onChange={e => setGlobalForm(p => ({ ...p, showOnBanner: e.target.checked }))}
+            /> Show on landing page banner
+          </label>
+        </div>
+        {globalMsg && (
+          <div style={{
+            marginTop: 12, padding: '8px 12px', borderRadius: 8, fontSize: 13,
+            background: globalMsg.type === 'err' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+            color: globalMsg.type === 'err' ? '#ef4444' : '#10b981'
+          }}>{globalMsg.text}</div>
+        )}
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <button onClick={saveGlobalCoupon} className="btn btn-primary">
+            {editingGlobalId ? 'Update Coupon' : 'Create Coupon'}
+          </button>
+          {editingGlobalId && (
+            <button onClick={() => { setEditingGlobalId(null); setGlobalForm({ code: 'WELCOME10', discountPercent: 10, validityDays: 30, maxRedemptions: 0, firstTimeOnly: true, showOnBanner: true, bannerText: '' }); }} className="btn btn-secondary">Cancel</button>
+          )}
+        </div>
+      </div>
+
+      <div className="table-header">
+        <h3>All Global Coupons ({globalCoupons.length})</h3>
+      </div>
+      {globalCoupons.length === 0 ? (
+        <div style={{ padding: 24, color: 'var(--text-secondary)', textAlign: 'center' }}>No global coupons yet</div>
+      ) : (
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Discount</th>
+              <th>Status</th>
+              <th>Used / Cap</th>
+              <th>Expires</th>
+              <th>First Time</th>
+              <th>Banner</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {globalCoupons.map(c => (
+              <tr key={c._id}>
+                <td><strong>{c.code}</strong></td>
+                <td>{c.discountPercent}%</td>
+                <td>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                    background: c.status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(156,163,175,0.15)',
+                    color: c.status === 'active' ? '#10b981' : '#9ca3af'
+                  }}>{c.status}</span>
+                </td>
+                <td>{c.redemptionCount} / {c.maxRedemptions || '∞'}</td>
+                <td>{c.validUntil ? new Date(c.validUntil).toLocaleDateString() : 'Never'}</td>
+                <td>{c.firstTimeOnly ? '✅' : '—'}</td>
+                <td>{c.showOnBanner ? '✅' : '—'}</td>
+                <td>
+                  <button onClick={() => editGlobalCoupon(c)} className="btn btn-sm btn-secondary" style={{ marginRight: 6 }}>Edit</button>
+                  <button onClick={() => toggleGlobalStatus(c)} className="btn btn-sm btn-secondary" style={{ marginRight: 6 }}>
+                    {c.status === 'active' ? 'Disable' : 'Enable'}
+                  </button>
+                  <button onClick={() => deleteGlobalCoupon(c._id)} className="btn btn-sm btn-danger">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 
   // Helper to compute days remaining for an active coupon.
   const daysUntil = (date) => {
@@ -1220,6 +1451,7 @@ const IBManagement = () => {
           {activeTab === 'applications' && renderApplications()}
           {activeTab === 'active' && renderActiveIBs()}
           {activeTab === 'coupons' && renderCoupons()}
+          {activeTab === 'global-coupons' && renderGlobalCoupons()}
           {activeTab === 'redemptions' && renderRedemptions()}
           {activeTab === 'withdrawals' && renderWithdrawals()}
           {activeTab === 'commissions' && renderCommissions()}
