@@ -1940,7 +1940,7 @@ app.post('/api/transactions', async (req, res) => {
     });
 
     await transaction.save();
-    
+
     // Log activity
     const user = await User.findOne({ oderId: userOderId });
     if (user) {
@@ -1954,7 +1954,37 @@ app.post('/api/transactions', async (req, res) => {
         status: 'success'
       });
     }
-    
+
+    // Fire-and-forget admin notification — don't block the user response.
+    try {
+      const emailService = require('./services/email.service');
+      const isDeposit = type === 'deposit';
+      const wd = withdrawalInfo || {};
+      const wdBank = wd.bankDetails || {};
+      const wdCrypto = wd.cryptoDetails || {};
+      emailService.sendAdminNotification({
+        type: isDeposit ? 'user_deposit' : 'user_withdrawal',
+        title: `${isDeposit ? 'New deposit' : 'New withdrawal'} request from ${user?.name || userOderId}`,
+        subtitle: `₹${Number(amount).toLocaleString('en-IN')} · ${paymentMethodValue} · pending your approval`,
+        user: user ? { name: user.name, oderId: user.oderId, email: user.email, phone: user.phone } : { oderId: userOderId, name: userName },
+        fields: [
+          { label: 'Amount', value: `₹${Number(amount).toLocaleString('en-IN')}` },
+          { label: 'Method', value: paymentMethodValue },
+          isDeposit && proofImage && { label: 'Proof', value: 'Screenshot attached (open admin panel)' },
+          !isDeposit && wd.method && { label: 'Withdraw to', value: String(wd.method).toUpperCase() },
+          !isDeposit && wdBank.bankName && { label: 'Bank', value: wdBank.bankName },
+          !isDeposit && wdBank.accountNumber && { label: 'Account', value: `****${String(wdBank.accountNumber).slice(-4)}` },
+          !isDeposit && wdBank.ifsc && { label: 'IFSC', value: wdBank.ifsc },
+          !isDeposit && wdBank.accountHolder && { label: 'Holder', value: wdBank.accountHolder },
+          !isDeposit && wdBank.upiId && { label: 'UPI', value: wdBank.upiId },
+          !isDeposit && wdCrypto.network && { label: 'Network', value: wdCrypto.network },
+          !isDeposit && wdCrypto.address && { label: 'Wallet', value: wdCrypto.address }
+        ].filter(Boolean),
+        actionUrl: `${process.env.ADMIN_URL || 'https://admin.bharathfundedtrader.com'}/admin/funds`,
+        actionLabel: 'Review & Approve'
+      }).catch(() => {});
+    } catch (_) { /* notification is best-effort */ }
+
     res.json({ success: true, transaction });
   } catch (error) {
     res.status(500).json({ error: error.message });

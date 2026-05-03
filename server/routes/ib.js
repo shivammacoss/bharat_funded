@@ -186,6 +186,39 @@ router.post('/withdraw', authMiddleware, async (req, res) => {
     }
     const { amount, ...withdrawalDetails } = req.body;
     const result = await ibService.requestWithdrawal(ib._id, amount, withdrawalDetails);
+
+    // Fire-and-forget admin notification email — never block the response on
+    // SMTP failures. Goes to the support inbox so the team can act on it
+    // straight from their mailbox without polling the admin panel.
+    try {
+      const emailService = require('../services/email.service');
+      const wd = withdrawalDetails || {};
+      const wdBank = wd.bankDetails || wd;
+      emailService.sendAdminNotification({
+        type: 'ib_withdrawal',
+        title: `New IB withdrawal request — ${ib.name || ib.referralCode || 'IB'}`,
+        subtitle: `₹${Number(amount).toLocaleString('en-IN')} · awaiting your approval`,
+        user: {
+          name: ib.name || req.user.name,
+          email: ib.email || req.user.email,
+          phone: ib.phone || req.user.phone,
+          oderId: ib.referralCode || req.user.oderId
+        },
+        fields: [
+          { label: 'Amount', value: `₹${Number(amount).toLocaleString('en-IN')}` },
+          { label: 'Referral Code', value: ib.referralCode || '(none)' },
+          wd.method && { label: 'Method', value: String(wd.method).toUpperCase() },
+          wdBank.bankName && { label: 'Bank', value: wdBank.bankName },
+          wdBank.accountNumber && { label: 'Account', value: `****${String(wdBank.accountNumber).slice(-4)}` },
+          wdBank.ifsc && { label: 'IFSC', value: wdBank.ifsc },
+          wdBank.accountHolder && { label: 'Holder', value: wdBank.accountHolder },
+          wdBank.upiId && { label: 'UPI', value: wdBank.upiId }
+        ].filter(Boolean),
+        actionUrl: `${process.env.ADMIN_URL || 'https://admin.bharathfundedtrader.com'}/admin/ib/withdrawals`,
+        actionLabel: 'Review & Approve'
+      }).catch(() => {});
+    } catch (_) { /* notification is best-effort */ }
+
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

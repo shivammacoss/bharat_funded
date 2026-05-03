@@ -386,6 +386,95 @@ async function sendWelcomeEmail(to, { name, userId } = {}) {
   await sendMail({ to, subject, text, html });
 }
 
+/**
+ * Fire-and-forget admin notification. Routes pending-approval events
+ * (challenge buys, user withdrawals, IB withdrawals) to the support inbox
+ * with a colour-coded email so the team sees them in their normal mail
+ * client without polling the admin panel. Errors are swallowed — never
+ * block the user request on SMTP issues.
+ *
+ * @param {Object} opts
+ * @param {'challenge_buy'|'user_withdrawal'|'user_deposit'|'ib_withdrawal'} opts.type
+ * @param {string} opts.title       — short headline ("New challenge buy", etc.)
+ * @param {string} [opts.subtitle]  — secondary line under headline
+ * @param {Object} [opts.user]      — { name, email, phone, oderId }
+ * @param {Array<{label:string,value:string}>} [opts.fields] — table rows
+ * @param {string} [opts.actionUrl] — link to admin panel for approval
+ * @param {string} [opts.actionLabel='Open in Admin Panel']
+ */
+async function sendAdminNotification({ type, title, subtitle, user, fields = [], actionUrl, actionLabel = 'Open in Admin Panel' } = {}) {
+  if (!isSmtpConfigured()) return;
+  const supportInbox = (process.env.ADMIN_NOTIFICATION_INBOX || process.env.CONTACT_INBOX || process.env.SMTP_USER || '').trim();
+  if (!supportInbox) return;
+
+  const ACCENTS = {
+    challenge_buy:    { color: '#10B981', icon: '🚀', tag: 'CHALLENGE PURCHASE' },
+    user_withdrawal:  { color: '#F59E0B', icon: '💸', tag: 'USER WITHDRAWAL' },
+    user_deposit:     { color: '#2B4EFF', icon: '💰', tag: 'USER DEPOSIT' },
+    ib_withdrawal:    { color: '#8B5CF6', icon: '🤝', tag: 'IB WITHDRAWAL' }
+  };
+  const accent = ACCENTS[type] || { color: '#2B4EFF', icon: '🔔', tag: 'ADMIN NOTIFICATION' };
+
+  const safeTitle = String(title || 'Admin notification').trim();
+  const safeSubtitle = subtitle ? String(subtitle).trim() : '';
+  const adminUrl = actionUrl || (process.env.ADMIN_URL || 'https://admin.bharathfundedtrader.com');
+
+  const userBlock = user ? [
+    user.name && { label: 'User', value: String(user.name) },
+    user.oderId && { label: 'User ID', value: String(user.oderId) },
+    user.email && { label: 'Email', value: String(user.email) },
+    user.phone && { label: 'Phone', value: String(user.phone) }
+  ].filter(Boolean) : [];
+
+  const allFields = [...userBlock, ...fields].filter(Boolean);
+
+  const text = [
+    `[${accent.tag}] ${safeTitle}`,
+    safeSubtitle ? safeSubtitle : null,
+    '',
+    ...allFields.map(f => `${f.label}: ${f.value}`),
+    '',
+    `Open admin panel: ${adminUrl}`
+  ].filter(Boolean).join('\n');
+
+  const fieldsHtml = allFields.map((f) => `
+    <tr>
+      <td style="padding:8px 12px;background:#FAFBFD;border:1px solid #E8EAF0;font-size:13px;color:#6B7080;width:140px;">${f.label}</td>
+      <td style="padding:8px 12px;border:1px solid #E8EAF0;font-size:13px;color:#0D0F1A;font-weight:600;">${String(f.value).replace(/[<>]/g, (c) => c === '<' ? '&lt;' : '&gt;')}</td>
+    </tr>
+  `).join('');
+
+  const html = `
+    <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;color:#0D0F1A;background:#F0F2F8;padding:24px;">
+      <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(13,15,26,0.08);">
+        <div style="background:linear-gradient(135deg,${accent.color} 0%,${accent.color}dd 100%);padding:20px 24px;color:#fff;">
+          <p style="margin:0;font-size:11px;font-weight:800;letter-spacing:2px;color:rgba(255,255,255,0.85);text-transform:uppercase;">${accent.icon} ${accent.tag}</p>
+          <h1 style="margin:6px 0 0 0;font-size:20px;font-weight:700;line-height:1.3;">${safeTitle}</h1>
+          ${safeSubtitle ? `<p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.92);">${safeSubtitle}</p>` : ''}
+        </div>
+        <div style="padding:20px 24px;">
+          <table style="width:100%;border-collapse:collapse;">${fieldsHtml}</table>
+          <div style="text-align:center;margin-top:22px;">
+            <a href="${adminUrl}" style="display:inline-block;background:${accent.color};color:#fff;text-decoration:none;padding:11px 28px;border-radius:999px;font-weight:700;font-size:13px;">${actionLabel}</a>
+          </div>
+          <p style="margin:18px 0 0 0;font-size:11px;color:#9AA0B4;text-align:center;">Automated notification · ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    await sendMail({
+      to: supportInbox,
+      subject: `[${accent.tag}] ${safeTitle}`,
+      text,
+      html
+    });
+  } catch (err) {
+    console.error('[AdminNotification] send failed:', err.message);
+  }
+}
+
 module.exports = {
   isSmtpConfigured,
   createTransport,
@@ -394,6 +483,7 @@ module.exports = {
   sendSignupOtpEmail,
   sendPasswordResetOtpEmail,
   sendWelcomeEmail,
+  sendAdminNotification,
   getSmtpConfig,
   getSmtpStatusForAdmin
 };

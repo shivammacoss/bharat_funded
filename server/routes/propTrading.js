@@ -429,6 +429,37 @@ router.post('/buy-request', verifyUserToken, async (req, res) => {
         note: note || ''
       }
     });
+
+    // Fire-and-forget admin notification email to the support inbox so the
+    // team sees the new buy without polling the panel.
+    try {
+      const emailService = require('../services/email.service');
+      const User = require('../models/User');
+      const Challenge = require('../models/Challenge');
+      const u = await User.findById(req.user._id).select('name email phone oderId').lean();
+      const ch = await Challenge.findById(challengeId).select('name fundSize challengeFee tiers').lean();
+      const tier = ch?.tiers?.[result?.tierIndex ?? 0] || {};
+      const fundSize = tier.fundSize || ch?.fundSize || 0;
+      const fee = result?.transaction?.amount || tier.challengeFee || ch?.challengeFee || 0;
+      emailService.sendAdminNotification({
+        type: 'challenge_buy',
+        title: `New challenge buy from ${u?.name || u?.oderId || 'a user'}`,
+        subtitle: `${ch?.name || 'Challenge'} · ₹${Number(fundSize).toLocaleString('en-IN')} account · awaiting your approval`,
+        user: u,
+        fields: [
+          { label: 'Challenge', value: ch?.name || '(unknown)' },
+          { label: 'Account Size', value: `₹${Number(fundSize).toLocaleString('en-IN')}` },
+          { label: 'Fee Paid', value: `₹${Number(fee).toLocaleString('en-IN')}` },
+          { label: 'UPI ID', value: adminUpiId },
+          { label: 'UTR / Ref', value: transactionRef },
+          result?.coupon?.applied && { label: 'Coupon', value: `${result.coupon.code} (-₹${Number(result.coupon.discountAmount || 0).toFixed(2)})` },
+          note && { label: 'User Note', value: note }
+        ].filter(Boolean),
+        actionUrl: `${process.env.ADMIN_URL || 'https://admin.bharathfundedtrader.com'}/admin/funds/challenge-buys`,
+        actionLabel: 'Review & Approve'
+      }).catch(() => {});
+    } catch (_) { /* notification is best-effort, never block the response */ }
+
     const msg = result.coupon?.applied
       ? `Payment request submitted with coupon ${result.coupon.code} (₹${Number(result.coupon.discountAmount || 0).toFixed(2)} off). Admin will approve shortly.`
       : 'Payment request submitted. Admin will approve shortly.';
