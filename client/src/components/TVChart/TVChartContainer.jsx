@@ -64,6 +64,7 @@ const TVChartContainer = ({
             container: chartContainerRef.current,
             library_path: '/charting_library/',
             locale: 'en',
+            timezone: 'Asia/Kolkata',
             disabled_features: [
                 'use_localstorage_for_settings',
                 'header_symbol_search',
@@ -111,6 +112,11 @@ const TVChartContainer = ({
 
         widget.onChartReady(() => {
             setWidgetReady(true);
+
+            // Force IST timezone — the constructor option may not always take effect.
+            try {
+                widget.activeChart().getTimezoneApi().setTimezone('Asia/Kolkata');
+            } catch (_) { /* v31+ only */ }
 
             if (!isMobile) {
                 widget.headerReady().then(() => {

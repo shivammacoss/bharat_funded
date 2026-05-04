@@ -275,7 +275,7 @@ const ChartPanel = () => {
           <button className="quick-tf">All</button>
         </div>
         <div className="chart-time-display">
-          {new Date().toLocaleTimeString('en-US', { hour12: false })} UTC
+          {new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'Asia/Kolkata' })} IST
         </div>
       </div>
     </div>
