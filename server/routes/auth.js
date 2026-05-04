@@ -244,6 +244,146 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// ============== GOOGLE OAUTH ==============
+router.post('/google', async (req, res) => {
+  try {
+    const { credential } = req.body; // Google ID token from frontend
+    if (!credential) {
+      return res.status(400).json({ error: 'Google credential is required' });
+    }
+
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    if (!GOOGLE_CLIENT_ID) {
+      return res.status(503).json({ error: 'Google login is not configured on this server' });
+    }
+
+    // Verify the Google ID token using Google's tokeninfo endpoint
+    const https = require('https');
+    const googlePayload = await new Promise((resolve, reject) => {
+      const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`;
+      https.get(url, (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => data += chunk);
+        resp.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error_description) {
+              reject(new Error(parsed.error_description));
+            } else {
+              resolve(parsed);
+            }
+          } catch (e) { reject(e); }
+        });
+      }).on('error', reject);
+    });
+
+    // Verify audience matches our client ID
+    if (googlePayload.aud !== GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ error: 'Invalid Google token audience' });
+    }
+
+    const { sub: googleId, email, name, picture, email_verified } = googlePayload;
+    if (!email || !googleId) {
+      return res.status(400).json({ error: 'Could not get email from Google account' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Check if user already exists with this Google ID or email
+    let user = await User.findOne({
+      $or: [{ googleId }, { email: normalizedEmail }]
+    });
+
+    if (user) {
+      // Existing user — link Google if not already linked
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = 'google';
+        if (picture && !user.profile.avatar) user.profile.avatar = picture;
+        user.isEmailVerified = true;
+      }
+      // Check if account is active
+      if (!user.isActive) {
+        return res.status(403).json({ error: 'Account is deactivated. Contact support.' });
+      }
+      user.lastLogin = new Date();
+      user.loginAttempts = 0;
+      user.lockUntil = null;
+      await user.save();
+    } else {
+      // New user — create account
+      const userId = await User.generateUserId();
+      user = new User({
+        oderId: userId,
+        name: name || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        googleId,
+        authProvider: 'google',
+        isEmailVerified: true,
+        isActive: true,
+        profile: {
+          avatar: picture || '',
+          country: 'India'
+        },
+        wallet: {
+          balance: 0, credit: 0, equity: 0,
+          margin: 0, freeMargin: 0, marginLevel: 0
+        }
+      });
+      await user.save();
+
+      // Fire-and-forget welcome email
+      if (emailService.isSmtpConfigured()) {
+        emailService
+          .sendWelcomeEmail(user.email, { name: user.name, userId: user.oderId })
+          .catch((err) => console.error('[Welcome email] failed:', err.message));
+      }
+    }
+
+    const token = signToken(user._id);
+
+    // Background activity log
+    const userAgent = req.get('User-Agent') || '';
+    setImmediate(() => {
+      UserActivityLog.logActivity({
+        userId: user._id.toString(),
+        oderId: user.oderId,
+        activityType: 'login',
+        description: `Google login: ${user.name}`,
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        userAgent,
+        device: userAgent.includes('Mobile') ? 'mobile' : 'desktop',
+        os: parseOS(userAgent),
+        browser: parseBrowser(userAgent),
+        status: 'success'
+      }).catch(err => console.warn('Google login activity log failed:', err.message));
+    });
+
+    res.json({
+      success: true,
+      message: 'Google login successful',
+      token,
+      user: {
+        id: user.oderId,
+        oderId: user.oderId,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        avatar: user.profile?.avatar || '',
+        profile: user.profile,
+        wallet: user.wallet,
+        stats: user.stats,
+        role: user.role,
+        isVerified: user.isVerified,
+        allowedTradeModes: user.allowedTradeModes || { hedging: true, netting: true, binary: true }
+      }
+    });
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    res.status(401).json({ error: 'Google authentication failed. Please try again.' });
+  }
+});
+
 // ============== REGISTRATION ==============
 router.post('/register', async (req, res) => {
   try {

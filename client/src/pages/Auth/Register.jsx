@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LuEye, LuEyeOff } from 'react-icons/lu';
 import TubesBackground from '../../components/TubesBackground';
@@ -6,6 +6,17 @@ import logoWhite from '../../assets/bharat funded trader new logo dark.png';
 import './Auth.css';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+// Official Google "G" logo (multi-color)
+const GoogleLogo = () => (
+  <svg width="20" height="20" viewBox="0 0 48 48">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+  </svg>
+);
 
 const countries = [
   { code: '+91', name: 'India', flag: '🇮🇳' },
@@ -59,6 +70,83 @@ function Register({ onLogin }) {
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const cooldownRef = useRef(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleInitialized = useRef(false);
+
+  // Handle Google credential response
+  const handleGoogleResponse = useCallback(async (response) => {
+    if (!response?.credential) return;
+    setGoogleLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Google sign-up failed');
+        return;
+      }
+      const authData = { isAuthenticated: true, token: data.token, user: data.user };
+      localStorage.setItem('bharatfunded-auth', JSON.stringify(authData));
+      localStorage.setItem('bharatfunded-token', data.token);
+      if (typeof onLogin === 'function') onLogin(authData);
+      navigate('/app', { replace: true });
+    } catch (err) {
+      setError('Google sign-up failed. Please try again.');
+      console.error('Google sign-up error:', err);
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [navigate, onLogin]);
+
+  // Load Google Identity Services script
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || googleInitialized.current) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        googleInitialized.current = true;
+      }
+    };
+    document.head.appendChild(script);
+    return () => { document.head.removeChild(script); };
+  }, [handleGoogleResponse]);
+
+  const handleGoogleClick = () => {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin + '/register')}&response_type=id_token&scope=openid email profile&nonce=${Date.now()}`;
+          window.location.href = authUrl;
+        }
+      });
+    }
+  };
+
+  // Handle redirect callback (id_token in URL hash)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes('id_token=')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const idToken = params.get('id_token');
+      if (idToken) {
+        window.location.hash = '';
+        handleGoogleResponse({ credential: idToken });
+      }
+    }
+  }, [handleGoogleResponse]);
 
   useEffect(() => {
     const ref = searchParams.get('ref');
@@ -227,6 +315,21 @@ function Register({ onLogin }) {
               {step === 'otp' ? 'Verify your email to finish' : 'Create your account to start trading'}
             </p>
           </div>
+
+          {GOOGLE_CLIENT_ID && step === 'details' && (
+            <div style={{ marginBottom: '8px' }}>
+              <button
+                type="button"
+                className="google-login-btn"
+                onClick={handleGoogleClick}
+                disabled={googleLoading}
+              >
+                <GoogleLogo />
+                {googleLoading ? 'Signing up…' : 'Sign up with Google'}
+              </button>
+              <div className="auth-divider" style={{ margin: '16px 0 8px' }}><span>or fill the form</span></div>
+            </div>
+          )}
 
           {step === 'details' ? (
             <form className="auth-form" onSubmit={handleSendOtp} style={{ gap: '14px' }}>
