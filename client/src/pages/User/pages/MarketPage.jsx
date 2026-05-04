@@ -2916,9 +2916,9 @@ function MarketPage() {
             <div className="order-input-group">
               <label>Volume (Lots)</label>
               <div className="volume-control">
-                <button type="button" onClick={() => setVolume(prev => Math.max(effectiveMinLot, parseFloat(((parseFloat(prev) || effectiveMinLot) - lotStep).toFixed(6))).toString())}>−</button>
-                <input type="text" inputMode="decimal" value={volume} onChange={(e) => { const val = e.target.value; if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) setVolume(val); }} onBlur={(e) => { const val = parseFloat(e.target.value); if (e.target.value !== '' && !Number.isNaN(val)) { const clamped = Math.min(effectiveMaxLot, Math.max(effectiveMinLot, val)); const snapped = wholeLotsOnly ? Math.round(clamped) : clamped; setVolume(String(parseFloat(snapped.toFixed(6)))); } }} />
-                <button type="button" onClick={() => setVolume(prev => Math.min(effectiveMaxLot, parseFloat(((parseFloat(prev) || effectiveMinLot) + lotStep).toFixed(6))).toString())}>+</button>
+                <button type="button" onClick={() => setVolume(prev => { const v = Math.max(effectiveMinLot, parseFloat(((parseFloat(prev) || effectiveMinLot) - lotStep).toFixed(lotDecimals))); return wholeLotsOnly ? String(Math.round(v)) : String(parseFloat(v.toFixed(lotDecimals))); })}>−</button>
+                <input type="text" inputMode="decimal" value={volume} onChange={(e) => { const val = e.target.value; if (val === '' || /^[0-9]*\.?[0-9]*$/.test(val)) setVolume(val); }} onBlur={(e) => { const val = parseFloat(e.target.value); if (e.target.value !== '' && !Number.isNaN(val)) { const clamped = Math.min(effectiveMaxLot, Math.max(effectiveMinLot, val)); const snapped = wholeLotsOnly ? Math.round(clamped) : parseFloat(clamped.toFixed(lotDecimals)); setVolume(String(snapped)); } }} />
+                <button type="button" onClick={() => setVolume(prev => { const v = Math.min(effectiveMaxLot, parseFloat(((parseFloat(prev) || effectiveMinLot) + lotStep).toFixed(lotDecimals))); return wholeLotsOnly ? String(Math.round(v)) : String(parseFloat(v.toFixed(lotDecimals))); })}>+</button>
               </div>
               <span className="volume-hint" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{(parseFloat(volume) || effectiveMinLot).toFixed(lotDecimals)} lots</span>
             </div>
@@ -3066,7 +3066,7 @@ function MarketPage() {
                       if (nettingVolumeIsShares) {
                         return String(Math.max(1, Math.round(cur) - 1));
                       }
-                      return Math.max(effectiveMinLot, parseFloat((cur - lotStep).toFixed(6))).toFixed(6);
+                      { const v = Math.max(effectiveMinLot, parseFloat((cur - lotStep).toFixed(lotDecimals))); return wholeLotsOnly ? String(Math.round(v)) : String(parseFloat(v.toFixed(lotDecimals))); }
                     })
                   }
                 >
@@ -3092,8 +3092,8 @@ function MarketPage() {
                       return;
                     }
                     const clamped = Math.min(effectiveMaxLot, Math.max(effectiveMinLot, val));
-                    const snapped = wholeLotsOnly ? Math.round(clamped) : clamped;
-                    setVolume(String(parseFloat(snapped.toFixed(6))));
+                    const snapped = wholeLotsOnly ? Math.round(clamped) : parseFloat(clamped.toFixed(lotDecimals));
+                    setVolume(String(snapped));
                   }}
                 />
                 <button
@@ -3104,7 +3104,7 @@ function MarketPage() {
                       if (nettingVolumeIsShares) {
                         return String(Math.round(cur) + 1);
                       }
-                      return Math.min(effectiveMaxLot, parseFloat((cur + lotStep).toFixed(6))).toFixed(6);
+                      { const v = Math.min(effectiveMaxLot, parseFloat((cur + lotStep).toFixed(lotDecimals))); return wholeLotsOnly ? String(Math.round(v)) : String(parseFloat(v.toFixed(lotDecimals))); }
                     })
                   }
                 >
@@ -3481,7 +3481,7 @@ function MarketPage() {
             >
               <>
                 {orderSide === 'buy' ? 'BUY' : 'SELL'}{' '}
-                {nettingVolumeIsShares ? Math.round(volumeNum) : volumeNum.toFixed(2)} {volumeUnitPlural}
+                {nettingVolumeIsShares ? Math.round(volumeNum) : volumeNum.toFixed(lotDecimals)} {volumeUnitPlural}
               </>
             </button>
           </>
@@ -3595,10 +3595,10 @@ function MarketPage() {
         )}
 
         <div className="order-summary">
-          {tradingMode === 'hedging' && <span>{volumeNum.toFixed(2)} lots @ {formatPrice(entryPrice, selectedSymbol)}</span>}
+          {tradingMode === 'hedging' && <span>{volumeNum.toFixed(lotDecimals)} lots @ {formatPrice(entryPrice, selectedSymbol)}</span>}
           {tradingMode === 'netting' && (
             <span>
-              {nettingVolumeIsShares ? volumeNum : volumeNum.toFixed(2)} {volumeUnitPlural} @{' '}
+              {nettingVolumeIsShares ? volumeNum : volumeNum.toFixed(lotDecimals)} {volumeUnitPlural} @{' '}
               {formatPrice(entryPrice, selectedSymbol)} ({orderSession})
             </span>
           )}

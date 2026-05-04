@@ -65,7 +65,7 @@ const OrderPanel = () => {
   const maxLeverage = charges?.leverage?.max || 100;
 
   const handleVolumeChange = (delta) => {
-    const newVol = Math.max(0.01, Math.round((volume + delta) * 100) / 100);
+    const newVol = Math.max(1, Math.round(volume + delta));
     setVolume(newVol);
   };
 
@@ -199,17 +199,17 @@ const OrderPanel = () => {
         <div className="form-group">
           <label>Volume</label>
           <div className="volume-input">
-            <button className="vol-btn" onClick={() => handleVolumeChange(-0.01)}>-</button>
+            <button className="vol-btn" onClick={() => handleVolumeChange(-1)}>-</button>
             <input
               type="number"
               value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value) || 0.01)}
-              step="0.01"
-              min="0.01"
+              onChange={(e) => setVolume(Math.max(1, Math.round(parseFloat(e.target.value) || 1)))}
+              step="1"
+              min="1"
             />
-            <button className="vol-btn" onClick={() => handleVolumeChange(0.01)}>+</button>
+            <button className="vol-btn" onClick={() => handleVolumeChange(1)}>+</button>
           </div>
-          <span className="volume-hint">{volume} lot</span>
+          <span className="volume-hint">{Math.round(volume)} lots</span>
         </div>
 
         <div className="form-group">
@@ -326,7 +326,7 @@ const OrderPanel = () => {
         </button>
 
         <div className="order-summary">
-          {volume} lots @ {orderSide === 'buy' ? selectedInstrument.ask.toFixed(2) : selectedInstrument.bid.toFixed(2)}
+          {Math.round(volume)} lots @ {orderSide === 'buy' ? selectedInstrument.ask.toFixed(2) : selectedInstrument.bid.toFixed(2)}
           {commissionAmount > 0 && <span style={{ color: '#f59e0b', marginLeft: '8px' }}>+ ${commissionAmount.toFixed(2)} comm.</span>}
         </div>
       </div>

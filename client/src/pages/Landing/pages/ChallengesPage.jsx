@@ -24,7 +24,7 @@ function buildPhases(c) {
     fmtPct(r.maxOverallDrawdownPercent) && { key: 'Max Drawdown', value: fmtPct(r.maxOverallDrawdownPercent) },
     r.maxOneDayProfitPercentOfTarget != null && { key: 'Max one-day profit', value: `${r.maxOneDayProfitPercentOfTarget}% of target` },
     fmtDays(r.tradingDaysRequired) && { key: 'Min Trading Days', value: fmtDays(r.tradingDaysRequired) },
-    fmtDays(r.challengeExpiryDays) && { key: 'Challenge Expiry', value: fmtDays(r.challengeExpiryDays) },
+    fmtDays(r.challengeExpiryDays) && { key: 'Minimum Trading Days', value: fmtDays(r.challengeExpiryDays) },
     { key: 'News trading', value: fmtBool(r.allowNewsTrading) }
   ].filter(Boolean);
 
