@@ -305,9 +305,14 @@ async function checkAutoSquareOff() {
   if (needsSquareOff && nettingEngine) {
     console.log(`[Auto Square-Off] Checking positions at ${ist.toLocaleTimeString('en-IN')}`);
     try {
-      // Get current prices from Zerodha service (empty object as fallback)
+      // Get current prices from Zerodha service (empty object as fallback).
+      // Note: ZerodhaService exposes `getAllPrices()`, not `getLastPrices()` —
+      // the previous code-name typo silently fell through to {} and forced
+      // closes used stale position prices.
       const ZerodhaService = require('../services/zerodha.service');
-      const currentPrices = ZerodhaService.getLastPrices ? ZerodhaService.getLastPrices() : {};
+      const currentPrices = typeof ZerodhaService.getAllPrices === 'function'
+        ? ZerodhaService.getAllPrices()
+        : {};
 
       await nettingEngine.autoSquareOff(currentPrices);
     } catch (error) {
@@ -357,16 +362,38 @@ async function runChallengeMarketCloseSquareOff() {
   if (indianOpen.length === 0) return;
 
   console.log(`[ChallengeMarketClose] Closing ${indianOpen.length} open Indian challenge position(s) at 15:15 IST`);
-  const lastPrices = ZerodhaService.getLastPrices ? ZerodhaService.getLastPrices() : {};
+  // ZerodhaService exposes getAllPrices() (the real method) — the previous
+  // `getLastPrices` typo silently fell through to {} and used stale position
+  // prices for every close. Now we read live LTP / depth bid+ask per symbol.
+  const lastPrices = typeof ZerodhaService.getAllPrices === 'function'
+    ? ZerodhaService.getAllPrices()
+    : {};
   let closed = 0;
   let failed = 0;
   for (const pos of indianOpen) {
     try {
       const lp = lastPrices[pos.symbol] || {};
+      const lpLast = Number(lp.lastPrice ?? lp.last_price ?? lp.last);
+      const lpBid = Number(lp.bid);
+      const lpAsk = Number(lp.ask);
       const px = pos.side === 'buy'
-        ? Number(lp.bid ?? lp.last ?? pos.currentPrice ?? pos.entryPrice)
-        : Number(lp.ask ?? lp.last ?? pos.currentPrice ?? pos.entryPrice);
-      if (!Number.isFinite(px) || px <= 0) { failed++; continue; }
+        ? Number(
+            (Number.isFinite(lpBid) && lpBid > 0 ? lpBid : null)
+            ?? (Number.isFinite(lpLast) && lpLast > 0 ? lpLast : null)
+            ?? pos.currentPrice
+            ?? pos.entryPrice
+          )
+        : Number(
+            (Number.isFinite(lpAsk) && lpAsk > 0 ? lpAsk : null)
+            ?? (Number.isFinite(lpLast) && lpLast > 0 ? lpLast : null)
+            ?? pos.currentPrice
+            ?? pos.entryPrice
+          );
+      if (!Number.isFinite(px) || px <= 0) {
+        console.warn(`[ChallengeMarketClose] no usable price for ${pos.symbol} (${pos.positionId}) — skipping`);
+        failed++;
+        continue;
+      }
       const result = await challengePropEngine.closePosition(pos.positionId, px, 'auto-market-close');
       if (result?.success) closed++; else failed++;
     } catch (err) {

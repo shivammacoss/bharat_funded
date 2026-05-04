@@ -295,54 +295,57 @@ class MetaApiStreamingService {
   }
 
   async syncOpenPositionsAndLedgerRisk() {
-    if (!this.hedgingEngine || !this.nettingEngine) return;
-    const riskManagement = require('./riskManagement.service');
-    const { HedgingPosition, NettingPosition } = require('../models/Position');
-
-    let userIds;
-    try {
-      const h = await HedgingPosition.distinct('userId', { status: 'open' });
-      const n = await NettingPosition.distinct('userId', { status: 'open' });
-      userIds = [...new Set([...h, ...n])];
-    } catch (e) {
-      return;
-    }
-    if (userIds.length === 0) return;
-
     const priceResolver = (sym) => this._resolvePriceBundle(sym);
 
-    for (const userId of userIds) {
+    // Netting / Hedging path — only runs if those engines are wired and a
+    // user has open positions in either collection. Prop challenge accounts
+    // have their own collection (ChallengePosition) and must be refreshed
+    // unconditionally below — DON'T early-return on empty userIds list,
+    // otherwise SL/TP on prop options never evaluates.
+    if (this.hedgingEngine && this.nettingEngine) {
+      const riskManagement = require('./riskManagement.service');
+      const { HedgingPosition, NettingPosition } = require('../models/Position');
+
+      let userIds = [];
       try {
-        const updates = {};
-        const hp = await HedgingPosition.find({ userId, status: 'open' });
-        const np = await NettingPosition.find({ userId, status: 'open' });
-        for (const pos of hp) {
-          const b = priceResolver(pos.symbol);
-          if (b) updates[pos.symbol] = b;
-        }
-        for (const pos of np) {
-          const b = priceResolver(pos.symbol);
-          if (b) updates[pos.symbol] = b;
-        }
-        if (Object.keys(updates).length > 0) {
-          if (hp.length > 0) await this.hedgingEngine.updatePositionPrices(userId, updates);
-          if (np.length > 0) await this.nettingEngine.updatePositionPrices(userId, updates);
-          await riskManagement.reconcileWalletEquityForUser(userId);
-        }
-        // Per-fill SL/TP monitor (Phase 3) — close any open netting Trade leg
-        // whose stopLoss/takeProfit has been crossed by the current bid/ask.
-        // (Fix 11 added it). Position-level SL/TP for the parent NettingPosition
-        // is checked here too.
-        await this._checkPerFillSLTP(userId, priceResolver);
+        const h = await HedgingPosition.distinct('userId', { status: 'open' });
+        const n = await NettingPosition.distinct('userId', { status: 'open' });
+        userIds = [...new Set([...h, ...n])];
+      } catch (e) { /* fall through to prop refresh */ }
 
-        // Hedging SL/TP monitor — close hedging positions whose SL/TP is hit.
-        await this._checkHedgingSLTP(userId, priceResolver);
+      for (const userId of userIds) {
+        try {
+          const updates = {};
+          const hp = await HedgingPosition.find({ userId, status: 'open' });
+          const np = await NettingPosition.find({ userId, status: 'open' });
+          for (const pos of hp) {
+            const b = priceResolver(pos.symbol);
+            if (b) updates[pos.symbol] = b;
+          }
+          for (const pos of np) {
+            const b = priceResolver(pos.symbol);
+            if (b) updates[pos.symbol] = b;
+          }
+          if (Object.keys(updates).length > 0) {
+            if (hp.length > 0) await this.hedgingEngine.updatePositionPrices(userId, updates);
+            if (np.length > 0) await this.nettingEngine.updatePositionPrices(userId, updates);
+            await riskManagement.reconcileWalletEquityForUser(userId);
+          }
+          // Per-fill SL/TP monitor (Phase 3) — close any open netting Trade leg
+          // whose stopLoss/takeProfit has been crossed by the current bid/ask.
+          // (Fix 11 added it). Position-level SL/TP for the parent NettingPosition
+          // is checked here too.
+          await this._checkPerFillSLTP(userId, priceResolver);
 
-        await riskManagement.maybeLiquidateUser(userId, this.io, priceResolver);
-        await riskManagement.checkStopOut(userId, this.io, priceResolver);
-      } catch (err) {
-        if (err.message && !err.message.includes('Cannot find module')) {
-          console.error('[Risk] syncOpenPositionsAndLedgerRisk:', userId, err.message);
+          // Hedging SL/TP monitor — close hedging positions whose SL/TP is hit.
+          await this._checkHedgingSLTP(userId, priceResolver);
+
+          await riskManagement.maybeLiquidateUser(userId, this.io, priceResolver);
+          await riskManagement.checkStopOut(userId, this.io, priceResolver);
+        } catch (err) {
+          if (err.message && !err.message.includes('Cannot find module')) {
+            console.error('[Risk] syncOpenPositionsAndLedgerRisk:', userId, err.message);
+          }
         }
       }
     }
