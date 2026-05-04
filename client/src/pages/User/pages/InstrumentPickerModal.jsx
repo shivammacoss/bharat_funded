@@ -684,8 +684,11 @@ function OptionChain({ rows, expiry, atmStrike, atmSpot, atmRowRef, query, liveP
 function ChainCell({ inst, ltp, expiryLabel, align, onPick }) {
   if (!inst) {
     return (
-      <div style={{ padding: '14px 18px', color: 'var(--text-secondary)', textAlign: align, fontSize: 12, opacity: 0.4 }}>
-        —
+      <div style={{
+        padding: '14px 18px', textAlign: align, fontSize: 12,
+        display: 'flex', alignItems: 'center', justifyContent: align === 'left' ? 'flex-start' : 'flex-end'
+      }}>
+        <span style={{ color: 'var(--text-secondary)', opacity: 0.6, fontSize: 13 }}>—</span>
       </div>
     );
   }
@@ -704,7 +707,7 @@ function ChainCell({ inst, ltp, expiryLabel, align, onPick }) {
         {inst.name || sym}
       </div>
       <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>
-        {expiryLabel}{ltp > 0 ? ` · LTP ₹${ltp.toFixed(2)}` : ''}
+        {expiryLabel} · LTP {ltp > 0 ? `₹${ltp.toFixed(2)}` : '₹—'}
       </div>
     </button>
   );
