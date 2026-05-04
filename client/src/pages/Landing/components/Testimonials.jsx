@@ -3,12 +3,12 @@ import { useScrollAnimation } from '../hooks/useScrollAnimation';
 // Drop certificate images into /landing/img/ and reference them here.
 // Leave `image` as null to render an empty placeholder slot.
 const certificates = [
-  { id: 1, image: '/landing/img/cer1.png', alt: 'Profit share certificate 1' },
-  { id: 2, image: '/landing/img/cer2.png', alt: 'Profit share certificate 2' },
-  { id: 3, image: '/landing/img/cer3.png', alt: 'Profit share certificate 3' },
-  { id: 4, image: '/landing/img/cer4.png', alt: 'Profit share certificate 4' },
-  { id: 5, image: '/landing/img/cer5.png', alt: 'Profit share certificate 5' },
-  { id: 6, image: '/landing/img/cer6.png', alt: 'Profit share certificate 6' },
+  { id: 1, image: '/landing/img/c1.png', alt: 'Profit share certificate 1' },
+  { id: 2, image: '/landing/img/c2.png', alt: 'Profit share certificate 2' },
+  { id: 3, image: '/landing/img/c3.png', alt: 'Profit share certificate 3' },
+  { id: 4, image: '/landing/img/c4.png', alt: 'Profit share certificate 4' },
+  { id: 5, image: '/landing/img/c5.png', alt: 'Profit share certificate 5' },
+  { id: 6, image: '/landing/img/c6.png', alt: 'Profit share certificate 6' },
 ];
 
 export default function Testimonials() {
