@@ -1823,29 +1823,55 @@ function UserLayout({ user, onLogout }) {
     try {
       const userId = user?.oderId || user?.id || 'guest';
       const isPendingOrder = selectedPosition.status === 'pending';
-      
-      // Use different endpoint for pending orders vs open positions
-      const endpoint = isPendingOrder ? `${API_URL}/api/orders/modify` : `${API_URL}/api/positions/modify`;
-      const body = isPendingOrder ? {
-        mode: selectedPosition.mode || tradingMode,
-        userId,
-        orderId: selectedPosition.oderId || selectedPosition._id,
-        price: editPrice ? parseFloat(editPrice) : null,
-        stopLoss: editSL ? parseFloat(editSL) : null,
-        takeProfit: editTP ? parseFloat(editTP) : null
-      } : {
-        mode: selectedPosition.mode || tradingMode,
-        userId,
-        positionId: selectedPosition.oderId || selectedPosition.tradeId,
-        stopLoss: editSL ? parseFloat(editSL) : null,
-        takeProfit: editTP ? parseFloat(editTP) : null
-      };
 
-      const response = await fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
+      // Challenge (prop) positions live in a separate collection and must be
+      // modified via the challenge engine, not the main netting/hedging
+      // modify route. Mirror the same routing logic used by close.
+      const isChallengePosition = selectedPosition.accountContext === 'challenge'
+        || selectedPosition.mode === 'prop'
+        || !!selectedPosition.challengeAccountId;
+
+      let endpoint, body, fetchOpts;
+      if (isChallengePosition && !isPendingOrder) {
+        const authData = JSON.parse(localStorage.getItem('bharatfunded-auth') || '{}');
+        const positionKey = selectedPosition.positionId || selectedPosition.oderId || selectedPosition.tradeId;
+        endpoint = `${API_URL}/api/prop/positions/${encodeURIComponent(positionKey)}/sltp`;
+        body = {
+          stopLoss: editSL ? parseFloat(editSL) : null,
+          takeProfit: editTP ? parseFloat(editTP) : null
+        };
+        fetchOpts = {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token || ''}`
+          },
+          body: JSON.stringify(body)
+        };
+      } else {
+        endpoint = isPendingOrder ? `${API_URL}/api/orders/modify` : `${API_URL}/api/positions/modify`;
+        body = isPendingOrder ? {
+          mode: selectedPosition.mode || tradingMode,
+          userId,
+          orderId: selectedPosition.oderId || selectedPosition._id,
+          price: editPrice ? parseFloat(editPrice) : null,
+          stopLoss: editSL ? parseFloat(editSL) : null,
+          takeProfit: editTP ? parseFloat(editTP) : null
+        } : {
+          mode: selectedPosition.mode || tradingMode,
+          userId,
+          positionId: selectedPosition.oderId || selectedPosition.tradeId,
+          stopLoss: editSL ? parseFloat(editSL) : null,
+          takeProfit: editTP ? parseFloat(editTP) : null
+        };
+        fetchOpts = {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        };
+      }
+
+      const response = await fetch(endpoint, fetchOpts);
 
       const result = await response.json();
       if (result.success) {
@@ -1854,7 +1880,7 @@ function UserLayout({ user, onLogout }) {
         fetchPendingOrders();
         setShowEditModal(false);
       } else {
-        showNotification(`Modify failed: ${result.error}`, 'error');
+        showNotification(`Modify failed: ${result.error || result.message || 'unknown'}`, 'error');
       }
     } catch (error) {
       showNotification(`Error: ${error.message}`, 'error');
