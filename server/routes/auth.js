@@ -548,10 +548,22 @@ router.post('/login', async (req, res) => {
     }
     
     // Find user by email, phone, or user ID
+    // Phone is stored as '+919876543210' — build multiple search variants
+    const digitsOnly = username.replace(/[^0-9]/g, '');
+    const phoneVariants = [
+      { phone: digitsOnly },
+      { phone: `+${digitsOnly}` },
+    ];
+    if (digitsOnly.length === 10) {
+      phoneVariants.push({ phone: `+91${digitsOnly}` });
+    }
+    if (digitsOnly.length > 10) {
+      phoneVariants.push({ phone: `+91${digitsOnly.slice(-10)}` });
+    }
     const user = await User.findOne({
       $or: [
         { email: username.toLowerCase() },
-        { phone: username.replace(/[^0-9]/g, '') },
+        ...phoneVariants,
         { oderId: username }
       ]
     });
@@ -972,10 +984,21 @@ router.post('/admin/login', async (req, res) => {
     }
     
     // Find user by email, phone, or user ID
+    const adminDigits = username.replace(/[^0-9]/g, '');
+    const adminPhoneVariants = [
+      { phone: adminDigits },
+      { phone: `+${adminDigits}` },
+    ];
+    if (adminDigits.length === 10) {
+      adminPhoneVariants.push({ phone: `+91${adminDigits}` });
+    }
+    if (adminDigits.length > 10) {
+      adminPhoneVariants.push({ phone: `+91${adminDigits.slice(-10)}` });
+    }
     const user = await User.findOne({
       $or: [
         { email: username.toLowerCase() },
-        { phone: username.replace(/[^0-9]/g, '') },
+        ...adminPhoneVariants,
         { oderId: username }
       ]
     });
