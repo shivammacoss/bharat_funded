@@ -645,16 +645,19 @@ const PropTrading = () => {
                     )}
                     {ch.rules?.tradingDaysRequired && (
                       <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Min Trading Days</div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Trading Days Required</div>
                         <div style={{ color: '#3b82f6', fontWeight: '600' }}>{ch.rules.tradingDaysRequired} days</div>
                       </div>
                     )}
+                    <div style={{ padding: '6px 8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Min Trading Days</div>
+                      <div style={{ color: '#06b6d4', fontWeight: '600' }}>{ch.rules?.challengeExpiryDays || 30} days</div>
+                    </div>
                   </div>
 
                   <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     {ch.rules?.stopLossMandatory && <span>SL Required</span>}
                     <span>Leverage 1:{ch.rules?.maxLeverage || 100}</span>
-                    <span>Expiry {ch.rules?.challengeExpiryDays || 30}d</span>
                   </div>
                 </div>
               ))}
@@ -1157,7 +1160,7 @@ const PropTrading = () => {
               <h4 style={{ color: 'var(--text-secondary)', fontSize: '12px', textTransform: 'uppercase', marginBottom: '12px' }}>Time & Expiry</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Challenge Expiry (days)</label>
+                  <label style={{ color: 'var(--text-secondary)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Minimum Trading Days</label>
                   <input type="number" value={challengeForm.rules.challengeExpiryDays} onChange={e => setChallengeForm(p => ({ ...p, rules: { ...p.rules, challengeExpiryDays: Number(e.target.value) } }))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
