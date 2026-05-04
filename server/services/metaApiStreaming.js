@@ -273,10 +273,20 @@ class MetaApiStreamingService {
     try {
       const zerodhaService = require('./zerodha.service');
       const z = zerodhaService.getPrice(sym) || zerodhaService.getPrice(symbol);
-      if (z && (z.lastPrice > 0 || z.last_price > 0)) {
-        const lp = Number(z.lastPrice || z.last_price);
-        const sp = lp * 0.0001;
-        return { bid: lp - sp / 2, ask: lp + sp / 2 };
+      if (z) {
+        // Prefer real bid/ask from Zerodha depth (critical for options which
+        // have wide spreads). Fall back to synthetic spread only when depth
+        // data is unavailable.
+        const realBid = Number(z.bid);
+        const realAsk = Number(z.ask);
+        if (realBid > 0 && realAsk > 0) {
+          return { bid: realBid, ask: realAsk };
+        }
+        const lp = Number(z.lastPrice || z.last_price || 0);
+        if (lp > 0) {
+          const sp = lp * 0.0001;
+          return { bid: lp - sp / 2, ask: lp + sp / 2 };
+        }
       }
     } catch (_) {
       /* optional */
@@ -321,10 +331,12 @@ class MetaApiStreamingService {
         }
         // Per-fill SL/TP monitor (Phase 3) — close any open netting Trade leg
         // whose stopLoss/takeProfit has been crossed by the current bid/ask.
-        // This is the only place SL/TP automation lives in the entire codebase
         // (Fix 11 added it). Position-level SL/TP for the parent NettingPosition
         // is checked here too.
         await this._checkPerFillSLTP(userId, priceResolver);
+
+        // Hedging SL/TP monitor — close hedging positions whose SL/TP is hit.
+        await this._checkHedgingSLTP(userId, priceResolver);
 
         await riskManagement.maybeLiquidateUser(userId, this.io, priceResolver);
         await riskManagement.checkStopOut(userId, this.io, priceResolver);
@@ -605,6 +617,90 @@ class MetaApiStreamingService {
         }
       } catch (err) {
         console.error('[SL/TP] parent position check error:', err.message);
+      }
+    }
+  }
+
+  /**
+   * Hedging SL/TP monitor — walks all open hedging positions for the given
+   * user. When a position's stopLoss/takeProfit is crossed by bid/ask, the
+   * position is auto-closed via hedgingEngine.closePosition().
+   *
+   * Trigger conventions (MT5):
+   *   BUY  → close at bid; SL hit when bid <= sl, TP hit when bid >= tp
+   *   SELL → close at ask; SL hit when ask >= sl, TP hit when ask <= tp
+   */
+  async _checkHedgingSLTP(userId, priceResolver) {
+    if (!this.hedgingEngine) return;
+    const { HedgingPosition } = require('../models/Position');
+
+    let positions;
+    try {
+      positions = await HedgingPosition.find({
+        userId,
+        status: 'open',
+        $or: [
+          { stopLoss: { $ne: null, $gt: 0 } },
+          { takeProfit: { $ne: null, $gt: 0 } }
+        ]
+      });
+    } catch (e) {
+      return;
+    }
+
+    for (const pos of positions) {
+      try {
+        const bundle = priceResolver(pos.symbol);
+        if (!bundle) continue;
+        const bid = Number(bundle.bid);
+        const ask = Number(bundle.ask);
+        if (!(bid > 0) && !(ask > 0)) continue;
+
+        const sl = pos.stopLoss != null ? Number(pos.stopLoss) : null;
+        const tp = pos.takeProfit != null ? Number(pos.takeProfit) : null;
+        const side = String(pos.side || '').toLowerCase();
+
+        let closePrice = null;
+        let reason = null;
+        if (side === 'buy') {
+          // BUY closes at bid
+          if (sl != null && bid > 0 && bid <= sl) { closePrice = bid; reason = 'sl'; }
+          else if (tp != null && bid > 0 && bid >= tp) { closePrice = bid; reason = 'tp'; }
+        } else if (side === 'sell') {
+          // SELL closes at ask
+          if (sl != null && ask > 0 && ask >= sl) { closePrice = ask; reason = 'sl'; }
+          else if (tp != null && ask > 0 && ask <= tp) { closePrice = ask; reason = 'tp'; }
+        }
+
+        if (closePrice != null && reason) {
+          try {
+            const result = await this.hedgingEngine.closePosition(
+              userId,
+              pos.oderId || pos._id.toString(),
+              pos.volume,
+              closePrice,
+              { skipTradeHold: true, closeReason: reason }
+            );
+            console.log(
+              `[Hedging SL/TP] ${reason.toUpperCase()} hit on ${pos.symbol} (${pos.oderId}): closed @ ${closePrice}, profit: ${result?.profit?.toFixed(2)}`
+            );
+            if (this.io) {
+              this.io.to(userId).emit('positionClosedBySLTP', {
+                positionId: pos.oderId,
+                symbol: pos.symbol,
+                side: pos.side,
+                reason,
+                closePrice,
+                profit: result?.profit,
+                mode: 'hedging'
+              });
+            }
+          } catch (closeErr) {
+            console.error(`[Hedging SL/TP] close error for ${pos.oderId}:`, closeErr.message);
+          }
+        }
+      } catch (err) {
+        console.error('[Hedging SL/TP] check error:', err.message);
       }
     }
   }
@@ -1001,15 +1097,17 @@ class MetaApiStreamingService {
         // If no MetaAPI price, check Zerodha prices for Indian instruments
         if ((!priceData || !priceData.bid || !priceData.ask) && zerodhaService) {
           const zerodhaPrice = zerodhaService.getPrice(order.symbol);
-          if (zerodhaPrice && zerodhaPrice.lastPrice > 0) {
-            // For Indian instruments, use lastPrice as both bid and ask (no spread in this context)
-            // Apply a small spread for realistic execution
-            const spread = zerodhaPrice.lastPrice * 0.0001; // 0.01% spread
-            priceData = {
-              bid: zerodhaPrice.lastPrice - spread,
-              ask: zerodhaPrice.lastPrice + spread,
-              lastPrice: zerodhaPrice.lastPrice
-            };
+          if (zerodhaPrice) {
+            // Prefer real bid/ask from Zerodha depth (critical for options)
+            const rBid = Number(zerodhaPrice.bid);
+            const rAsk = Number(zerodhaPrice.ask);
+            const lp = Number(zerodhaPrice.lastPrice || zerodhaPrice.last_price || 0);
+            if (rBid > 0 && rAsk > 0) {
+              priceData = { bid: rBid, ask: rAsk, lastPrice: lp || rBid };
+            } else if (lp > 0) {
+              const spread = lp * 0.0001;
+              priceData = { bid: lp - spread, ask: lp + spread, lastPrice: lp };
+            }
           }
         }
         
