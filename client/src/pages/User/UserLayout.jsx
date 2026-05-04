@@ -98,16 +98,33 @@ function UserLayout({ user, onLogout }) {
     document.documentElement.setAttribute('data-theme', 'light');
   }, [userPrefs.darkMode]);
 
-  // Active page state
-  const [activePage, setActivePage] = useState(() => {
-    const path = location.pathname;
-    if (path.includes('/market')) return 'market';
-    if (path.includes('/orders')) return 'orders';
-    if (path.includes('/wallet')) return 'wallet';
-    if (path.includes('/business')) return 'business';
-    if (path.includes('/settings')) return 'settings';
+  // Helper: derive activePage key from current URL path
+  const pageKeyFromPath = (pathname) => {
+    const p = pathname.replace(/^\/app\/?/, '');
+    if (!p || p === 'home') return 'home';
+    // Order matters — longer prefixes first so /challenge/:id doesn't match /challenges
+    if (p.startsWith('challenge/')) return 'my-challenges';
+    if (p.startsWith('my-challenges')) return 'my-challenges';
+    if (p.startsWith('passed-challenges')) return 'passed-challenges';
+    if (p.startsWith('challenges')) return 'challenges';
+    if (p.startsWith('market')) return 'market';
+    if (p.startsWith('orders')) return 'orders';
+    if (p.startsWith('wallet')) return 'wallet';
+    if (p.startsWith('billing')) return 'billing';
+    if (p.startsWith('contact')) return 'contact';
+    if (p.startsWith('settings')) return 'settings';
+    if (p.startsWith('ib')) return 'ib';
     return 'home';
-  });
+  };
+
+  // Active page state — synced with URL
+  const [activePage, setActivePage] = useState(() => pageKeyFromPath(location.pathname));
+
+  // Keep activePage in sync when URL changes (back/forward, internal links)
+  useEffect(() => {
+    const key = pageKeyFromPath(location.pathname);
+    setActivePage(prev => prev !== key ? key : prev);
+  }, [location.pathname]);
 
   // Active challenge account — when set, trades place against this prop
   // account. Null ⇒ trades hit the user's main wallet. Persisted so a reload
@@ -2086,6 +2103,7 @@ function UserLayout({ user, onLogout }) {
 
   // Check if symbol is from Indian market
   const isIndianMarketSymbol = (symbol) => {
+    if (!symbol) return false;
     // Check if symbol exists in Indian market categories
     const indianCategories = ['NSE EQ', 'BSE EQ', 'NSE FUT', 'NSE OPT', 'MCX FUT', 'MCX OPT', 'BSE FUT', 'BSE OPT'];
     for (const category of indianCategories) {
@@ -2098,6 +2116,18 @@ function UserLayout({ user, onLogout }) {
     if (inst?.category?.startsWith('nse_') || inst?.category?.startsWith('mcx_') || inst?.category?.startsWith('bse_')) {
       return true;
     }
+    // F&O option / future contract symbols (e.g. NIFTY2650524250PE,
+    // BANKNIFTY24DEC52000CE) often aren't pre-loaded in instrumentsByCategory
+    // because they're synthesised per expiry. Fall back to a prefix check on
+    // known Indian roots so the currency formatter shows ₹ for them instead
+    // of defaulting to $.
+    const symU = String(symbol).toUpperCase();
+    const indianRoots = [
+      'NIFTY', 'BANKNIFTY', 'FINNIFTY', 'MIDCPNIFTY', 'SENSEX', 'BANKEX',
+      'CRUDEOIL', 'NATURALGAS', 'GOLD', 'SILVER', 'COPPER', 'ZINC', 'LEAD',
+      'NICKEL', 'ALUMINIUM', 'COTTON', 'MENTHAOIL', 'CARDAMOM', 'KAPAS'
+    ];
+    if (indianRoots.some(root => symU.startsWith(root))) return true;
     return false;
   };
 
@@ -3140,7 +3170,7 @@ function UserLayout({ user, onLogout }) {
       <style>{`
         @media (max-width: 768px) {
           .prop-sidebar { display: none !important; }
-          .main-content { left: 0 !important; }
+          .main-content { left: 0 !important; bottom: 62px !important; }
           /* Hamburger stays visible on mobile so the user can open the
              slide-over drawer (the bottom nav covers most pages but
              secondary destinations like Billing/Contact only live here). */
