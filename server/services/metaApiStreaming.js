@@ -711,11 +711,12 @@ class MetaApiStreamingService {
   async initialize() {
     if (!METAAPI_AUTH_TOKEN || !METAAPI_ACCOUNT_ID) {
       console.log('⚠️ MetaAPI credentials not configured. Using cached prices if available.');
-      // Start broadcasting cached prices if we have any
-      if (Object.keys(this.prices).length > 0) {
-        console.log(`📦 Broadcasting ${Object.keys(this.prices).length} cached prices`);
-        this.startPriceBroadcast();
-      }
+      // Always start the broadcast loop — it drives prop-challenge SL/TP
+      // evaluation via syncOpenPositionsAndLedgerRisk(). Indian-market-only
+      // setups (Zerodha) have an empty MetaAPI price cache, but the SL/TP
+      // resolver pulls live bid/ask from Zerodha directly, so we MUST start
+      // the loop regardless of the MetaAPI cache size.
+      this.startPriceBroadcast();
       return;
     }
 
@@ -744,9 +745,9 @@ class MetaApiStreamingService {
         } catch (deployError) {
           console.error('❌ Account deployment failed:', deployError.message);
           console.log('⚠️ Using cached prices. Please deploy your MetaAPI account manually at https://app.metaapi.cloud');
-          if (Object.keys(this.prices).length > 0) {
-            this.startPriceBroadcast();
-          }
+          // Start the broadcast loop unconditionally — it drives prop SL/TP
+          // monitoring which uses Zerodha live prices for Indian instruments.
+          this.startPriceBroadcast();
           return;
         }
       } else if (state !== 'DEPLOYED') {
@@ -759,9 +760,9 @@ class MetaApiStreamingService {
         } catch (waitError) {
           console.error('❌ Deployment wait timeout:', waitError.message);
           console.log('⚠️ Using cached prices. MetaAPI connection failed.');
-          if (Object.keys(this.prices).length > 0) {
-            this.startPriceBroadcast();
-          }
+          // Start broadcast loop unconditionally so prop SL/TP keeps working
+          // via Zerodha live prices for Indian instruments.
+          this.startPriceBroadcast();
           return;
         }
       }
@@ -842,9 +843,10 @@ class MetaApiStreamingService {
     } catch (error) {
       console.error('❌ MetaAPI connection error:', error.message);
       console.log('⚠️ Using cached prices. MetaAPI connection failed.');
-      if (Object.keys(this.prices).length > 0) {
-        this.startPriceBroadcast();
-      }
+      // Start the loop regardless so prop-challenge SL/TP still fires using
+      // Zerodha live prices for Indian instruments. The broadcast guards
+      // empty-cache cases internally.
+      this.startPriceBroadcast();
     }
   }
 

@@ -340,7 +340,12 @@ async function checkAutoSquareOff() {
  */
 async function runChallengeMarketCloseSquareOff() {
   const ChallengeAccount = require('../models/ChallengeAccount');
-  const { ChallengePosition } = require('../models/Position');
+  // ChallengePosition lives in its own model file — NOT in models/Position.js
+  // (which only exports HedgingPosition / NettingPosition / BinaryTrade).
+  // The previous `const { ChallengePosition } = require('../models/Position')`
+  // destructured to undefined, so this whole function silently threw at
+  // ChallengePosition.find() every 15:15 IST → no positions ever closed.
+  const ChallengePosition = require('../models/ChallengePosition');
   const challengePropEngine = require('../services/challengePropEngine.service');
   const ZerodhaService = require('../services/zerodha.service');
 
