@@ -4662,6 +4662,17 @@ function MarketPage() {
                         {formatPnL(profit, pos.symbol)}
                       </span>
                     </div>
+                    <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleClosePosition(pos, pos.volume); }}
+                        style={{
+                          padding: '6px 16px', fontSize: 12, fontWeight: 700, borderRadius: 6,
+                          background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer'
+                        }}
+                      >
+                        Close
+                      </button>
+                    </div>
                   </div>
                 );
               })}

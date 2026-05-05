@@ -333,12 +333,6 @@ challengeAccountSchema.methods.resetDailyStats = async function () {
   this.tradesToday = 0;
   this.currentDailyDrawdownPercent = 0;
 
-  const today = new Date().toDateString();
-  const lastDay = this.lastTradingDay ? this.lastTradingDay.toDateString() : null;
-  if (today !== lastDay) {
-    this.tradingDaysCount += 1;
-    this.lastTradingDay = new Date();
-  }
   await this.save();
 };
 

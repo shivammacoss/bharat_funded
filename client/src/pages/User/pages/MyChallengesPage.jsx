@@ -52,15 +52,7 @@ function MyChallengesPage() {
       setAccounts(prev => prev.map(a => {
         if (String(a._id) !== String(payload.account._id || payload.challengeAccountId)) return a;
         const merged = { ...a, ...payload.account };
-        const balance = Number(merged.walletBalance ?? merged.currentBalance ?? 0);
-        const liveEquity = Number(merged.walletEquity ?? merged.currentEquity ?? balance);
-        return {
-          ...merged,
-          liveEquity,
-          floatingPnl: liveEquity - balance,
-          realisedPnl: balance - Number(merged.initialBalance || 0),
-          totalPnl: liveEquity - Number(merged.initialBalance || 0)
-        };
+        return merged;
       }));
     };
     socket.on('challengeAccountUpdate', handler);

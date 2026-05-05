@@ -31,6 +31,7 @@
   background: var(--lp-bg);
   color: var(--lp-text);
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -145,6 +146,7 @@
 .lp-hero {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;

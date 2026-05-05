@@ -1040,7 +1040,7 @@ class PropTradingEngine {
         openCount: account.openTradesCount,
         maxConcurrent: rules.maxConcurrentTrades || null,
         total: account.totalTrades,
-        tradingDays: account.tradingDaysCount,
+        tradingDays: Array.isArray(account.uniqueTradingDays) ? account.uniqueTradingDays.length : 0,
         requiredDays: rules.tradingDaysRequired || null
       },
       rules: {

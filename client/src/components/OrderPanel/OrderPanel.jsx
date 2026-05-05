@@ -101,11 +101,15 @@ const OrderPanel = () => {
           symbol: selectedInstrument.symbol,
           side: orderSide,
           volume,
+          lotSize: selectedInstrument?.lotSize || 1,
+          quantity: parseFloat(volume) * (selectedInstrument?.lotSize || 1),
           leverage: leverageMultiplierVal,
           orderType,
           stopLoss: null,
           takeProfit: null,
-          challengeAccountId
+          challengeAccountId,
+          exchange: selectedInstrument?.exchange || '',
+          segment: selectedInstrument?.segment || ''
         })
       });
 

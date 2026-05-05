@@ -67,7 +67,18 @@ function DashboardPage() {
           Home / <span style={{ color: 'var(--text-primary)' }}>Dashboard</span>
         </div>
 
-        <h1 style={{ color: 'var(--text-primary)', fontSize: '24px', fontWeight: '700', margin: '0 0 4px' }}>Dashboard</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '4px' }}>
+          <h1 style={{ color: 'var(--text-primary)', fontSize: '24px', fontWeight: '700', margin: 0 }}>Dashboard</h1>
+          <button
+            onClick={() => navigate('/app/challenges')}
+            style={{
+              padding: '8px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontWeight: '600', fontSize: '13px'
+            }}
+          >
+            + Buy New Challenge
+          </button>
+        </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '0 0 28px' }}>Manage all your trading accounts.</p>
 
         {/* Evaluation Progress Stepper */}
@@ -169,7 +180,7 @@ function DashboardPage() {
               {myAccounts.map(acc => {
                 const ch = acc.challengeId || {};
                 const sc = statusColor(acc.status);
-                const pnl = (acc.currentBalance || 0) - (acc.initialBalance || 0);
+                const pnl = acc.totalPnl != null ? Number(acc.totalPnl) : ((acc.walletBalance ?? acc.currentBalance ?? 0) - (acc.initialBalance || 0));
                 return (
                   <div
                     key={acc._id}
@@ -197,7 +208,7 @@ function DashboardPage() {
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', gap: '10px' }}>
                           <span>ID: {acc.accountId}</span>
-                          <span>Fund: ₹{(ch.fundSize || acc.initialBalance || 0).toLocaleString('en-IN')}</span>
+                          <span>Fund: ₹{(acc.initialBalance || ch.fundSize || 0).toLocaleString('en-IN')}</span>
                           {acc.totalPhases > 0 && <span>Phase {acc.currentPhase}/{acc.totalPhases}</span>}
                         </div>
                       </div>

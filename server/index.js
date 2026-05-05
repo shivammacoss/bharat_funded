@@ -6893,7 +6893,7 @@ function getPipValueForPL(symbol) {
 // POST /api/trade/open - Open a new position with MT5 margin check
 app.post('/api/trade/open', async (req, res) => {
   try {
-    const { userId, symbol, side, volume, leverage, orderType, stopLoss, takeProfit, session, mode: tradeOpenMode, challengeAccountId } = req.body;
+    const { userId, symbol, side, volume, leverage, orderType, stopLoss, takeProfit, session, mode: tradeOpenMode, challengeAccountId, quantity, lotSize, exchange, segment } = req.body;
 
     if (!userId || !symbol || !side || !volume) {
       return res.status(400).json({ error: 'userId, symbol, side, and volume are required' });
@@ -6923,17 +6923,23 @@ app.post('/api/trade/open', async (req, res) => {
       }
 
       const challengePropEngine = require('./services/challengePropEngine.service');
+      const vol = parseFloat(volume);
+      const ls = Number(lotSize) > 0 ? Number(lotSize) : 1;
+      const qty = Number(quantity) > 0 ? Number(quantity) : vol * ls;
       const propResult = await challengePropEngine.openPosition(challengeAccountId, {
         symbol,
         side,
-        volume: parseFloat(volume),
-        quantity: parseFloat(volume),
+        volume: vol,
+        quantity: qty,
+        lotSize: ls,
         entryPrice: cEntryPrice,
         leverage: leverage || 100,
         stopLoss,
         takeProfit,
         session: session || 'intraday',
-        orderType: orderType || 'market'
+        orderType: orderType || 'market',
+        exchange: exchange || '',
+        segment: segment || ''
       });
       if (!propResult.success) {
         return res.status(400).json({ error: propResult.error, code: propResult.code });

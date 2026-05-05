@@ -1,6 +1,7 @@
 /* Auth Pages Styles - Modern Design */
 .auth-container {
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   display: block;
   padding: 40px 20px;
@@ -635,6 +636,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .tubes-auth.auth-container::before,

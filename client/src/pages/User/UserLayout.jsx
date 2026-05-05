@@ -2918,11 +2918,12 @@ function UserLayout({ user, onLogout }) {
       {/* Mobile sidebar overlay */}
       {mobileMenuOpen && (
         <>
-          <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 89 }} />
+          <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 89, WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }} />
           <aside style={{
-            position: 'fixed', top: '56px', left: 0, bottom: 0, width: '220px', zIndex: 91,
+            position: 'fixed', top: 'calc(56px + env(safe-area-inset-top, 0px))', left: 0, bottom: 0, width: '220px', zIndex: 91,
             background: 'var(--bg-secondary)', borderRight: '1px solid var(--border-color)',
-            display: 'flex', flexDirection: 'column', padding: '16px 0', overflowY: 'auto'
+            display: 'flex', flexDirection: 'column', padding: '16px 0', overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain'
           }}>
             <div style={{ padding: '0 14px', marginBottom: '20px' }}>
               <button onClick={() => { navigateToPage('challenges'); setMobileMenuOpen(false); }} style={{
@@ -3196,13 +3197,21 @@ function UserLayout({ user, onLogout }) {
       <style>{`
         @media (max-width: 768px) {
           .prop-sidebar { display: none !important; }
-          .main-content { left: 0 !important; bottom: 62px !important; }
+          .main-content {
+            left: 0 !important;
+            bottom: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+            top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+          }
           /* Hamburger stays visible on mobile so the user can open the
              slide-over drawer (the bottom nav covers most pages but
              secondary destinations like Billing/Contact only live here). */
           .prop-hamburger { display: inline-flex !important; }
-          /* Top bar compaction */
-          .bft-topbar { padding: 0 10px !important; }
+          /* Top bar compaction — account for iOS safe area (notch) */
+          .bft-topbar {
+            padding: 0 10px !important;
+            padding-top: env(safe-area-inset-top, 0px) !important;
+            height: calc(56px + env(safe-area-inset-top, 0px)) !important;
+          }
           .bft-topbar .bft-header-logo-btn img { height: 28px !important; }
           /* Hide the username text — keep just the avatar circle */
           .bft-topbar .bft-header-username { display: none !important; }

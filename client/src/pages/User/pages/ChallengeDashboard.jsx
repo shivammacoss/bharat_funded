@@ -649,7 +649,7 @@ function ChallengeDashboard() {
                 <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>
                   {o.unit === '%'
                     ? `${Number(o.actual).toFixed(2)}${o.unit} (${Math.min(100, Math.round((Math.abs(Number(o.actual)) / Math.abs(Number(o.target) || 1)) * 100))}%)`
-                    : `${o.actual}${o.unit === 'days' ? '' : ` / ${o.target}`}`}
+                    : `${o.actual} / ${o.target}`}
                 </span>
                 <span style={{ textAlign: 'right' }}>
                   <ObjectiveIcon passed={o.passed} />

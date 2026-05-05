@@ -483,30 +483,39 @@ router.get('/my-accounts', verifyUserToken, async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // Attach live open-position summary + floating P&L so the card can show
-    // real-time values instead of only the stored close-time balance.
+    // Attach live position summary so the card can show real-time values
+    // computed from actual position data instead of stale stored balances.
     const ids = accounts.map(a => a._id);
-    const openPositions = await ChallengePosition.find({
-      challengeAccountId: { $in: ids },
-      status: 'open'
-    }).lean();
+    const [openPositions, closedPositions] = await Promise.all([
+      ChallengePosition.find({ challengeAccountId: { $in: ids }, status: 'open' }).lean(),
+      ChallengePosition.find({ challengeAccountId: { $in: ids }, status: 'closed' }).lean()
+    ]);
+
     const byAccount = {};
     for (const pos of openPositions) {
       const key = String(pos.challengeAccountId);
-      if (!byAccount[key]) byAccount[key] = { positions: [], floatingPnl: 0, openCount: 0 };
+      if (!byAccount[key]) byAccount[key] = { positions: [], floatingPnl: 0, openCount: 0, closedPnl: 0 };
       byAccount[key].positions.push(pos);
       byAccount[key].floatingPnl += Number(pos.profit) || 0;
       byAccount[key].openCount += 1;
     }
+    for (const pos of closedPositions) {
+      const key = String(pos.challengeAccountId);
+      if (!byAccount[key]) byAccount[key] = { positions: [], floatingPnl: 0, openCount: 0, closedPnl: 0 };
+      byAccount[key].closedPnl += Number(pos.profit) || 0;
+    }
 
     const enriched = accounts.map(a => {
-      const live = byAccount[String(a._id)] || { positions: [], floatingPnl: 0, openCount: 0 };
-      const balance = Number(a.walletBalance || a.currentBalance || 0);
-      const liveEquity = balance + live.floatingPnl;
-      const realisedPnl = balance - Number(a.initialBalance || 0);
+      const live = byAccount[String(a._id)] || { positions: [], floatingPnl: 0, openCount: 0, closedPnl: 0 };
+      const initialBalance = Number(a.initialBalance || 0);
+      const realisedPnl = live.closedPnl;
       const totalPnl = realisedPnl + live.floatingPnl;
+      const computedBalance = initialBalance + realisedPnl;
+      const liveEquity = computedBalance + live.floatingPnl;
       return {
         ...a,
+        walletBalance: computedBalance,
+        currentBalance: computedBalance,
         openPositions: live.positions,
         openCount: live.openCount,
         floatingPnl: live.floatingPnl,
@@ -756,15 +765,25 @@ router.get('/account/:id/insights', verifyUserToken, async (req, res) => {
 
     const pctAmount = (pct) => Number(((pct / 100) * initialBalance).toFixed(2));
 
+    // Compute actual unique trading days from real position data (open + closed)
+    // instead of the stored uniqueTradingDays array which can get out of sync.
+    const allPositions = [...openRaw, ...closedRaw];
+    const tradingDaySet = new Set();
+    for (const p of allPositions) {
+      const t = p.openTime || p.createdAt;
+      if (t) tradingDaySet.add(new Date(t).toISOString().slice(0, 10));
+    }
+    const actualTradingDays = tradingDaySet.size;
+
     const objectives = [];
     if (tradingDaysRequired > 0) {
       objectives.push({
         key: 'trading-days',
         label: `Minimum ${tradingDaysRequired} Trading Day${tradingDaysRequired === 1 ? '' : 's'}`,
         target: tradingDaysRequired,
-        actual: Number(account.tradingDaysCount || 0),
+        actual: consistencyDaysTraded,
         unit: 'days',
-        passed: Number(account.tradingDaysCount || 0) >= tradingDaysRequired
+        passed: consistencyDaysTraded >= tradingDaysRequired
       });
     }
     objectives.push({

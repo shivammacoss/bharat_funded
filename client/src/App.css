@@ -2,11 +2,14 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* iOS Style Trade Notifications */
@@ -3797,6 +3800,7 @@ html[data-theme="light"] .payment-details-box {
   padding: 0;
   width: 100%;
   height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   overflow-y: auto;
 }
 
@@ -5255,6 +5259,7 @@ html[data-theme="light"] .payment-details-box {
   flex: 1;
   width: 100%;
   height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   padding: 0;
   margin: 0;
   overflow-y: auto;
@@ -6032,6 +6037,7 @@ html[data-theme="light"] .payment-details-box {
 .business-page {
   padding: 0;
   height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   overflow-y: auto;
   background: var(--bg-primary);
   width: 100%;
@@ -6167,6 +6173,7 @@ html[data-theme="light"] .payment-details-box {
 .masters-page {
   padding: 0;
   height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   overflow-y: auto;
   background: var(--bg-primary);
   width: 100%;
@@ -6369,6 +6376,7 @@ html[data-theme="light"] .payment-details-box {
 .settings-page {
   padding: 0;
   height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   overflow-y: auto;
   background: var(--bg-primary);
   width: 100%;
@@ -6699,6 +6707,7 @@ html[data-theme="light"] .payment-details-box {
 .home-page-ios {
   padding: 0;
   height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   overflow-y: auto;
   background: var(--bg-primary);
   width: 100%;
@@ -7106,6 +7115,7 @@ html[data-theme="light"] .payment-details-box {
   .page-content {
     height: auto;
     min-height: calc(100vh - 120px);
+    min-height: calc(100dvh - 120px);
     padding-bottom: 60px;
   }
   
@@ -7217,6 +7227,10 @@ html[data-theme="light"] .payment-details-box {
     color: var(--text-secondary);
     font-size: 10px;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
   
   .mobile-bottom-nav button.active {
@@ -7864,6 +7878,7 @@ html[data-theme="light"] .payment-details-box {
     box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     border-bottom: 1px solid var(--border-color);
     max-height: calc(100vh - 52px);
+    max-height: calc(100dvh - 52px);
     overflow-y: auto;
   }
 
@@ -8518,6 +8533,7 @@ html[data-theme="light"] .payment-details-box {
     flex: 1;
     min-height: 0;
     max-height: calc(100vh - 180px);
+    max-height: calc(100dvh - 180px);
     overflow-y: auto;
   }
 
@@ -8536,6 +8552,7 @@ html[data-theme="light"] .payment-details-box {
      stays pinned visible at bottom without requiring scroll */
   .market-section.chart-section {
     height: calc(100vh - 180px);
+    height: calc(100dvh - 180px);
     overflow: hidden !important;
   }
 
@@ -8578,6 +8595,7 @@ html[data-theme="light"] .payment-details-box {
     padding: 12px;
     overflow-y: auto;
     height: calc(100vh - 180px);
+    height: calc(100dvh - 180px);
   }
   
   /* Hide order-panel outside of trade section on mobile */

@@ -85,6 +85,7 @@
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
     padding-bottom: calc(var(--mobi-footer-h, 64px) + env(safe-area-inset-bottom, 0px));
   }
 
@@ -212,6 +213,10 @@
     font-family: 'Inter', sans-serif;
     color: var(--m-t3);
     transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .mobi-bharatfunded-bnav .mobi-bnav-item.mobi-active {
@@ -929,6 +934,7 @@
   /* Login mobile */
   .mobi-login-shell {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1175,6 +1181,7 @@
 
   .auth-page .auth-container.tubes-auth {
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 16px !important;
     align-items: flex-start !important;
     font-family: 'DM Sans', sans-serif;
@@ -1675,8 +1682,11 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
     z-index: 1099;
     animation: mobi-more-fade 0.18s ease-out;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   .mobi-more-sheet {
@@ -1687,6 +1697,7 @@
     background: var(--bg-secondary, #0f1117);
     border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
     border-radius: 20px 20px 0 0;
+    touch-action: manipulation;
     padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px));
     z-index: 1100;
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
@@ -1740,6 +1751,10 @@
     text-align: left;
     cursor: pointer;
     transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .mobi-more-item:hover,
