@@ -120,11 +120,16 @@ async function computeSegmentMargin(orderData, volume, effectiveQty, entryPrice,
   if (isOptions) {
     if (side === 'buy') {
       rawMarginValue = scriptOverride?.optionBuyIntraday ?? seg.optionBuyIntraday;
+      // Option BUY: if no specific buy margin set, charge premium only
+      // (real brokers charge premium for buying options, not full margin)
+      if (!(Number(rawMarginValue) > 0)) {
+        return effectiveQty * entryPrice;
+      }
     } else {
       rawMarginValue = scriptOverride?.optionSellIntraday ?? seg.optionSellIntraday;
     }
   }
-  // Fallback to base intraday margin if option-specific not set
+  // Fallback to base intraday margin if option-specific not set (SELL / non-option)
   if (!(Number(rawMarginValue) > 0)) {
     rawMarginValue =
       scriptOverride?.intradayHolding ??
@@ -133,12 +138,8 @@ async function computeSegmentMargin(orderData, volume, effectiveQty, entryPrice,
       seg.intradayHolding;
   }
 
-  // If no admin margin configured, use premium (price × qty) for BUY,
-  // or simple formula for SELL
+  // If still no admin margin configured, simple formula
   if (!(Number(rawMarginValue) > 0)) {
-    if (isOptions && side === 'buy') {
-      return effectiveQty * entryPrice; // pay premium
-    }
     return (entryPrice * effectiveQty) / leverage;
   }
 
