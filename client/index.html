@@ -144,19 +144,10 @@
         margin: 0;
         padding: 0;
         height: 100%;
-        height: 100dvh;
-        overflow: hidden;
-        overscroll-behavior: none;
         -webkit-text-size-adjust: 100%;
       }
       html[data-theme="light"], html[data-theme="light"] body { background-color: #ffffff; }
-      #root { height: 100%; height: 100dvh; overflow: hidden; }
-
-      /* Landing / public pages need normal scroll.
-         NewLandingPage adds .allow-scroll to <body> on mount. */
-      html:has(body.allow-scroll),
-      body.allow-scroll { overflow: auto !important; overflow-x: hidden !important; height: auto !important; }
-      body.allow-scroll #root { overflow: auto !important; overflow-x: hidden !important; height: auto !important; }
+      #root { height: 100%; }
     </style>
     <script async src="/charting_library/charting_library.standalone.js"></script>
   </head>
