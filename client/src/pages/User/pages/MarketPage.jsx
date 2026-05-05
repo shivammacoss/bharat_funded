@@ -1958,6 +1958,16 @@ function MarketPage() {
 
     if (tradingMode === 'binary') return parseFloat(binaryAmount) || 0;
 
+    // Challenge accounts use their own simple margin formula on the server:
+    // margin = (price × quantity) / leverage. Show this in the panel so the
+    // displayed margin matches what the server will actually charge.
+    if (activeChallengeAccountIdFromContext && price > 0) {
+      const lotSize = selectedInstrument?.lotSize || 1;
+      const qty = nettingVolumeIsShares ? vol : vol * lotSize;
+      const lev = leverage || 100;
+      return (price * qty) / lev;
+    }
+
     const marginFactor = leverage / 100;
 
     if (tradingMode === 'netting') {
@@ -2071,31 +2081,39 @@ function MarketPage() {
         return;
       }
 
-      const requiredMargin = calculateRequiredMargin();
-      const _balRate = usdInrRate + usdMarkup;
-      const _isIndianSeg = tradingMode === 'netting' && resolvedSegmentApiName &&
-        ['NSE_EQ','NSE_FUT','NSE_OPT','BSE_EQ','BSE_FUT','BSE_OPT','MCX_FUT','MCX_OPT'].includes(resolvedSegmentApiName);
-      // Use balance (not equity/freeMargin) so available is stable and doesn't float with open P&L
-      const balanceLocal = _isIndianSeg
-        ? (walletData?.balance || 0) * _balRate
-        : (walletData?.balance || 0);
+      // Skip client-side margin check for challenge accounts — the server's
+      // challengePropEngine.openPosition() has its own margin validation that
+      // uses the challenge wallet's freeMargin and a simple formula. The
+      // client-side check uses main-wallet balance + segment-based margins
+      // (e.g. Fixed ₹148K/lot for SELL options) which is wrong for challenges
+      // and blocks SELL orders that the server would accept.
+      if (!activeChallengeAccountId) {
+        const requiredMargin = calculateRequiredMargin();
+        const _balRate = usdInrRate + usdMarkup;
+        const _isIndianSeg = tradingMode === 'netting' && resolvedSegmentApiName &&
+          ['NSE_EQ','NSE_FUT','NSE_OPT','BSE_EQ','BSE_FUT','BSE_OPT','MCX_FUT','MCX_OPT'].includes(resolvedSegmentApiName);
+        // Use balance (not equity/freeMargin) so available is stable and doesn't float with open P&L
+        const balanceLocal = _isIndianSeg
+          ? (walletData?.balance || 0) * _balRate
+          : (walletData?.balance || 0);
 
-      // Times mode: buying power = balance × X × leverage%
-      // Margin = tradeValue / X, so check: marginRequired <= balance × (leverage/100)
-      const _isTimesMode = tradingMode === 'netting' && segmentSettings?.marginCalcMode === 'times';
-      const _timesX = _isTimesMode ? getSegmentMarginX() : 0;
-      const effectiveAvailable = _isTimesMode && _timesX > 0
-        ? balanceLocal * (leverage / 100)
-        : balanceLocal;
+        // Times mode: buying power = balance × X × leverage%
+        // Margin = tradeValue / X, so check: marginRequired <= balance × (leverage/100)
+        const _isTimesMode = tradingMode === 'netting' && segmentSettings?.marginCalcMode === 'times';
+        const _timesX = _isTimesMode ? getSegmentMarginX() : 0;
+        const effectiveAvailable = _isTimesMode && _timesX > 0
+          ? balanceLocal * (leverage / 100)
+          : balanceLocal;
 
-      if (requiredMargin > effectiveAvailable) {
-        const _cs = _isIndianSeg ? '₹' : '$';
-        const fmtAvail = _isTimesMode && _timesX > 0
-          ? `${_cs}${(balanceLocal * _timesX * (leverage / 100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} buying power (${leverage}% of ${_timesX}X)`
-          : `${_cs}${balanceLocal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-        alert(`❌ Insufficient Balance\n\nRequired margin: ${formatMargin(requiredMargin)}\nAvailable: ${fmtAvail}`);
-        setIsPlacingOrder(false);
-        return;
+        if (requiredMargin > effectiveAvailable) {
+          const _cs = _isIndianSeg ? '₹' : '$';
+          const fmtAvail = _isTimesMode && _timesX > 0
+            ? `${_cs}${(balanceLocal * _timesX * (leverage / 100)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} buying power (${leverage}% of ${_timesX}X)`
+            : `${_cs}${balanceLocal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+          alert(`❌ Insufficient Balance\n\nRequired margin: ${formatMargin(requiredMargin)}\nAvailable: ${fmtAvail}`);
+          setIsPlacingOrder(false);
+          return;
+        }
       }
 
       // Use spread-adjusted prices from selectedInstrument (what user sees = what they trade at)
@@ -3347,6 +3365,17 @@ function MarketPage() {
             })()}
             <div className="trading-charges">
               {tradingMode === 'netting' && segmentSettings && (() => {
+                // Challenge accounts use their own simple margin engine —
+                // show "Challenge" label instead of the admin segment margin.
+                if (activeChallengeAccountIdFromContext) {
+                  return (
+                    <div className="charge-row">
+                      <span>Margin Mode</span>
+                      <span style={{ color: '#10b981', fontWeight: '600', fontSize: '12px' }}>Challenge — (Price × Qty) / Leverage</span>
+                    </div>
+                  );
+                }
+
                 const mode = segmentSettings.marginCalcMode;
                 const X = getSegmentMarginX('intraday');
                 const isIndian = isIndianInstrument(selectedSymbol);

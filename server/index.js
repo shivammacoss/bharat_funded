@@ -862,6 +862,7 @@ app.post('/api/orders', async (req, res) => {
         side: orderData.side,
         volume: orderData.volume,
         quantity: orderData.quantity,
+        lotSize: orderData.lotSize,
         entryPrice: orderData.price || orderData.entryPrice,
         leverage: orderData.leverage,
         stopLoss: orderData.stopLoss,
