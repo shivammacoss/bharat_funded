@@ -18,6 +18,7 @@
 const ChallengeAccount = require('../models/ChallengeAccount');
 const ChallengePosition = require('../models/ChallengePosition');
 const NettingSegment = require('../models/NettingSegment');
+const NettingScriptOverride = require('../models/NettingScriptOverride');
 const propTradingEngine = require('./propTradingEngine');
 
 function genPositionId() {
@@ -88,24 +89,48 @@ async function computeSegmentMargin(orderData, volume, effectiveQty, entryPrice,
   const seg = await NettingSegment.findOne({ name: segName }).lean();
   if (!seg) return (entryPrice * effectiveQty) / leverage;
 
+  // Look up per-script override (e.g. NIFTY, BANKNIFTY, SENSEX can each
+  // have their own optionSellIntraday). Match by base symbol extracted
+  // from the full trading symbol (NIFTY2650524100PE → NIFTY).
   const sym = String(orderData.symbol || '').toUpperCase();
+  let scriptOverride = null;
+  const baseMatch = sym.match(/^([A-Z&]+(?:-[A-Z&]+)?)(?=\d|$)/);
+  const baseSymbol = baseMatch ? baseMatch[1] : sym;
+  const symVariants = [sym];
+  if (baseSymbol !== sym) symVariants.push(baseSymbol);
+  if (symVariants.length > 0) {
+    const matches = await NettingScriptOverride.find({
+      segmentId: seg._id,
+      symbol: { $in: symVariants }
+    }).lean();
+    if (matches.length > 0) {
+      // Prefer longer (more specific) match
+      matches.sort((a, b) => b.symbol.length - a.symbol.length);
+      scriptOverride = matches[0];
+    }
+  }
+
   const isOptions = sym.endsWith('CE') || sym.endsWith('PE') ||
     ['NSE_OPT', 'BSE_OPT', 'MCX_OPT', 'CRYPTO_OPTIONS'].includes(segName);
   const side = String(orderData.side || '').toLowerCase();
 
-  // Determine raw margin value from segment settings
+  // Determine raw margin value — script override takes precedence over segment
   let rawMarginValue = null;
+  let calcMode = scriptOverride?.marginCalcMode || seg.marginCalcMode || 'fixed';
   if (isOptions) {
     if (side === 'buy') {
-      rawMarginValue = seg.optionBuyIntraday;
+      rawMarginValue = scriptOverride?.optionBuyIntraday ?? seg.optionBuyIntraday;
     } else {
-      rawMarginValue = seg.optionSellIntraday;
+      rawMarginValue = scriptOverride?.optionSellIntraday ?? seg.optionSellIntraday;
     }
   }
   // Fallback to base intraday margin if option-specific not set
-  // NettingSegment schema uses 'intradayMargin'; legacy/merged uses 'intradayHolding'
   if (!(Number(rawMarginValue) > 0)) {
-    rawMarginValue = seg.intradayMargin || seg.intradayHolding;
+    rawMarginValue =
+      scriptOverride?.intradayHolding ??
+      scriptOverride?.intradayMargin ??
+      seg.intradayMargin ??
+      seg.intradayHolding;
   }
 
   // If no admin margin configured, use premium (price × qty) for BUY,
@@ -118,9 +143,8 @@ async function computeSegmentMargin(orderData, volume, effectiveQty, entryPrice,
   }
 
   // Apply margin calc mode (same as NettingEngine.nettingFixedMarginAmount)
-  const mode = seg.marginCalcMode || 'fixed';
   const r = Number(rawMarginValue);
-  switch (mode) {
+  switch (calcMode) {
     case 'percent': {
       const cappedPct = Math.min(r, 100);
       return effectiveQty * entryPrice * (cappedPct / 100);
@@ -132,6 +156,66 @@ async function computeSegmentMargin(orderData, volume, effectiveQty, entryPrice,
     case 'fixed':
     default:
       return r * volume; // per-lot fixed margin × lots
+  }
+}
+
+/**
+ * Compute open/close commission from NettingSegment settings (mirrors NettingEngine).
+ * Returns commission in INR. chargePhase = 'open' | 'close'.
+ */
+async function computeCommission(orderData, volume, effectiveQty, entryPrice, chargePhase) {
+  const segName = resolveSegmentName(orderData.exchange, orderData.symbol);
+  if (!segName) return 0;
+
+  const seg = await NettingSegment.findOne({ name: segName }).lean();
+  if (!seg) return 0;
+
+  // Script override may have its own commission/chargeOn
+  const sym = String(orderData.symbol || '').toUpperCase();
+  let scriptOverride = null;
+  const baseMatch = sym.match(/^([A-Z&]+(?:-[A-Z&]+)?)(?=\d|$)/);
+  const baseSymbol = baseMatch ? baseMatch[1] : sym;
+  const symVariants = [sym];
+  if (baseSymbol !== sym) symVariants.push(baseSymbol);
+  if (symVariants.length > 0) {
+    const matches = await NettingScriptOverride.find({
+      segmentId: seg._id,
+      symbol: { $in: symVariants }
+    }).lean();
+    if (matches.length > 0) {
+      matches.sort((a, b) => b.symbol.length - a.symbol.length);
+      scriptOverride = matches[0];
+    }
+  }
+
+  const chargeOn = scriptOverride?.chargeOn || seg.chargeOn || 'open';
+  const shouldCharge =
+    (chargePhase === 'open'  && (chargeOn === 'open' || chargeOn === 'both')) ||
+    (chargePhase === 'close' && (chargeOn === 'close' || chargeOn === 'both'));
+  if (!shouldCharge) return 0;
+
+  // Pick commission rate (option-side-specific or base, script override first)
+  const isOptions = sym.endsWith('CE') || sym.endsWith('PE') ||
+    ['NSE_OPT', 'BSE_OPT', 'MCX_OPT', 'CRYPTO_OPTIONS'].includes(segName);
+  const side = String(orderData.side || '').toLowerCase();
+  let rate = 0;
+  if (isOptions) {
+    rate = side === 'buy'
+      ? Number(scriptOverride?.optionBuyCommission ?? seg.optionBuyCommission) || 0
+      : Number(scriptOverride?.optionSellCommission ?? seg.optionSellCommission) || 0;
+  }
+  if (!rate) rate = Number(scriptOverride?.commission ?? seg.commission) || 0;
+  if (!rate) return 0;
+
+  // Calculate using commissionType (same as NettingEngine.calculateCommission)
+  const commType = scriptOverride?.commissionType || seg.commissionType || 'per_lot';
+  const typeNorm = String(commType).toLowerCase().replace(/-/g, '_');
+  switch (typeNorm) {
+    case 'per_lot':      return rate * volume;
+    case 'per_crore':    return (effectiveQty * entryPrice / 10000000) * rate;
+    case 'percentage':   return (effectiveQty * entryPrice * rate) / 100;
+    case 'fixed':        return rate;
+    default:             return rate * volume;
   }
 }
 
@@ -230,12 +314,20 @@ async function openPosition(challengeAccountId, orderData) {
     return { success: false, error: 'Missing volume or entry price' };
   }
   const marginRequired = await computeSegmentMargin(orderData, volume, effectiveQty, entryPrice, leverage);
+  const openCommission = await computeCommission(orderData, volume, effectiveQty, entryPrice, 'open');
+  const totalRequired = marginRequired + openCommission;
 
-  if (account.walletFreeMargin < marginRequired) {
+  if (account.walletFreeMargin < totalRequired) {
     return {
       success: false,
-      error: `Insufficient free margin on challenge account. Available ₹${account.walletFreeMargin.toFixed(2)}, required ₹${marginRequired.toFixed(2)}`
+      error: `Insufficient free margin on challenge account. Available ₹${account.walletFreeMargin.toFixed(2)}, required ₹${totalRequired.toFixed(2)}` +
+        (openCommission > 0 ? ` (Margin ₹${marginRequired.toFixed(2)} + Commission ₹${openCommission.toFixed(2)})` : '')
     };
+  }
+
+  // Debit commission from balance (like NettingEngine)
+  if (openCommission > 0) {
+    account.walletBalance = Number(account.walletBalance) - openCommission;
   }
 
   const position = await ChallengePosition.create({
@@ -253,6 +345,10 @@ async function openPosition(challengeAccountId, orderData) {
     takeProfit: orderData.takeProfit || null,
     leverage,
     marginUsed: marginRequired,
+    commission: openCommission,
+    openCommission: openCommission,
+    commissionInr: openCommission,
+    openCommissionInr: openCommission,
     exchange: orderData.exchange || 'NSE',
     segment: orderData.segment || '',
     session: orderData.session || 'intraday',
@@ -288,15 +384,27 @@ async function closePosition(positionId, closePrice, reason = 'user') {
     : Number(position.entryPrice) - Number(closePrice);
   const realisedPnl = priceDiff * pnlUnits(position);
 
+  // Close commission
+  const closeComm = await computeCommission({
+    exchange: position.exchange,
+    symbol: position.symbol,
+    side: position.side
+  }, Number(position.volume), pnlUnits(position), Number(closePrice), 'close');
+
   position.status = 'closed';
   position.closePrice = Number(closePrice);
   position.closeTime = new Date();
   position.closedBy = reason;
-  position.profit = realisedPnl;
+  position.profit = realisedPnl - closeComm;
+  position.closeCommission = closeComm;
+  position.closeCommissionInr = closeComm;
+  const totalComm = (Number(position.openCommission) || 0) + closeComm;
+  position.commission = totalComm;
+  position.commissionInr = totalComm;
   await position.save();
 
-  // Settle on the sub-wallet: balance gets the PnL, margin is released.
-  account.walletBalance = Number(account.walletBalance) + realisedPnl;
+  // Settle on the sub-wallet: balance gets the PnL minus close commission, margin is released.
+  account.walletBalance = Number(account.walletBalance) + realisedPnl - closeComm;
   // Re-read counters and recompute aggregates from remaining open positions.
   const openPositions = await ChallengePosition.find({ challengeAccountId: account._id, status: 'open' });
   recomputeWallet(account, openPositions);

@@ -3430,6 +3430,29 @@ app.get('/api/admin/dashboard/stats', async (req, res) => {
     const passedAccounts = await ChallengeAccount.countDocuments({ status: 'PASSED' });
     const failedAccounts = await ChallengeAccount.countDocuments({ status: 'FAILED' });
 
+    // ── IB stats ──
+    let ibTotalRevenue = 0, ibPendingWithdrawals = 0, ibTotalWithdrawals = 0;
+    try {
+      const ibWithdrawAgg = await Transaction.aggregate([
+        { $match: { type: 'ib_withdrawal' } },
+        { $group: {
+          _id: '$status',
+          total: { $sum: '$amount' },
+          count: { $sum: 1 }
+        }}
+      ]);
+      for (const row of ibWithdrawAgg) {
+        if (row._id === 'pending') ibPendingWithdrawals = row.count;
+        ibTotalWithdrawals += row.total || 0;
+      }
+      // IB revenue = total commissions earned by all IBs
+      const IBUser = require('./models/IBUser');
+      const ibRevenueAgg = await IBUser.aggregate([
+        { $group: { _id: null, total: { $sum: '$totalCommissionEarned' } } }
+      ]);
+      ibTotalRevenue = ibRevenueAgg[0]?.total || 0;
+    } catch (e) { /* IB models may not exist yet */ }
+
     // Recent users (no balance — wallet is hidden in the prop-only model)
     const recentUsers = await User.find({ role: { $ne: 'admin' } })
       .sort({ createdAt: -1 })
@@ -3462,7 +3485,11 @@ app.get('/api/admin/dashboard/stats', async (req, res) => {
         activeAccounts,
         fundedAccounts,
         passedAccounts,
-        failedAccounts
+        failedAccounts,
+        // IB stats
+        ibTotalRevenue,
+        ibPendingWithdrawals,
+        ibTotalWithdrawals
       },
       recentUsers,
       recentTrades

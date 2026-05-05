@@ -39,6 +39,9 @@ const challengePositionSchema = new mongoose.Schema({
   commission: { type: Number, default: 0 },
   openCommission: { type: Number, default: 0 },
   closeCommission: { type: Number, default: 0 },
+  commissionInr: { type: Number, default: 0 },
+  openCommissionInr: { type: Number, default: 0 },
+  closeCommissionInr: { type: Number, default: 0 },
 
   // Meta
   exchange: { type: String, default: 'NSE' },
