@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import LandingShell from '../components/LandingShell';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
@@ -52,7 +53,7 @@ const rules = [
 
 export default function InstrumentsPage() {
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <LandingShell>
       <TopBanner />
       <Navbar />
 
@@ -144,6 +145,6 @@ export default function InstrumentsPage() {
       </section>
 
       <Footer />
-    </div>
+    </LandingShell>
   );
 }

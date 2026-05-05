@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Clock, BookOpen } from 'lucide-react';
+import LandingShell from '../components/LandingShell';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
@@ -107,7 +108,7 @@ export default function BlogPage() {
 
   if (activePost) {
     return (
-      <div className="landing-page min-h-screen bg-white">
+      <LandingShell>
         <TopBanner />
         <Navbar />
 
@@ -150,12 +151,12 @@ export default function BlogPage() {
         </article>
 
         <Footer />
-      </div>
+      </LandingShell>
     );
   }
 
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <LandingShell>
       <TopBanner />
       <Navbar />
 
@@ -231,6 +232,6 @@ export default function BlogPage() {
       </section>
 
       <Footer />
-    </div>
+    </LandingShell>
   );
 }

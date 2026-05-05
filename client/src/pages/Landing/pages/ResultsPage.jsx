@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import LandingShell from '../components/LandingShell';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
@@ -46,7 +47,7 @@ const testimonials = [
 
 export default function ResultsPage() {
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <LandingShell>
       <TopBanner />
       <Navbar />
 
@@ -157,6 +158,6 @@ export default function ResultsPage() {
       </section>
 
       <Footer />
-    </div>
+    </LandingShell>
   );
 }

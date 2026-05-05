@@ -1103,8 +1103,10 @@ router.post('/withdraw', verifyUserToken, async (req, res) => {
 router.get('/my-payouts', verifyUserToken, async (req, res) => {
   try {
     const Transaction = require('../models/Transaction');
+    // Search by both display oderId and MongoDB _id (old transactions stored _id)
+    const possibleIds = [String(req.user.oderId), String(req.user._id)].filter(Boolean);
     const txs = await Transaction.find({
-      oderId: String(req.user.oderId || req.user._id),
+      oderId: { $in: possibleIds },
       type: 'withdrawal',
       'paymentDetails.kind': 'prop_payout'
     })

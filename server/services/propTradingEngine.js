@@ -892,6 +892,11 @@ class PropTradingEngine {
     if (account.status !== 'FUNDED') throw new Error('Only funded accounts can withdraw');
     if (String(account.userId) !== String(userId)) throw new Error('Not your account');
 
+    // Resolve user's display oderId for the Transaction record (Fund Management
+    // uses User.findOne({oderId}) to locate the user on approval).
+    const ownerUser = await User.findById(account.userId).select('oderId').lean();
+    const displayOderId = ownerUser?.oderId || String(account.userId);
+
     const challenge = account.challengeId;
     const rules = challenge.fundedSettings || {};
 
@@ -909,12 +914,12 @@ class PropTradingEngine {
     // inside paymentDetails) and legacy records (kind field).
     const Transaction = require('../models/Transaction');
     const existingPending = await Transaction.findOne({
-      oderId: String(account.userId),
       type: 'withdrawal',
       status: 'pending',
       $or: [
-        { 'paymentDetails.challengeAccountId': String(account._id) },
-        { 'paymentDetails.kind': 'prop_payout' }
+        { oderId: displayOderId, 'paymentDetails.kind': 'prop_payout' },
+        { oderId: String(account.userId), 'paymentDetails.kind': 'prop_payout' },
+        { 'paymentDetails.challengeAccountId': String(account._id) }
       ]
     });
     if (existingPending) {
@@ -943,7 +948,7 @@ class PropTradingEngine {
     // queue; admin approval is what actually moves real INR into
     // User.walletINR and resets the challenge account's wallet to initial.
     const tx = await Transaction.create({
-      oderId: String(account.userId),
+      oderId: displayOderId,
       type: 'withdrawal',
       amount: withdrawable,
       currency: 'INR',

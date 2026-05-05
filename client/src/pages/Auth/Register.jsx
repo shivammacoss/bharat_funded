@@ -154,8 +154,14 @@ function Register({ onLogin }) {
   }, [searchParams]);
 
   useEffect(() => {
-    document.body.style.overflow = 'auto';
-    return () => { document.body.style.overflow = ''; };
+    document.body.classList.add('allow-scroll');
+    document.documentElement.style.overflow = 'auto';
+    document.documentElement.style.height = 'auto';
+    return () => {
+      document.body.classList.remove('allow-scroll');
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.height = '';
+    };
   }, []);
 
   // Tick down the resend cooldown every second.

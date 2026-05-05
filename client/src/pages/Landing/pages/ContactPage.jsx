@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Send, Mail, MapPin, MessageCircle, Send as TelegramIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import LandingShell from '../components/LandingShell';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
@@ -48,7 +49,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <LandingShell>
       <TopBanner />
       <Navbar />
 
@@ -200,6 +201,6 @@ export default function ContactPage() {
       </section>
 
       <Footer />
-    </div>
+    </LandingShell>
   );
 }

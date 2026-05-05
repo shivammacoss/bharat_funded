@@ -2331,8 +2331,14 @@ app.put('/api/admin/transactions/:id', async (req, res) => {
     transaction.processedBy = processedBy || 'admin';
     transaction.processedAt = new Date();
 
-    // Find user for wallet update and activity logging
-    const user = await User.findOne({ oderId: transaction.oderId });
+    // Find user for wallet update and activity logging.
+    // Prop payout transactions store the MongoDB _id as oderId (via
+    // ChallengeAccount.userId); regular transactions use the display oderId.
+    // Try both lookups so both cases work.
+    let user = await User.findOne({ oderId: transaction.oderId });
+    if (!user && transaction.oderId) {
+      user = await User.findById(transaction.oderId).catch(() => null);
+    }
 
     // ── IB-source withdrawal branch ────────────────────────────────────
     // IB earnings live in a separate Wallet doc (type='ib') and the IB
@@ -2417,17 +2423,27 @@ app.put('/api/admin/transactions/:id', async (req, res) => {
           const isPropPayout = transaction.paymentDetails?.kind === 'prop_payout' ||
             !!transaction.paymentDetails?.challengeAccountId ||
             !!transaction.paymentDetails?.challengeAccountCode;
+          console.log('[PropPayout Check]', { isPropPayout, kind: transaction.paymentDetails?.kind, challengeAccountId: transaction.paymentDetails?.challengeAccountId, txId: transaction._id });
           if (isPropPayout) {
             const ChallengeAccount = require('./models/ChallengeAccount');
             let chAccId = transaction.paymentDetails?.challengeAccountId;
             if (!chAccId) {
-              const fallback = await ChallengeAccount.findOne({ userId: transaction.oderId, status: 'FUNDED' });
+              // Try finding the challenge account by userId. Since userId is an ObjectId
+              // and transaction.oderId might be either ObjectId-string or display-ID,
+              // try both: first direct match, then look up user by display oderId.
+              let fallback = await ChallengeAccount.findOne({ userId: transaction.oderId, status: 'FUNDED' });
+              if (!fallback && user) {
+                fallback = await ChallengeAccount.findOne({ userId: user._id, status: 'FUNDED' });
+              }
+              console.log('[PropPayout] Fallback lookup:', { txOderId: transaction.oderId, userId: user?._id, found: !!fallback });
               if (fallback) chAccId = String(fallback._id);
             }
+            console.log('[PropPayout] chAccId:', chAccId);
             if (chAccId) {
               const chAcc = await ChallengeAccount.findById(chAccId);
               if (chAcc) {
                 const initial = Number(chAcc.initialBalance) || 0;
+                console.log('[PropPayout] Resetting wallet. Before:', { walletBalance: chAcc.walletBalance, initial, totalWithdrawn: chAcc.totalWithdrawn });
                 chAcc.walletBalance = initial;
                 chAcc.walletEquity = initial;
                 chAcc.walletMargin = 0;
@@ -2439,7 +2455,12 @@ app.put('/api/admin/transactions/:id', async (req, res) => {
                 chAcc.totalWithdrawn = (Number(chAcc.totalWithdrawn) || 0) + amount;
                 chAcc.lastWithdrawalDate = new Date();
                 await chAcc.save();
+                console.log('[PropPayout] Wallet reset SUCCESS. After:', { walletBalance: chAcc.walletBalance, totalWithdrawn: chAcc.totalWithdrawn });
+              } else {
+                console.log('[PropPayout] ERROR: ChallengeAccount not found by ID:', chAccId);
               }
+            } else {
+              console.log('[PropPayout] ERROR: No chAccId found for oderId:', transaction.oderId);
             }
             // Auto-reject duplicate pending prop payouts from same user
             await Transaction.updateMany(

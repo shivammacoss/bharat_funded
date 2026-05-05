@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import './landing.css';
 
 // Above-the-fold: load eagerly for instant first paint
+import LandingShell from './components/LandingShell';
 import TopBanner from './components/TopBanner';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -24,7 +25,7 @@ const SectionFallback = () => (
 
 export default function NewLandingPage() {
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <LandingShell>
       <TopBanner />
       <Navbar />
       <Hero />
@@ -42,6 +43,6 @@ export default function NewLandingPage() {
       </Suspense>
 
       <WhatsAppFloat />
-    </div>
+    </LandingShell>
   );
 }

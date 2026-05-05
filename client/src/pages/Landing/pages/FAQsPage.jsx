@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import LandingShell from '../components/LandingShell';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TopBanner from '../components/TopBanner';
@@ -67,7 +68,7 @@ export default function FAQsPage() {
   const [activeCategory, setActiveCategory] = useState('General');
 
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <LandingShell>
       <TopBanner />
       <Navbar />
 
@@ -142,6 +143,6 @@ export default function FAQsPage() {
       </section>
 
       <Footer />
-    </div>
+    </LandingShell>
   );
 }
