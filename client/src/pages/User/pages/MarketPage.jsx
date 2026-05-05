@@ -4586,8 +4586,8 @@ function MarketPage() {
               <div className="close-actions-row">
                 <button className="close-action-btn primary" onClick={() => handleClosePosition(selectedPosition, selectedPosition.volume)}>Close Position</button>
                 <button className="close-action-btn secondary" onClick={async () => {
-                  if (confirm('Close ALL positions?')) {
-                    for (const pos of positions) { await handleClosePosition(pos, pos.volume); }
+                  if (confirm('Close ALL positions on this challenge?')) {
+                    for (const pos of scopedPositions) { await handleClosePosition(pos, pos.volume); }
                   }
                 }}>Close All</button>
               </div>
