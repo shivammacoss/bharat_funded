@@ -40,7 +40,7 @@ export default function InfiniteGrid() {
   return (
     <div
       ref={ref}
-      className="absolute inset-0 z-0 overflow-hidden pointer-events-auto"
+      className="absolute inset-0 z-0 overflow-hidden pointer-events-none"
       style={{ '--mx': '50%', '--my': '50%' }}
     >
       {/* Base grid — pure CSS, GPU-friendly */}
