@@ -21,6 +21,7 @@ function PassedChallengesPage() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pendingPayouts, setPendingPayouts] = useState({}); // { challengeAccountId: txId }
+  const [payoutHistory, setPayoutHistory] = useState([]); // all user payout requests
 
   // Withdraw modal state
   const [withdrawAccount, setWithdrawAccount] = useState(null);
@@ -41,18 +42,21 @@ function PassedChallengesPage() {
         setAccounts(filtered);
       }
     } catch (e) { /* ignore */ }
-    // Pull pending payout requests so we can hide "Withdraw" button on accounts with active request
+    // Pull payout requests so we can hide "Withdraw" button on accounts with active request
+    // and show history to the user
     try {
       const r = await fetch(`${API_URL}/api/prop/my-payouts`, { headers: getAuthHeaders() });
       const d = await r.json();
       if (d.success) {
         const m = {};
-        (d.payouts || []).forEach(p => {
+        const allPayouts = d.payouts || [];
+        allPayouts.forEach(p => {
           if (p.status === 'pending' && p.paymentDetails?.challengeAccountId) {
             m[String(p.paymentDetails.challengeAccountId)] = p._id;
           }
         });
         setPendingPayouts(m);
+        setPayoutHistory(allPayouts);
       }
     } catch (e) { /* ignore — endpoint may not exist; we just won't show pending markers */ }
     setLoading(false);
@@ -415,6 +419,53 @@ function PassedChallengesPage() {
           </div>
         )}
       </div>
+
+      {/* Payout History Section */}
+      {payoutHistory.length > 0 && (
+        <div style={{ marginTop: 24, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 14, padding: 18 }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>📋 My Payout Requests</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11 }}>Date</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11 }}>Amount</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11 }}>UPI</th>
+                  <th style={{ padding: '8px 12px', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 11 }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payoutHistory.map(p => {
+                  const statusColor = p.status === 'approved' ? '#10b981' : p.status === 'rejected' ? '#ef4444' : '#f59e0b';
+                  const statusBg = p.status === 'approved' ? 'rgba(16,185,129,0.1)' : p.status === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)';
+                  return (
+                    <tr key={p._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', fontSize: 12 }}>
+                        {new Date(p.createdAt).toLocaleDateString('en-IN')} {new Date(p.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {fmtINR(p.amount)}
+                      </td>
+                      <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 12 }}>
+                        {p.withdrawalInfo?.upiDetails?.upiId || p.paymentDetails?.upiId || '-'}
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 10px', borderRadius: 6,
+                          fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                          background: statusBg, color: statusColor
+                        }}>
+                          {p.status === 'approved' ? '✓ Approved' : p.status === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Withdraw modal */}
       {withdrawAccount && (

@@ -2414,7 +2414,9 @@ app.put('/api/admin/transactions/:id', async (req, res) => {
           // ── Prop payout branch ────────────────────────────────────────
           // If this is a prop_payout withdrawal, reset the challenge
           // account wallet instead of touching the user's main wallet.
-          const isPropPayout = transaction.paymentDetails?.kind === 'prop_payout';
+          const isPropPayout = transaction.paymentDetails?.kind === 'prop_payout' ||
+            !!transaction.paymentDetails?.challengeAccountId ||
+            !!transaction.paymentDetails?.challengeAccountCode;
           if (isPropPayout) {
             const ChallengeAccount = require('./models/ChallengeAccount');
             let chAccId = transaction.paymentDetails?.challengeAccountId;
