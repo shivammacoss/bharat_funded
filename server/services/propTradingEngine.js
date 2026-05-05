@@ -905,13 +905,17 @@ class PropTradingEngine {
     }
 
     // Any pending payout request blocks a new one so the admin queue stays
-    // single-decision-per-account.
+    // single-decision-per-account. Check both new-schema (challengeAccountId
+    // inside paymentDetails) and legacy records (kind field).
     const Transaction = require('../models/Transaction');
     const existingPending = await Transaction.findOne({
       oderId: String(account.userId),
       type: 'withdrawal',
       status: 'pending',
-      'paymentDetails.challengeAccountId': String(account._id)
+      $or: [
+        { 'paymentDetails.challengeAccountId': String(account._id) },
+        { 'paymentDetails.kind': 'prop_payout' }
+      ]
     });
     if (existingPending) {
       throw new Error('A payout request is already pending for this account');

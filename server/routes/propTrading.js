@@ -1239,7 +1239,24 @@ router.post('/admin/payouts/:id/approve', async (req, res) => {
       return res.status(400).json({ success: false, message: `Request is ${tx.status}` });
     }
 
-    const chAccId = tx.paymentDetails?.challengeAccountId;
+    let chAccId = tx.paymentDetails?.challengeAccountId;
+    // Fallback: old transactions may lack challengeAccountId (Mongoose strict
+    // mode stripped it before the schema was updated). Try to find the funded
+    // account for this user so admin approval still works.
+    if (!chAccId) {
+      const fallbackAcc = await ChallengeAccount.findOne({
+        userId: tx.oderId,
+        status: 'FUNDED'
+      });
+      if (fallbackAcc) {
+        chAccId = String(fallbackAcc._id);
+        // Patch the transaction so future lookups work
+        tx.paymentDetails = tx.paymentDetails || {};
+        tx.paymentDetails.challengeAccountId = chAccId;
+        tx.paymentDetails.challengeAccountCode = fallbackAcc.accountId;
+        tx.paymentDetails.kind = 'prop_payout';
+      }
+    }
     if (!chAccId) return res.status(400).json({ success: false, message: 'Missing challenge account reference' });
 
     const account = await ChallengeAccount.findById(chAccId);
@@ -1291,9 +1308,17 @@ router.post('/admin/payouts/:id/approve', async (req, res) => {
     tx.processedAt = new Date();
     await tx.save();
 
+    // Auto-reject any duplicate pending payout requests from this user
+    // (caused by the old schema bug that allowed multiple submissions).
+    const dupes = await Transaction.updateMany(
+      { _id: { $ne: tx._id }, oderId: tx.oderId, type: 'withdrawal', status: 'pending' },
+      { $set: { status: 'rejected', rejectionReason: 'Auto-rejected: duplicate request (another payout already approved)', processedBy: 'system', processedAt: new Date() } }
+    );
+
     res.json({
       success: true,
-      message: `Payout ₹${amountToPay.toFixed(2)} approved. Transfer to user's UPI: ${tx.withdrawalInfo?.upiDetails?.upiId || tx.paymentDetails?.upiId || '(not set)'}`,
+      message: `Payout ₹${amountToPay.toFixed(2)} approved. Transfer to user's UPI: ${tx.withdrawalInfo?.upiDetails?.upiId || tx.paymentDetails?.upiId || '(not set)'}` +
+        (dupes.modifiedCount > 0 ? ` (${dupes.modifiedCount} duplicate request(s) auto-rejected)` : ''),
       transaction: tx
     });
   } catch (error) {

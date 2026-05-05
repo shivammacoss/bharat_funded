@@ -58,7 +58,14 @@ const transactionSchema = new mongoose.Schema({
     
     // Reference/UTR
     referenceNumber: { type: String },
-    utrNumber: { type: String }
+    utrNumber: { type: String },
+
+    // Prop payout fields (withdrawal from funded challenge account)
+    challengeAccountId: { type: String },
+    challengeAccountCode: { type: String },
+    profit: { type: Number },
+    splitPercent: { type: Number },
+    kind: { type: String }
   },
   
   // Status

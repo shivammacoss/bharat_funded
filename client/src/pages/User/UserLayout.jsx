@@ -2495,36 +2495,33 @@ function UserLayout({ user, onLogout }) {
           </button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Active-account chip. Click behaviour:
-              - Challenge active → click clears it (switch back to main).
-              - Main wallet     → click navigates to /app/wallet. */}
+          {/* Active challenge chip — only shown when a challenge is selected.
+              Prop-only platform: no "Main Wallet" chip needed. */}
+          {activeChallengeAccountId && (
           <button
             type="button"
-            title={activeChallengeAccountId ? 'Trading on challenge account — click to switch back to main wallet' : 'Go to Main Wallet'}
+            title="Trading on challenge account — click to deselect"
             onClick={() => {
-              if (activeChallengeAccountId) {
-                setActiveChallengeAccountId(null);
-              } else {
-                navigateToPage('wallet');
-              }
+              setActiveChallengeAccountId(null);
             }}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '6px 12px', borderRadius: 18, fontSize: 12, fontWeight: 600,
               border: '1px solid var(--border-color)',
-              background: activeChallengeAccountId ? 'color-mix(in srgb, #f59e0b 18%, var(--bg-primary))' : 'var(--bg-primary)',
-              color: activeChallengeAccountId ? '#f59e0b' : 'var(--text-primary)',
+              background: 'color-mix(in srgb, #f59e0b 18%, var(--bg-primary))',
+              color: '#f59e0b',
               cursor: 'pointer',
               maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               transition: 'background 0.15s'
             }}
           >
-            <span style={{ fontSize: 14 }}>{activeChallengeAccountId ? '🏆' : '💼'}</span>
+            <span style={{ fontSize: 14 }}>🏆</span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {activeChallengeAccountId ? `Challenge · ${String(activeChallengeAccountId).slice(-6)}` : 'Main Wallet'}
+              {`Challenge · ${String(activeChallengeAccountId).slice(-6)}`}
             </span>
-            {activeChallengeAccountId && <span style={{ marginLeft: 2, opacity: 0.7 }}>✕</span>}
+            <span style={{ marginLeft: 2, opacity: 0.7 }}>✕</span>
           </button>
+          )}
           <button
             onClick={() => { setShowNotificationPanel(!showNotificationPanel); if (!showNotificationPanel) fetchSystemNotifications(); }}
             title="Notifications"
