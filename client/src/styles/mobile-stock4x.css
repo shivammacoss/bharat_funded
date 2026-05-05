@@ -69,10 +69,10 @@
     padding-bottom: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Actual rendered height of .mobi-fixed-footer (nav only, no status
-       strip) plus breathing room so content is never flush against the
-       nav. All pages read this via var() so there's one source of truth. */
-    --mobi-footer-h: 64px;
+    /* Actual rendered height of .mobi-fixed-footer (status strip + nav
+       + breathing room) so content is never flush against the nav.
+       All pages read this via var() so there's one source of truth. */
+    --mobi-footer-h: 90px;
   }
 
   /* Make .main-content the single scroll container on mobile. The inline
@@ -86,7 +86,16 @@
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
-    padding-bottom: calc(var(--mobi-footer-h, 64px) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--mobi-footer-h, 90px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Page root containers should not constrain height so content flows
+     naturally and the main-content padding-bottom reserves nav space.
+     Exception: .market-page-root needs its own scroll/overflow for tabs. */
+  .app.user-layout-shell .main-content > div:not(.market-page-root) {
+    height: auto !important;
+    min-height: 100%;
+    overflow: visible !important;
   }
 
   /* Fixed footer: compact status + bottom nav.

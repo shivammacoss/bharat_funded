@@ -3134,19 +3134,6 @@ function UserLayout({ user, onLogout }) {
                 type="button"
                 className="mobi-more-item"
                 onClick={() => {
-                  navigateToPage('market');
-                  setMobileMarketTab('instruments');
-                  setMobileShowChartBelow(false);
-                  setMoreMenuOpen(false);
-                }}
-              >
-                <span className="mobi-more-icon"><LuChartColumn size={22} /></span>
-                <span className="mobi-more-label">Market</span>
-              </button>
-              <button
-                type="button"
-                className="mobi-more-item"
-                onClick={() => {
                   navigateToPage('challenges');
                   setMoreMenuOpen(false);
                 }}
@@ -3199,7 +3186,7 @@ function UserLayout({ user, onLogout }) {
           .prop-sidebar { display: none !important; }
           .main-content {
             left: 0 !important;
-            bottom: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+            bottom: 0 !important;
             top: calc(56px + env(safe-area-inset-top, 0px)) !important;
           }
           /* Hamburger stays visible on mobile so the user can open the
