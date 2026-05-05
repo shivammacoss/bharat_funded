@@ -2411,15 +2411,50 @@ app.put('/api/admin/transactions/:id', async (req, res) => {
             console.error('[BonusAutoTrigger] Failed on deposit approval:', bonusErr.message);
           }
         } else if (transaction.type === 'withdrawal') {
-          if (user.walletINR.balance < amount) {
-            return res.status(400).json({ error: 'Insufficient balance for withdrawal' });
-          }
-          user.walletINR.balance -= amount;
-          user.walletINR.totalWithdrawals += amount;
-          if (user.wallet.balance >= amount) {
-            user.wallet.balance -= amount;
+          // ── Prop payout branch ────────────────────────────────────────
+          // If this is a prop_payout withdrawal, reset the challenge
+          // account wallet instead of touching the user's main wallet.
+          const isPropPayout = transaction.paymentDetails?.kind === 'prop_payout';
+          if (isPropPayout) {
+            const ChallengeAccount = require('./models/ChallengeAccount');
+            let chAccId = transaction.paymentDetails?.challengeAccountId;
+            if (!chAccId) {
+              const fallback = await ChallengeAccount.findOne({ userId: transaction.oderId, status: 'FUNDED' });
+              if (fallback) chAccId = String(fallback._id);
+            }
+            if (chAccId) {
+              const chAcc = await ChallengeAccount.findById(chAccId);
+              if (chAcc) {
+                const initial = Number(chAcc.initialBalance) || 0;
+                chAcc.walletBalance = initial;
+                chAcc.walletEquity = initial;
+                chAcc.walletMargin = 0;
+                chAcc.walletFreeMargin = initial;
+                chAcc.walletMarginLevel = 0;
+                chAcc.currentBalance = initial;
+                chAcc.currentEquity = initial;
+                chAcc.phaseStartBalance = initial;
+                chAcc.totalWithdrawn = (Number(chAcc.totalWithdrawn) || 0) + amount;
+                chAcc.lastWithdrawalDate = new Date();
+                await chAcc.save();
+              }
+            }
+            // Auto-reject duplicate pending prop payouts from same user
+            await Transaction.updateMany(
+              { _id: { $ne: transaction._id }, oderId: transaction.oderId, type: 'withdrawal', status: 'pending', 'paymentDetails.kind': 'prop_payout' },
+              { $set: { status: 'rejected', rejectionReason: 'Auto-rejected: duplicate (another payout approved)', processedBy: 'system', processedAt: new Date() } }
+            );
           } else {
-            return res.status(400).json({ error: 'Insufficient balance for withdrawal' });
+            if (user.walletINR.balance < amount) {
+              return res.status(400).json({ error: 'Insufficient balance for withdrawal' });
+            }
+            user.walletINR.balance -= amount;
+            user.walletINR.totalWithdrawals += amount;
+            if (user.wallet.balance >= amount) {
+              user.wallet.balance -= amount;
+            } else {
+              return res.status(400).json({ error: 'Insufficient balance for withdrawal' });
+            }
           }
         }
         user.wallet.equity = user.wallet.balance + user.wallet.credit;
