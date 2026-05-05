@@ -93,7 +93,7 @@ function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/prop-trading')}>
+        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/funds/challenge-buys')}>
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.35)', color: '#4ade80' }}><LuShoppingCart size={18} /></div>
             <div className="fund-stat-card__meta">
@@ -103,7 +103,7 @@ function Dashboard() {
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>{dashboardStats.challengeBuyCount} purchases</div>
         </div>
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/prop-trading/payouts')}>
+        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/funds/withdrawals')}>
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171' }}><LuArrowUpFromLine size={18} /></div>
             <div className="fund-stat-card__meta">
@@ -113,7 +113,7 @@ function Dashboard() {
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>{dashboardStats.payoutCount} funded withdrawals</div>
         </div>
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/trades')}>
+        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/trades/open')}>
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.35)', color: '#c084fc' }}><LuChartColumn size={18} /></div>
             <div className="fund-stat-card__meta">
@@ -166,7 +166,7 @@ function Dashboard() {
 
       {/* Row 3 — User status + Pending queues */}
       <div className="fund-stats-row">
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/users')}>
+        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/users/active')}>
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.35)', color: '#4ade80' }}><LuUserCheck size={18} /></div>
             <div className="fund-stat-card__meta">
@@ -175,7 +175,7 @@ function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/users')}>
+        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/users/blocked')}>
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.35)', color: '#f87171' }}><LuUserX size={18} /></div>
             <div className="fund-stat-card__meta">
@@ -184,7 +184,7 @@ function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/prop-trading/purchases')}>
+        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/funds')}>
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.35)', color: '#fbbf24' }}><LuClock size={18} /></div>
             <div className="fund-stat-card__meta">
@@ -193,7 +193,7 @@ function Dashboard() {
             </div>
           </div>
         </div>
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/prop-trading/payouts')}>
+        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/funds/withdrawals')}>
           <div className="fund-stat-card__top">
             <div className="fund-stat-card__icon" style={{ background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.35)', color: '#fbbf24' }}><LuHourglass size={18} /></div>
             <div className="fund-stat-card__meta">
@@ -234,16 +234,6 @@ function Dashboard() {
               <StatValue>{dashboardStats.ibPendingWithdrawals}</StatValue>
             </div>
           </div>
-        </div>
-        <div className="fund-stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/admin/ib')}>
-          <div className="fund-stat-card__top">
-            <div className="fund-stat-card__icon" style={{ background: 'rgba(20, 184, 166, 0.15)', border: '1px solid rgba(20, 184, 166, 0.35)', color: '#2dd4bf' }}><LuHandshake size={18} /></div>
-            <div className="fund-stat-card__meta">
-              <div className="fund-stat-card__label">IB Management</div>
-              <StatValue>View</StatValue>
-            </div>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted, #64748b)' }}>applications, coupons & settings</div>
         </div>
       </div>
 

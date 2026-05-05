@@ -1352,6 +1352,8 @@ function UserLayout({ user, onLogout }) {
             marginUsed: p.marginUsed,
             openCommission: p.openCommission || 0,
             commission: p.commission || 0,
+            openCommissionInr: p.openCommissionInr || 0,
+            commissionInr: p.commissionInr || 0,
             swap: p.swap || 0,
             profit: p.profit || 0,
             status: 'open',
@@ -1412,6 +1414,9 @@ function UserLayout({ user, onLogout }) {
             createdAt: p.createdAt,
             profit: p.profit,
             commission: p.commission || 0,
+            commissionInr: p.commissionInr || 0,
+            openCommissionInr: p.openCommissionInr || 0,
+            closeCommissionInr: p.closeCommissionInr || 0,
             swap: p.swap || 0,
             remark: p.closedBy ? String(p.closedBy).toUpperCase() : '',
             status: 'closed'
