@@ -1958,16 +1958,6 @@ function MarketPage() {
 
     if (tradingMode === 'binary') return parseFloat(binaryAmount) || 0;
 
-    // Challenge accounts use their own simple margin formula on the server:
-    // margin = (price × quantity) / leverage. Show this in the panel so the
-    // displayed margin matches what the server will actually charge.
-    if (activeChallengeAccountIdFromContext && price > 0) {
-      const lotSize = selectedInstrument?.lotSize || 1;
-      const qty = nettingVolumeIsShares ? vol : vol * lotSize;
-      const lev = leverage || 100;
-      return (price * qty) / lev;
-    }
-
     const marginFactor = leverage / 100;
 
     if (tradingMode === 'netting') {
@@ -2082,11 +2072,10 @@ function MarketPage() {
       }
 
       // Skip client-side margin check for challenge accounts — the server's
-      // challengePropEngine.openPosition() has its own margin validation that
-      // uses the challenge wallet's freeMargin and a simple formula. The
-      // client-side check uses main-wallet balance + segment-based margins
-      // (e.g. Fixed ₹148K/lot for SELL options) which is wrong for challenges
-      // and blocks SELL orders that the server would accept.
+      // challengePropEngine.openPosition() validates margin against the
+      // challenge wallet's freeMargin using real segment settings. The
+      // client-side check uses main-wallet balance which is irrelevant for
+      // challenge trades. Server returns a clear error if margin is insufficient.
       if (!activeChallengeAccountId) {
         const requiredMargin = calculateRequiredMargin();
         const _balRate = usdInrRate + usdMarkup;
@@ -3365,17 +3354,6 @@ function MarketPage() {
             })()}
             <div className="trading-charges">
               {tradingMode === 'netting' && segmentSettings && (() => {
-                // Challenge accounts use their own simple margin engine —
-                // show "Challenge" label instead of the admin segment margin.
-                if (activeChallengeAccountIdFromContext) {
-                  return (
-                    <div className="charge-row">
-                      <span>Margin Mode</span>
-                      <span style={{ color: '#10b981', fontWeight: '600', fontSize: '12px' }}>Challenge — (Price × Qty) / Leverage</span>
-                    </div>
-                  );
-                }
-
                 const mode = segmentSettings.marginCalcMode;
                 const X = getSegmentMarginX('intraday');
                 const isIndian = isIndianInstrument(selectedSymbol);

@@ -17,6 +17,7 @@
 
 const ChallengeAccount = require('../models/ChallengeAccount');
 const ChallengePosition = require('../models/ChallengePosition');
+const NettingSegment = require('../models/NettingSegment');
 const propTradingEngine = require('./propTradingEngine');
 
 function genPositionId() {
@@ -48,6 +49,90 @@ function pnlUnits(pos) {
   const lot = Number(pos?.lotSize);
   if (Number.isFinite(lot) && lot > 0) return vol * lot;
   return vol;
+}
+
+/**
+ * Resolve the NettingSegment name from exchange + symbol (mirrors NettingEngine logic).
+ */
+function resolveSegmentName(exchange, symbol) {
+  const ex = String(exchange || '').toUpperCase();
+  const sym = String(symbol || '').toUpperCase();
+  const isOptions = sym.endsWith('CE') || sym.endsWith('PE');
+  const isFutures = sym.endsWith('FUT') || sym.includes('FUT');
+
+  if (ex === 'NSE') return isOptions ? 'NSE_OPT' : isFutures ? 'NSE_FUT' : 'NSE_EQ';
+  if (ex === 'BSE') return isOptions ? 'BSE_OPT' : isFutures ? 'BSE_FUT' : 'BSE_EQ';
+  if (ex === 'MCX') return isOptions ? 'MCX_OPT' : 'MCX_FUT';
+  if (ex === 'NFO') return isOptions ? 'NSE_OPT' : 'NSE_FUT';
+  if (ex === 'BFO') return isOptions ? 'BSE_OPT' : 'BSE_FUT';
+  if (ex === 'FOREX') return 'FOREX';
+  if (ex === 'INDICES') return 'INDICES';
+  if (ex === 'COMMODITIES' || ex === 'COMEX') return 'COMMODITIES';
+  if (ex === 'STOCKS') return 'STOCKS';
+  if (ex === 'DELTA') return 'CRYPTO_PERPETUAL';
+  // Fallback: try to infer from symbol
+  if (isOptions) return 'NSE_OPT';
+  if (isFutures) return 'NSE_FUT';
+  return null;
+}
+
+/**
+ * Compute margin using admin segment settings (same logic as NettingEngine).
+ * Returns margin in INR for Indian segments.
+ * Falls back to simple (price × qty) / leverage if no segment settings found.
+ */
+async function computeSegmentMargin(orderData, volume, effectiveQty, entryPrice, leverage) {
+  const segName = resolveSegmentName(orderData.exchange, orderData.symbol);
+  if (!segName) return (entryPrice * effectiveQty) / leverage;
+
+  const seg = await NettingSegment.findOne({ name: segName }).lean();
+  if (!seg) return (entryPrice * effectiveQty) / leverage;
+
+  const sym = String(orderData.symbol || '').toUpperCase();
+  const isOptions = sym.endsWith('CE') || sym.endsWith('PE') ||
+    ['NSE_OPT', 'BSE_OPT', 'MCX_OPT', 'CRYPTO_OPTIONS'].includes(segName);
+  const side = String(orderData.side || '').toLowerCase();
+
+  // Determine raw margin value from segment settings
+  let rawMarginValue = null;
+  if (isOptions) {
+    if (side === 'buy') {
+      rawMarginValue = seg.optionBuyIntraday;
+    } else {
+      rawMarginValue = seg.optionSellIntraday;
+    }
+  }
+  // Fallback to base intraday margin if option-specific not set
+  // NettingSegment schema uses 'intradayMargin'; legacy/merged uses 'intradayHolding'
+  if (!(Number(rawMarginValue) > 0)) {
+    rawMarginValue = seg.intradayMargin || seg.intradayHolding;
+  }
+
+  // If no admin margin configured, use premium (price × qty) for BUY,
+  // or simple formula for SELL
+  if (!(Number(rawMarginValue) > 0)) {
+    if (isOptions && side === 'buy') {
+      return effectiveQty * entryPrice; // pay premium
+    }
+    return (entryPrice * effectiveQty) / leverage;
+  }
+
+  // Apply margin calc mode (same as NettingEngine.nettingFixedMarginAmount)
+  const mode = seg.marginCalcMode || 'fixed';
+  const r = Number(rawMarginValue);
+  switch (mode) {
+    case 'percent': {
+      const cappedPct = Math.min(r, 100);
+      return effectiveQty * entryPrice * (cappedPct / 100);
+    }
+    case 'times': {
+      const effectiveMultiplier = r * (leverage / 100);
+      return (effectiveQty * entryPrice) / effectiveMultiplier;
+    }
+    case 'fixed':
+    default:
+      return r * volume; // per-lot fixed margin × lots
+  }
 }
 
 /**
@@ -128,15 +213,15 @@ async function openPosition(challengeAccountId, orderData) {
     return { success: false, error: validation.error, code: validation.code };
   }
 
-  // Margin math — simple: (price × volume) / leverage. Indian instruments
-  // typically trade 1 unit; contract-size concerns are handled inside the
-  // main engines. For the challenge's virtual wallet we use this simple
-  // formula so the user sees consistent numbers.
+  // Margin math — uses admin NettingSegment settings (same as real brokers
+  // like Upstox). Option SELL uses the configured fixed/percent margin,
+  // option BUY uses premium, futures use intradayMargin. Falls back to
+  // (price × qty) / leverage only if admin hasn't configured any margin.
   const volume = Number(orderData.volume || orderData.quantity) || 0;
   const entryPrice = Number(orderData.entryPrice || orderData.price) || 0;
   const leverage = Number(orderData.leverage) || 100;
   const lotSize = Number(orderData.lotSize) > 0 ? Number(orderData.lotSize) : 1;
-  // Effective contract count for margin + PnL — mirrors the same formula
+  // Effective contract count for PnL — mirrors the same formula
   // used below in closePosition / refreshEquity so margin reserved and
   // PnL booked always agree on "units traded".
   const effectiveQty =
@@ -144,7 +229,7 @@ async function openPosition(challengeAccountId, orderData) {
   if (!volume || !entryPrice) {
     return { success: false, error: 'Missing volume or entry price' };
   }
-  const marginRequired = (entryPrice * effectiveQty) / leverage;
+  const marginRequired = await computeSegmentMargin(orderData, volume, effectiveQty, entryPrice, leverage);
 
   if (account.walletFreeMargin < marginRequired) {
     return {
