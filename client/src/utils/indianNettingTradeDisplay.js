@@ -57,7 +57,9 @@ export function commissionInrForTrade(trade, effectiveRate) {
  * Returns null if not applicable.
  */
 export function netProfitInrIndianNettingClose(trade, effectiveRate) {
-  if (!trade || trade.mode !== 'netting' || trade.type !== 'close') return null;
+  if (!trade) return null;
+  const isProp = trade.mode === 'prop' || trade.accountContext === 'challenge';
+  if (!isProp && (trade.mode !== 'netting' || trade.type !== 'close')) return null;
   if (!isIndianSymbolLikely(trade.symbol)) return null;
   const gross = grossIndianNettingCloseInr(trade);
   if (gross == null) return null;
