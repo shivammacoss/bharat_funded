@@ -38,6 +38,7 @@ const DEFAULT_WITHDRAWAL_COLUMNS = [
   { id: 'accNum', label: 'ACC Num', visible: true },
   { id: 'ifsc', label: 'IFSC', visible: true },
   { id: 'upiId', label: 'UPI ID', visible: true },
+  { id: 'showImage', label: 'QR / Proof', visible: true },
   { id: 'remark', label: 'Remark', visible: true },
   { id: 'accept', label: 'Accept', visible: true },
   { id: 'reject', label: 'Reject', visible: true },

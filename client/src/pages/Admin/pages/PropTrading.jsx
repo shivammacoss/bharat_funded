@@ -846,6 +846,28 @@ const PropTrading = () => {
                         <div style={{ padding: '6px 12px', borderRadius: 8, background: p.status === 'approved' ? 'color-mix(in srgb, #10b981 15%, transparent)' : 'color-mix(in srgb, #ef4444 15%, transparent)', color: p.status === 'approved' ? '#10b981' : '#ef4444', textTransform: 'uppercase', fontSize: 11, fontWeight: 700 }}>{p.status}</div>
                       )}
                     </div>
+                    {/* UPI / QR details */}
+                    {(p.upiId || p.holderName || p.proofImage) && (
+                      <div style={{ marginTop: 10, padding: 12, background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 8, display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: 180 }}>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>PAYOUT UPI DETAILS</div>
+                          {p.holderName && <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>{p.holderName}</div>}
+                          {p.upiId && <div style={{ fontSize: 13, color: 'var(--text-primary)', fontFamily: 'monospace', marginTop: 2 }}>{p.upiId}</div>}
+                          {p.userNote && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>Note: {p.userNote}</div>}
+                        </div>
+                        {p.proofImage && (
+                          <div style={{ flexShrink: 0 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>QR CODE</div>
+                            <img
+                              src={p.proofImage}
+                              alt="User QR"
+                              onClick={() => window.open(p.proofImage, '_blank')}
+                              style={{ width: 100, height: 100, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--border-color)', cursor: 'pointer', background: '#fff' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {p.status === 'rejected' && p.rejectionReason && (
                       <div style={{ marginTop: 10, padding: 10, background: 'color-mix(in srgb, #ef4444 8%, var(--bg-primary))', border: '1px solid color-mix(in srgb, #ef4444 25%, var(--border-color))', borderRadius: 8, color: '#ef4444', fontSize: 12 }}>
                         Rejected: {p.rejectionReason}

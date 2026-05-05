@@ -1213,6 +1213,9 @@ router.get('/admin/payouts', async (req, res) => {
         challengeAccount,
         profit: tx.paymentDetails?.profit,
         splitPercent: tx.paymentDetails?.splitPercent,
+        upiId: tx.withdrawalInfo?.upiDetails?.upiId || tx.paymentDetails?.upiId || '',
+        holderName: tx.withdrawalInfo?.upiDetails?.name || tx.userName || '',
+        proofImage: tx.proofImage || '',
         adminNote: tx.adminNote || '',
         rejectionReason: tx.rejectionReason || '',
         processedAt: tx.processedAt

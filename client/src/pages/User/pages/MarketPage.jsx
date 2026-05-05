@@ -2407,23 +2407,28 @@ function MarketPage() {
        !symbol.includes('US500') && !symbol.includes('UK100'));
   };
 
-  // Calculate profit for position (RAW price P&L — swap/commission shown in separate columns)
+  // Calculate profit for position (price P&L minus commission)
   const calculateProfit = (pos) => {
     const currentPrice = getCurrentPrice(pos);
     const entryPrice = pos.entryPrice || pos.avgPrice || 0;
     const priceDiff = pos.side === 'buy' ? currentPrice - entryPrice : entryPrice - currentPrice;
     const symbol = pos.symbol || '';
 
+    let rawPnl = 0;
     if (isIndianPositionPnl(pos)) {
       // Use quantity (= lots × lotSize) directly — mirrors server NettingEngine P/L formula
       const quantity = pos.quantity || (pos.volume * (pos.lotSize || 1)) || 0;
-      return priceDiff * quantity;
+      rawPnl = priceDiff * quantity;
+    } else {
+      // Forex/Crypto/Indices: contract size × lots
+      const vol = pos.volume || 0;
+      if (symbol.includes('JPY')) rawPnl = (priceDiff * 100000 * vol) / 100;
+      else rawPnl = priceDiff * getContractSize(symbol) * vol;
     }
 
-    // Forex/Crypto/Indices: contract size × lots
-    const vol = pos.volume || 0;
-    if (symbol.includes('JPY')) return (priceDiff * 100000 * vol) / 100;
-    return priceDiff * getContractSize(symbol) * vol;
+    // Subtract commission from P/L (open commission already charged)
+    const comm = Number(pos.commissionInr || pos.openCommissionInr || pos.commission || pos.openCommission || 0);
+    return rawPnl - comm;
   };
 
   // Check if symbol is an Indian instrument
